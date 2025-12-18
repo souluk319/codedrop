@@ -371,6 +371,126 @@
 
         // --- Game Logic ---
 
+        
+        function startGame() {
+            // Validate
+            const diff = els.controls.diffSelect.value;
+            const pack = els.controls.packSelect.value;
+            
+            state.difficulty = diff;
+            state.pack = pack;
+
+            // UI Reset
+            els.screens.start.classList.add('hidden');
+            els.screens.pause.classList.add('hidden');
+            els.screens.result.classList.add('hidden');
+            els.gameArea.innerHTML = ''; // Clear words
+            els.input.field.value = '';
+            els.input.field.disabled = false;
+            els.input.field.focus();
+            els.hud.btnPause.textContent = "PAUSE";
+            
+            // State Reset
+            state.isPlaying = true;
+            state.isPaused = false;
+            state.score = 0;
+            state.lives = 3;
+            state.combo = 0;
+            state.maxCombo = 0;
+            state.spawnedCount = 0;
+            state.activeWords = [];
+            state.startTime = Date.now();
+            state.lastSpawnTime = Date.now();
+            state.totalCharsTyped = 0;
+            state.correctCharsTyped = 0;
+            state.targetId = null;
+
+            updateHUD();
+            
+            // Start Loop
+            requestAnimationFrame(gameLoop);
+            
+            // Play BGM
+            sfx.playBGM();
+        }
+
+        function togglePause() {
+            if (!state.isPlaying) return;
+
+            state.isPaused = !state.isPaused;
+
+            if (state.isPaused) {
+                els.hud.btnPause.textContent = "PLAY";
+                els.screens.pause.classList.remove('hidden');
+                els.input.field.disabled = true;
+            } else {
+                els.hud.btnPause.textContent = "PAUSE";
+                els.screens.pause.classList.add('hidden');
+                els.input.field.disabled = false;
+                els.input.field.focus();
+                state.lastSpawnTime = Date.now();
+            }
+        }
+
+        function goHome() {
+            if (confirm("ABORT MISSION? Progress will be lost.")) {
+                state.isPlaying = false;
+                state.isPaused = false;
+                els.screens.pause.classList.add('hidden');
+                els.screens.result.classList.add('hidden');
+                els.screens.start.classList.remove('hidden');
+
+                // Clear game area
+                els.gameArea.innerHTML = '';
+                state.activeWords = [];
+
+                fetchLeaderboard();
+            initGameControls();
+                sfx.playBGM();
+            }
+        }
+
+        // Add Listeners for Game Controls
+        function initGameControls() {
+            els.input.field.addEventListener('input', handleInput);
+            els.input.field.addEventListener('keydown', handleKeydown);
+
+            // Controls
+            els.hud.btnPause.addEventListener('click', togglePause);
+            els.hud.btnHome.addEventListener('click', goHome);
+
+            // Resume on overlay click
+            els.screens.pause.addEventListener('click', togglePause);
+            
+            // Restart from Result
+            els.controls.restartBtn.addEventListener('click', () => {
+                els.screens.result.classList.add('hidden');
+                els.screens.start.classList.remove('hidden');
+                fetchLeaderboard();
+            initGameControls(); 
+                sfx.playBGM();
+            });
+
+            // Music Widget Logic
+            if (els.musicWidget) {
+                els.musicWidget.addEventListener('click', (e) => {
+                    // If clicking close button, minimize
+                    if (e.target.id === 'close-player') {
+                        e.stopPropagation();
+                        els.musicWidget.classList.remove('open');
+                        els.musicWidget.classList.add('closed');
+                        return;
+                    }
+
+                    // If closed, open it
+                    if (els.musicWidget.classList.contains('closed')) {
+                        els.musicWidget.classList.remove('closed');
+                        els.musicWidget.classList.add('open');
+                    }
+                });
+            }
+        }
+
         function init() {
             initAuth();
             
@@ -380,6 +500,7 @@
 
             // Load Initial Leaderboard
             fetchLeaderboard();
+            initGameControls();
 
             // Sfx Init on interaction
             const initAudio = () => {
@@ -554,6 +675,7 @@
             
             // Refresh leaderboard for default view
             fetchLeaderboard();
+            initGameControls();
         }
 
         function showAuthView() {
