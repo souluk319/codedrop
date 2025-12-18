@@ -1,0 +1,19 @@
+# 1. 보안 - 비밀번호가 든 파일 (가장 중요)
+.env
+
+# 2. 용량 - 라이브러리 폴더 (npm install로 재생성 가능하므로 제외)
+node_modules/
+
+# 3. 로그 파일 (에러 기록 등)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 4. OS/IDE 설정 (내 컴퓨터 환경 설정 파일)
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 5. md 파일제외
+docs/
