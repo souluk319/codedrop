@@ -882,44 +882,75 @@
         /* --- Auth UI --- */
         .auth-tabs {
             display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 25px;
+            border-bottom: 2px solid rgba(0, 243, 255, 0.2);
+            gap: 10px;
         }
 
         .auth-tab {
             flex: 1;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.05);
-            color: #888;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #666;
             cursor: pointer;
             font-family: var(--font-display);
-            font-size: 0.9rem;
+            font-size: 1rem;
             transition: all 0.3s;
-            border: none;
+            border: 1px solid transparent;
             outline: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%, 0 20%);
+        }
+
+        .auth-tab:hover {
+            color: #fff;
+            background: rgba(0, 243, 255, 0.1);
         }
 
         .auth-tab.active {
-            background: rgba(0, 243, 255, 0.1);
+            background: rgba(0, 243, 255, 0.15);
             color: var(--primary-neon);
-            border-bottom: 2px solid var(--primary-neon);
+            border: 1px solid var(--primary-neon);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+            text-shadow: 0 0 5px var(--primary-neon);
         }
 
         .auth-form {
             display: none;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
 
         .auth-form.active {
             display: flex;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .auth-form input {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            padding: 15px;
+            color: #fff;
+            font-family: var(--font-code);
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s;
+            border-left: 3px solid #333;
+        }
+
+        .auth-form input:focus {
+            border-color: var(--primary-neon);
+            box-shadow: -5px 0 10px -5px var(--primary-neon);
+            background: rgba(0, 243, 255, 0.05);
         }
 
         .auth-error {
             color: var(--danger-color);
-            font-size: 0.8rem;
-            margin-top: 5px;
+            font-size: 0.85rem;
             min-height: 1.2em;
+            text-shadow: 0 0 5px rgba(255, 0, 85, 0.5);
+            font-family: var(--font-code);
         }
 
         .logged-in-view {
@@ -927,6 +958,7 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
+            animation: fadeIn 0.5s ease-out;
         }
 
         .logged-in-view.active {
@@ -934,9 +966,15 @@
         }
 
         .welcome-msg {
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             color: #fff;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            font-family: var(--font-display);
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+            border: 1px solid var(--primary-neon);
+            padding: 10px 30px;
+            background: rgba(0, 243, 255, 0.05);
+            clip-path: polygon(10% 0, 100% 0, 100% 80%, 90% 100%, 0 100%, 0 20%);
         }
 
         .welcome-msg span {
@@ -944,20 +982,11 @@
             font-weight: bold;
         }
 
-        .btn-danger {
-            border-color: var(--danger-color);
-            color: var(--danger-color);
-            margin-top: 10px;
-            font-size: 0.8rem;
-            padding: 8px 20px;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        .btn-danger:hover {
-            background: var(--danger-color);
-            color: #fff;
-            box-shadow: 0 0 15px var(--danger-color);
-        }
-    </style>
+</style>
 </head>
 
 <body>
@@ -1526,1080 +1555,198 @@
 
         function init() {
             initAuth();
-            // Restore Nickname
-            const savedNick = localStorage.getItem('codedrop_nickname');
-            if (savedNick) els.controls.nickname.value = savedNick;
+            
+            // Restore Nickname if any (though we use auth now)
+            // const savedNick = localStorage.getItem('codedrop_nickname');
+            // if (savedNick) els.controls.nickname.value = savedNick;
 
             // Load Initial Leaderboard
             fetchLeaderboard();
 
-            els.controls.startBtn.addEventListener('click', () => {
-                sfx.
-        // --- Auth Logic ---
-        function initAuth() {
-            // Check LocalStorage
-            const storedUser = localStorage.getItem('codedrop_user');
-            if (storedUser) {
-                const user = JSON.parse(storedUser);
-                state.userId = user.id;
-                state.nickname = user.nickname;
-                showLoggedInView();
-            } else {
-                showAuthView();
-            }
-
-            // Tabs
-            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
-            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
-
-            // Buttons
-            els.auth.btns.login.addEventListener('click', handleLogin);
-            els.auth.btns.register.addEventListener('click', handleRegister);
-            els.auth.btns.logout.addEventListener('click', handleLogout);
-            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
-            
-            // Start Button (now in logged in view)
-            els.controls.startBtn.addEventListener('click', startGame);
-        }
-
-        function switchTab(tab) {
-            els.auth.tabs.login.classList.toggle('active', tab === 'login');
-            els.auth.tabs.register.classList.toggle('active', tab === 'register');
-            els.auth.forms.login.classList.toggle('active', tab === 'login');
-            els.auth.forms.register.classList.toggle('active', tab === 'register');
-            
-            // Clear errors
-            els.auth.errors.login.textContent = '';
-            els.auth.errors.register.textContent = '';
-        }
-
-        async function handleLogin() {
-            const nickname = els.auth.inputs.loginNick.value.trim();
-            const password = els.auth.inputs.loginPass.value.trim();
-
-            if (!nickname || !password) {
-                els.auth.errors.login.textContent = "Please enter nickname and password.";
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    // Success
-                    loginSuccess(data.user_id, data.nickname);
-                } else {
-                    els.auth.errors.login.textContent = data.error || "Login failed.";
-                }
-            } catch (e) {
-                els.auth.errors.login.textContent = "Server error.";
-            }
-        }
-
-        async function handleRegister() {
-            const nickname = els.auth.inputs.regNick.value.trim();
-            const password = els.auth.inputs.regPass.value.trim();
-            const confirm = els.auth.inputs.regPassConfirm.value.trim();
-
-            if (!nickname || !password) {
-                els.auth.errors.register.textContent = "All fields required.";
-                return;
-            }
-            if (password.length < 4) {
-                els.auth.errors.register.textContent = "Password too short (min 4).";
-                return;
-            }
-            if (password !== confirm) {
-                els.auth.errors.register.textContent = "Passwords do not match.";
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    // Success -> Auto Login
-                    loginSuccess(data.user_id, data.nickname);
-                } else {
-                    els.auth.errors.register.textContent = data.error || "Registration failed.";
-                }
-            } catch (e) {
-                els.auth.errors.register.textContent = "Server error.";
-            }
-        }
-
-        function loginSuccess(id, nickname) {
-            state.userId = id;
-            state.nickname = nickname;
-            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
-            showLoggedInView();
-        }
-
-        function handleLogout() {
-            state.userId = null;
-            state.nickname = '';
-            localStorage.removeItem('codedrop_user');
-            
-            // Clear inputs
-            els.auth.inputs.loginNick.value = '';
-            els.auth.inputs.loginPass.value = '';
-            els.auth.inputs.regNick.value = '';
-            els.auth.inputs.regPass.value = '';
-            els.auth.inputs.regPassConfirm.value = '';
-
-            showAuthView();
-        }
-
-        async function handleWithdraw() {
-            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-            
-            const password = prompt("Please enter your password to confirm deletion:");
-            if (!password) return;
-
-            try {
-                const res = await fetch(`${API_BASE}/withdraw`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: state.userId, password })
-                });
-                
-                if (res.ok) {
-                    alert("Account deleted.");
-                    handleLogout();
-                } else {
-                    const data = await res.json();
-                    alert("Failed: " + (data.error || "Unknown error"));
-                }
-            } catch (e) {
-                alert("Server error.");
-            }
-        }
-
-        function showLoggedInView() {
-            els.auth.authContainer.style.display = 'none';
-            els.auth.loggedInView.classList.add('active');
-            els.auth.userDisplay.textContent = state.nickname;
-            
-            // Refresh leaderboard for default view
-            fetchLeaderboard();
-        }
-
-        function showAuthView() {
-            els.auth.authContainer.style.display = 'block';
-            els.auth.loggedInView.classList.remove('active');
-            switchTab('login');
-        }
-
-        init(); // Initialize AudioContext on user gesture
-                handleStartClick();
-            });
-
-            els.controls.restartBtn.addEventListener('click', () => {
-                els.screens.result.classList.add('hidden');
-                els.screens.start.classList.remove('hidden');
-                fetchLeaderboard(); // Refresh on back to start
-                sfx.playBGM(); // Play BGM when returning to start screen
-            });
-
-            els.input.field.addEventListener('input', handleInput);
-            els.input.field.addEventListener('keydown', handleKeydown);
-
-            // Controls
-            els.hud.btnPause.addEventListener('click', togglePause);
-            els.hud.btnHome.addEventListener('click', goHome);
-
-            // Music Widget Logic
-            els.musicWidget.addEventListener('click', (e) => {
-                // If clicking close button, minimize
-                if (e.target.id === 'close-player') {
-                    e.stopPropagation();
-                    els.musicWidget.classList.remove('open');
-                    els.musicWidget.classList.add('closed');
-                    return;
-                }
-
-                // If closed, open it
-                if (els.musicWidget.classList.contains('closed')) {
-                    els.musicWidget.classList.remove('closed');
-                    els.musicWidget.classList.add('open');
-                }
-            });
-
-            // Resume on overlay click
-            els.screens.pause.addEventListener('click', togglePause);
-
-            // Poll Leaderboard every 5s
-            setInterval(fetchLeaderboard, 5000);
-
-            // Start BGM if possible
-            sfx.
-        // --- Auth Logic ---
-        function initAuth() {
-            // Check LocalStorage
-            const storedUser = localStorage.getItem('codedrop_user');
-            if (storedUser) {
-                const user = JSON.parse(storedUser);
-                state.userId = user.id;
-                state.nickname = user.nickname;
-                showLoggedInView();
-            } else {
-                showAuthView();
-            }
-
-            // Tabs
-            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
-            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
-
-            // Buttons
-            els.auth.btns.login.addEventListener('click', handleLogin);
-            els.auth.btns.register.addEventListener('click', handleRegister);
-            els.auth.btns.logout.addEventListener('click', handleLogout);
-            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
-            
-            // Start Button (now in logged in view)
-            els.controls.startBtn.addEventListener('click', startGame);
-        }
-
-        function switchTab(tab) {
-            els.auth.tabs.login.classList.toggle('active', tab === 'login');
-            els.auth.tabs.register.classList.toggle('active', tab === 'register');
-            els.auth.forms.login.classList.toggle('active', tab === 'login');
-            els.auth.forms.register.classList.toggle('active', tab === 'register');
-            
-            // Clear errors
-            els.auth.errors.login.textContent = '';
-            els.auth.errors.register.textContent = '';
-        }
-
-        async function handleLogin() {
-            const nickname = els.auth.inputs.loginNick.value.trim();
-            const password = els.auth.inputs.loginPass.value.trim();
-
-            if (!nickname || !password) {
-                els.auth.errors.login.textContent = "Please enter nickname and password.";
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    // Success
-                    loginSuccess(data.user_id, data.nickname);
-                } else {
-                    els.auth.errors.login.textContent = data.error || "Login failed.";
-                }
-            } catch (e) {
-                els.auth.errors.login.textContent = "Server error.";
-            }
-        }
-
-        async function handleRegister() {
-            const nickname = els.auth.inputs.regNick.value.trim();
-            const password = els.auth.inputs.regPass.value.trim();
-            const confirm = els.auth.inputs.regPassConfirm.value.trim();
-
-            if (!nickname || !password) {
-                els.auth.errors.register.textContent = "All fields required.";
-                return;
-            }
-            if (password.length < 4) {
-                els.auth.errors.register.textContent = "Password too short (min 4).";
-                return;
-            }
-            if (password !== confirm) {
-                els.auth.errors.register.textContent = "Passwords do not match.";
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    // Success -> Auto Login
-                    loginSuccess(data.user_id, data.nickname);
-                } else {
-                    els.auth.errors.register.textContent = data.error || "Registration failed.";
-                }
-            } catch (e) {
-                els.auth.errors.register.textContent = "Server error.";
-            }
-        }
-
-        function loginSuccess(id, nickname) {
-            state.userId = id;
-            state.nickname = nickname;
-            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
-            showLoggedInView();
-        }
-
-        function handleLogout() {
-            state.userId = null;
-            state.nickname = '';
-            localStorage.removeItem('codedrop_user');
-            
-            // Clear inputs
-            els.auth.inputs.loginNick.value = '';
-            els.auth.inputs.loginPass.value = '';
-            els.auth.inputs.regNick.value = '';
-            els.auth.inputs.regPass.value = '';
-            els.auth.inputs.regPassConfirm.value = '';
-
-            showAuthView();
-        }
-
-        async function handleWithdraw() {
-            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-            
-            const password = prompt("Please enter your password to confirm deletion:");
-            if (!password) return;
-
-            try {
-                const res = await fetch(`${API_BASE}/withdraw`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: state.userId, password })
-                });
-                
-                if (res.ok) {
-                    alert("Account deleted.");
-                    handleLogout();
-                } else {
-                    const data = await res.json();
-                    alert("Failed: " + (data.error || "Unknown error"));
-                }
-            } catch (e) {
-                alert("Server error.");
-            }
-        }
-
-        function showLoggedInView() {
-            els.auth.authContainer.style.display = 'none';
-            els.auth.loggedInView.classList.add('active');
-            els.auth.userDisplay.textContent = state.nickname;
-            
-            // Refresh leaderboard for default view
-            fetchLeaderboard();
-        }
-
-        function showAuthView() {
-            els.auth.authContainer.style.display = 'block';
-            els.auth.loggedInView.classList.remove('active');
-            switchTab('login');
-        }
-
-        init();
-            sfx.playBGM();
-        }
-
-        function togglePause() {
-            if (!state.isPlaying) return;
-
-            state.isPaused = !state.isPaused;
-
-            if (state.isPaused) {
-                els.hud.btnPause.textContent = "PLAY";
-                els.screens.pause.classList.remove('hidden');
-                els.input.field.disabled = true;
-            } else {
-                els.hud.btnPause.textContent = "PAUSE";
-                els.screens.pause.classList.add('hidden');
-                els.input.field.disabled = false;
-                els.input.field.focus();
-                state.lastSpawnTime = Date.now();
-            }
-        }
-
-        function goHome() {
-            if (confirm("ABORT MISSION? Progress will be lost.")) {
-                state.isPlaying = false;
-                state.isPaused = false;
-                els.screens.pause.classList.add('hidden');
-                els.screens.result.classList.add('hidden');
-                els.screens.start.classList.remove('hidden');
-
-                // Clear game area
-                els.gameArea.innerHTML = '';
-                state.activeWords = [];
-
-                fetchLeaderboard();
+            // Sfx Init on interaction
+            const initAudio = () => {
+                sfx.init();
                 sfx.playBGM();
-            }
+                document.removeEventListener('click', initAudio);
+                document.removeEventListener('keydown', initAudio);
+            };
+            document.addEventListener('click', initAudio);
+            document.addEventListener('keydown', initAudio);
         }
 
-        async function handleStartClick() {
-            const nick = els.controls.nickname.value.trim();
-            if (nick.length < 3 || nick.length > 16) {
-                alert("ID ERROR: Nickname must be 3-16 characters.");
+        // --- Auth Logic ---
+        function initAuth() {
+            // Check LocalStorage
+            const storedUser = localStorage.getItem('codedrop_user');
+            if (storedUser) {
+                try {
+                    const user = JSON.parse(storedUser);
+                    state.userId = user.id;
+                    state.nickname = user.nickname;
+                    showLoggedInView();
+                } catch (e) {
+                    localStorage.removeItem('codedrop_user');
+                    showAuthView();
+                }
+            } else {
+                showAuthView();
+            }
+
+            // Tabs
+            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
+            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
+
+            // Buttons
+            els.auth.btns.login.addEventListener('click', handleLogin);
+            els.auth.btns.register.addEventListener('click', handleRegister);
+            els.auth.btns.logout.addEventListener('click', handleLogout);
+            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
+            
+            // Start Button (now in logged in view)
+            els.controls.startBtn.addEventListener('click', startGame);
+        }
+
+        function switchTab(tab) {
+            els.auth.tabs.login.classList.toggle('active', tab === 'login');
+            els.auth.tabs.register.classList.toggle('active', tab === 'register');
+            els.auth.forms.login.classList.toggle('active', tab === 'login');
+            els.auth.forms.register.classList.toggle('active', tab === 'register');
+            
+            // Clear errors
+            els.auth.errors.login.textContent = '';
+            els.auth.errors.register.textContent = '';
+        }
+
+        async function handleLogin() {
+            const nickname = els.auth.inputs.loginNick.value.trim();
+            const password = els.auth.inputs.loginPass.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.login.textContent = "Please enter nickname and password.";
                 return;
             }
 
-            // Save Nickname
-            localStorage.setItem('codedrop_nickname', nick);
-            state.nickname = nick;
-
-            // Register User
             try {
-                const res = await fetch(`${API_BASE}/user`, {
+                const res = await fetch(`${API_BASE}/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname: nick })
+                    body: JSON.stringify({ nickname, password })
                 });
                 const data = await res.json();
-                if (data.user_id) {
-                    state.userId = data.user_id;
-                    startGame();
+
+                if (res.ok) {
+                    // Success
+                    loginSuccess(data.user_id, data.nickname);
                 } else {
-                    alert("REGISTRATION FAILED.");
+                    els.auth.errors.login.textContent = data.error || "Login failed.";
                 }
             } catch (e) {
-                console.error(e);
-                alert("CONNECTION ERROR: Playing offline.");
-                state.userId = null; // Offline mode
-                startGame();
+                els.auth.errors.login.textContent = "Server error.";
             }
         }
 
-        function startGame() {
-            // Reset State
-            state.score = 0;
-            state.lives = 3;
-            state.combo = 0;
-            state.maxCombo = 0;
-            state.spawnedCount = 0;
-            state.activeWords = [];
-            state.isPlaying = true;
-            state.isPaused = false;
-            state.startTime = Date.now();
-            state.totalCharsTyped = 0;
-            state.correctCharsTyped = 0;
-            state.targetId = null;
-            state.lastSpawnTime = 0;
+        async function handleRegister() {
+            const nickname = els.auth.inputs.regNick.value.trim();
+            const password = els.auth.inputs.regPass.value.trim();
+            const confirm = els.auth.inputs.regPassConfirm.value.trim();
 
-            // Config
-            state.difficulty = els.controls.diffSelect.value;
-            state.pack = els.controls.packSelect.value;
-
-            // UI Reset
-            els.screens.start.classList.add('hidden');
-            els.screens.pause.classList.add('hidden');
-            els.gameArea.innerHTML = ''; // Clear words
-            els.input.field.value = '';
-            els.input.field.disabled = false;
-            els.input.field.focus();
-            els.hud.btnPause.textContent = "PAUSE";
-            updateHUD();
-
-            // Start Loop
-            requestAnimationFrame(gameLoop);
-        }
-
-        async function gameOver(victory = false) {
-            state.isPlaying = false;
-            state.isPaused = false;
-
-            // Calculate Stats
-            const durationMin = (Date.now() - state.startTime) / 60000;
-            const wpm = durationMin > 0 ? Math.round((state.correctCharsTyped / 5) / durationMin) : 0;
-            const accuracy = state.totalCharsTyped > 0 ? Math.round((state.correctCharsTyped / state.totalCharsTyped) * 100) : 0;
-
-            // Update Result Screen
-            els.result.title.textContent = victory ? "MISSION COMPLETE" : "SYSTEM FAILURE";
-            els.result.title.style.color = victory ? "var(--success-color)" : "var(--danger-color)";
-            els.result.title.style.textShadow = victory ? "0 0 20px var(--success-color)" : "0 0 20px var(--danger-color)";
-
-            els.result.score.textContent = state.score;
-            els.result.combo.textContent = state.maxCombo;
-            els.result.wpm.textContent = wpm;
-            els.result.acc.textContent = accuracy + "%";
-
-            els.screens.result.classList.remove('hidden');
-
-            // Submit Score
-            if (state.userId) {
-                els.result.status.textContent = "UPLOADING DATA...";
-                try {
-                    const res = await fetch(`${API_BASE}/submit`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            user_id: state.userId,
-                            score: state.score,
-                            wpm: wpm,
-                            accuracy: accuracy,
-                            difficulty: state.difficulty.toLowerCase(),
-                            pack: state.pack.toLowerCase()
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.ok) {
-                        els.result.status.textContent = "UPLOAD COMPLETE. CHECK RANKING.";
-                    } else {
-                        els.result.status.textContent = "UPLOAD FAILED.";
-                    }
-                } catch (e) {
-                    console.error(e);
-                    els.result.status.textContent = "SERVER ERROR. DATA NOT SAVED.";
-                }
-            } else {
-                els.result.status.textContent = "OFFLINE MODE. DATA NOT SAVED.";
+            if (!nickname || !password) {
+                els.auth.errors.register.textContent = "All fields required.";
+                return;
             }
-        }
-
-        async function fetchLeaderboard() {
-            // Only fetch if start screen is visible (optimization)
-            if (els.screens.start.classList.contains('hidden')) return;
+            if (password.length < 4) {
+                els.auth.errors.register.textContent = "Password too short (min 4).";
+                return;
+            }
+            if (password !== confirm) {
+                els.auth.errors.register.textContent = "Passwords do not match.";
+                return;
+            }
 
             try {
-                const diff = els.controls.diffSelect.value.split(' ')[0].toLowerCase(); // Handle "EASY [SAFE_MODE]"
-                const pack = els.controls.packSelect.value.toLowerCase();
-
-                const res = await fetch(`${API_BASE}/leaderboard?difficulty=${diff}&pack=${pack}`);
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
                 const data = await res.json();
 
-                renderLeaderboard(data.top10);
+                if (res.ok) {
+                    // Success -> Auto Login
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.register.textContent = data.error || "Registration failed.";
+                }
             } catch (e) {
-                console.error(e);
-                els.controls.leaderboard.innerHTML = '<div style="text-align:center; color:var(--danger-color);">CONNECTION LOST</div>';
+                els.auth.errors.register.textContent = "Server error.";
             }
         }
 
-        function renderLeaderboard(list) {
-            if (!list || list.length === 0) {
-                els.controls.leaderboard.innerHTML = '<div style="text-align:center; color:#666;">NO DATA FOUND. BE THE FIRST.</div>';
-                return;
-            }
-
-            let html = '<table>';
-            html += '<tr><th>RANK</th><th>AGENT</th><th style="text-align:right;">SCORE</th><th style="text-align:right;">WPM</th></tr>';
-
-            list.forEach((item, index) => {
-                const rank = index + 1;
-                const rankClass = rank <= 3 ? `rank-${rank}` : '';
-                const nameStyle = rank <= 3 ? 'color:var(--primary-neon); font-weight:bold; font-size: 1.1em;' : 'color:var(--primary-neon);';
-
-                html += `<tr>
-            <td class="${rankClass}" style="font-weight:bold;">#${rank}</td>
-            <td style="${nameStyle}">${item.nickname}</td>
-            <td style="text-align:right; font-family:var(--font-code); color:#fff;">${item.score}</td>
-            <td style="text-align:right; font-family:var(--font-code); color:#888;">${item.wpm}</td>
-        </tr>`;
-            });
-            html += '</table>';
-
-            els.controls.leaderboard.innerHTML = html;
+        function loginSuccess(id, nickname) {
+            state.userId = id;
+            state.nickname = nickname;
+            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
+            showLoggedInView();
         }
 
-        // Add listeners for dropdown changes to refresh leaderboard
-        els.controls.diffSelect.addEventListener('change', fetchLeaderboard);
-        els.controls.packSelect.addEventListener('change', fetchLeaderboard);
+        function handleLogout() {
+            state.userId = null;
+            state.nickname = '';
+            localStorage.removeItem('codedrop_user');
+            
+            // Clear inputs
+            els.auth.inputs.loginNick.value = '';
+            els.auth.inputs.loginPass.value = '';
+            els.auth.inputs.regNick.value = '';
+            els.auth.inputs.regPass.value = '';
+            els.auth.inputs.regPassConfirm.value = '';
 
-        function gameLoop(timestamp) {
-            if (!state.isPlaying) return;
-            if (state.isPaused) {
-                requestAnimationFrame(gameLoop);
-                return;
-            }
-
-            // Parse difficulty from select value (e.g. "EASY [SAFE_MODE]")
-            const diffKey = state.difficulty.split(' ')[0];
-            const diffConfig = DIFFICULTY[diffKey];
-            const playfieldHeight = els.gameArea.clientHeight;
-
-            // Spawning
-            if (state.spawnedCount < 100) {
-                if (timestamp - state.lastSpawnTime > diffConfig.spawnRate) {
-                    spawnWord();
-                    state.lastSpawnTime = timestamp;
-                }
-            } else if (state.activeWords.length === 0) {
-                // All spawned and all cleared
-                gameOver(true);
-                return;
-            }
-
-            // Update Words
-            state.activeWords.forEach((word, index) => {
-                word.y += word.speed;
-                word.el.style.top = `${word.y}px`;
-
-                // Collision Check (Bottom)
-                if (word.y > playfieldHeight - 30) {
-                    handleDrop(index);
-                }
-            });
-
-            requestAnimationFrame(gameLoop);
+            showAuthView();
         }
 
-        function spawnWord() {
-            state.spawnedCount++;
-            updateHUD();
+        async function handleWithdraw() {
+            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
+            
+            const password = prompt("Please enter your password to confirm deletion:");
+            if (!password) return;
 
-            const isEvent = [15, 30, 45, 60, 75, 90].includes(state.spawnedCount);
-
-            // Filter pool to exclude currently active words to prevent duplicates
-            let pool = WORD_PACKS[state.pack];
-            const activeTexts = state.activeWords.map(w => w.text);
-            const filteredPool = pool.filter(word => !activeTexts.includes(word));
-
-            // Use filtered pool if available, otherwise fallback to full pool
-            if (filteredPool.length > 0) {
-                pool = filteredPool;
-            }
-
-            const text = pool[Math.floor(Math.random() * pool.length)];
-            const diffKey = state.difficulty.split(' ')[0];
-            const diffConfig = DIFFICULTY[diffKey];
-
-            const word = {
-                id: Date.now() + Math.random(),
-                text: text,
-                x: Math.random() * 80 + 10, // 10% to 90%
-                y: -40,
-                speed: diffConfig.speedMin + Math.random() * (diffConfig.speedMax - diffConfig.speedMin),
-                isEvent: isEvent,
-                el: document.createElement('div')
-            };
-
-            // DOM Creation
-            word.el.className = 'word-item';
-            if (isEvent) word.el.classList.add('event');
-            word.el.textContent = text;
-            word.el.style.left = `${word.x}%`;
-            word.el.style.top = `${word.y}px`;
-
-            els.gameArea.appendChild(word.el);
-            state.activeWords.push(word);
-        }
-
-        function handleDrop(index) {
-            const word = state.activeWords[index];
-
-            // Remove from DOM
-            if (word.el.parentNode) word.el.parentNode.removeChild(word.el);
-
-            // Remove from array
-            state.activeWords.splice(index, 1);
-
-            // Reset Target if dropped
-            if (state.targetId === word.id) {
-                state.targetId = null;
-                updateTargetDisplay('');
-            }
-
-            // Logic
-            state.lives--;
-            state.combo = 0;
-            updateHUD();
-
-            // Visual Feedback
-            els.hud.lives.style.opacity = 0.5;
-            setTimeout(() => els.hud.lives.style.opacity = 1, 200);
-
-            if (state.lives <= 0) {
-                gameOver(false);
-            }
-        }
-
-        function handleInput(e) {
-            const inputVal = e.target.value;
-            state.totalCharsTyped++;
-
-            // 1. Find Target if none
-            if (!state.targetId) {
-                // Find matching words (prefix match)
-                const matches = state.activeWords.filter(w => w.text.startsWith(inputVal));
-
-                if (matches.length > 0) {
-                    // Pick lowest (largest y)
-                    matches.sort((a, b) => b.y - a.y);
-                    const target = matches[0];
-                    state.targetId = target.id;
-
-                    // Highlight
-                    state.activeWords.forEach(w => w.el.classList.remove('target'));
-                    target.el.classList.add('target');
-                }
-            }
-
-            // 2. Validate against Target
-            if (state.targetId) {
-                const target = state.activeWords.find(w => w.id === state.targetId);
-
-                // If target disappeared (dropped) or input no longer matches prefix
-                if (!target || !target.text.startsWith(inputVal)) {
-                    // Reset target
-                    state.targetId = null;
-                    state.activeWords.forEach(w => w.el.classList.remove('target'));
-
-                    // If input is not empty, try to find new target immediately
-                    if (inputVal.length > 0) {
-                        handleInput(e); // Recursive check for new target
-                        return;
-                    }
+            try {
+                const res = await fetch(`${API_BASE}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: state.userId, password })
+                });
+                
+                if (res.ok) {
+                    alert("Account deleted.");
+                    handleLogout();
                 } else {
-                    // Still matching target
-                    updateTargetDisplay(inputVal, target.text);
+                    const data = await res.json();
+                    alert("Failed: " + (data.error || "Unknown error"));
                 }
-            } else {
-                updateTargetDisplay(inputVal);
+            } catch (e) {
+                alert("Server error.");
             }
         }
 
-        function handleKeydown(e) {
-            sfx.playKey(e.key);
-
-            if (e.key === 'Enter') {
-                const inputVal = els.input.field.value;
-
-                if (state.targetId) {
-                    const targetIndex = state.activeWords.findIndex(w => w.id === state.targetId);
-                    if (targetIndex !== -1) {
-                        const target = state.activeWords[targetIndex];
-                        if (target.text === inputVal) {
-                            // Success
-                            successWord(targetIndex);
-                        } else {
-                            // Typo Enter
-                            failTypo();
-                        }
-                    }
-                } else {
-                    // Enter with no target or no match
-                    failTypo();
-                }
-
-                // Clear input
-                els.input.field.value = '';
-                updateTargetDisplay('');
-                state.targetId = null;
-                state.activeWords.forEach(w => w.el.classList.remove('target'));
-            }
+        function showLoggedInView() {
+            els.auth.authContainer.style.display = 'none';
+            els.auth.loggedInView.classList.add('active');
+            els.auth.userDisplay.textContent = state.nickname;
+            
+            // Refresh leaderboard for default view
+            fetchLeaderboard();
         }
 
-        function successWord(index) {
-            const word = state.activeWords[index];
-
-            // Score
-            const points = word.isEvent ? 50 : 10;
-            state.combo++;
-            if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-
-            const bonus = Math.min(state.combo, 10);
-            state.score += points + bonus;
-
-            state.correctCharsTyped += word.text.length;
-
-            // Play Success Sound
-            sfx.playSuccess();
-
-            // Remove
-            word.el.classList.add('matched');
-            setTimeout(() => {
-                if (word.el.parentNode) word.el.parentNode.removeChild(word.el);
-            }, 200);
-
-            state.activeWords.splice(index, 1);
-            updateHUD();
-        }
-
-        function failTypo() {
-            // Play Fail Sound
-            sfx.playFail();
-
-            state.score = Math.max(0, state.score - 5);
-            state.combo = 0;
-            updateHUD();
-
-            // Shake input
-            els.input.field.classList.add('error');
-            setTimeout(() => els.input.field.classList.remove('error'), 300);
-        }
-
-        function updateHUD() {
-            els.hud.score.textContent = state.score;
-            els.hud.combo.textContent = state.combo;
-            els.hud.progress.textContent = `${state.spawnedCount}/100`;
-
-            // Fix: Handle difficulty text with brackets
-            const diffKey = state.difficulty.split(' ')[0];
-            els.hud.diff.textContent = diffKey;
-
-            let hearts = '';
-            for (let i = 0; i < state.lives; i++) hearts += '♥';
-            els.hud.lives.textContent = hearts;
-
-            // Update Pause Button Text
-            if (els.hud.btnPause) {
-                els.hud.btnPause.textContent = state.isPaused ? "RESUME" : "PAUSE";
-            }
-        }
-
-        function updateTargetDisplay(input, fullText = '') {
-            if (!fullText) {
-                els.input.target.textContent = '';
-                return;
-            }
-
-            // Highlight matched part
-            const matched = fullText.substring(0, input.length);
-            const rest = fullText.substring(input.length);
-
-            els.input.target.innerHTML = `<span class="match">${matched}</span><span class="rest">${rest}</span>`;
+        function showAuthView() {
+            els.auth.authContainer.style.display = 'block';
+            els.auth.loggedInView.classList.remove('active');
+            switchTab('login');
         }
 
         // Start
-        
-        // --- Auth Logic ---
-        function initAuth() {
-            // Check LocalStorage
-            const storedUser = localStorage.getItem('codedrop_user');
-            if (storedUser) {
-                const user = JSON.parse(storedUser);
-                state.userId = user.id;
-                state.nickname = user.nickname;
-                showLoggedInView();
-            } else {
-                showAuthView();
-            }
-
-            // Tabs
-            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
-            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
-
-            // Buttons
-            els.auth.btns.login.addEventListener('click', handleLogin);
-            els.auth.btns.register.addEventListener('click', handleRegister);
-            els.auth.btns.logout.addEventListener('click', handleLogout);
-            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
-            
-            // Start Button (now in logged in view)
-            els.controls.startBtn.addEventListener('click', startGame);
-        }
-
-        function switchTab(tab) {
-            els.auth.tabs.login.classList.toggle('active', tab === 'login');
-            els.auth.tabs.register.classList.toggle('active', tab === 'register');
-            els.auth.forms.login.classList.toggle('active', tab === 'login');
-            els.auth.forms.register.classList.toggle('active', tab === 'register');
-            
-            // Clear errors
-            els.auth.errors.login.textContent = '';
-            els.auth.errors.register.textContent = '';
-        }
-
-        async function handleLogin() {
-            const nickname = els.auth.inputs.loginNick.value.trim();
-            const password = els.auth.inputs.loginPass.value.trim();
-
-            if (!nickname || !password) {
-                els.auth.errors.login.textContent = "Please enter nickname and password.";
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    // Success
-                    loginSuccess(data.user_id, data.nickname);
-                } else {
-                    els.auth.errors.login.textContent = data.error || "Login failed.";
-                }
-            } catch (e) {
-                els.auth.errors.login.textContent = "Server error.";
-            }
-        }
-
-        async function handleRegister() {
-            const nickname = els.auth.inputs.regNick.value.trim();
-            const password = els.auth.inputs.regPass.value.trim();
-            const confirm = els.auth.inputs.regPassConfirm.value.trim();
-
-            if (!nickname || !password) {
-                els.auth.errors.register.textContent = "All fields required.";
-                return;
-            }
-            if (password.length < 4) {
-                els.auth.errors.register.textContent = "Password too short (min 4).";
-                return;
-            }
-            if (password !== confirm) {
-                els.auth.errors.register.textContent = "Passwords do not match.";
-                return;
-            }
-
-            try {
-                const res = await fetch(`${API_BASE}/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nickname, password })
-                });
-                const data = await res.json();
-
-                if (res.ok) {
-                    // Success -> Auto Login
-                    loginSuccess(data.user_id, data.nickname);
-                } else {
-                    els.auth.errors.register.textContent = data.error || "Registration failed.";
-                }
-            } catch (e) {
-                els.auth.errors.register.textContent = "Server error.";
-            }
-        }
-
-        function loginSuccess(id, nickname) {
-            state.userId = id;
-            state.nickname = nickname;
-            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
-            showLoggedInView();
-        }
-
-        function handleLogout() {
-            state.userId = null;
-            state.nickname = '';
-            localStorage.removeItem('codedrop_user');
-            
-            // Clear inputs
-            els.auth.inputs.loginNick.value = '';
-            els.auth.inputs.loginPass.value = '';
-            els.auth.inputs.regNick.value = '';
-            els.auth.inputs.regPass.value = '';
-            els.auth.inputs.regPassConfirm.value = '';
-
-            showAuthView();
-        }
-
-        async function handleWithdraw() {
-            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-            
-            const password = prompt("Please enter your password to confirm deletion:");
-            if (!password) return;
-
-            try {
-                const res = await fetch(`${API_BASE}/withdraw`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: state.userId, password })
-                });
-                
-                if (res.ok) {
-                    alert("Account deleted.");
-                    handleLogout();
-                } else {
-                    const data = await res.json();
-                    alert("Failed: " + (data.error || "Unknown error"));
-                }
-            } catch (e) {
-                alert("Server error.");
-            }
-        }
-
-        function showLoggedInView() {
-            els.auth.authContainer.style.display = 'none';
-            els.auth.loggedInView.classList.add('active');
-            els.auth.userDisplay.textContent = state.nickname;
-            
-            // Refresh leaderboard for default view
-            fetchLeaderboard();
-        }
-
-        function showAuthView() {
-            els.auth.authContainer.style.display = 'block';
-            els.auth.loggedInView.classList.remove('active');
-            switchTab('login');
-        }
-
         init();
 
-
-    </script>
-
-    <!-- Readme Widget -->
-    <div id="readme-widget">
-        <div class="widget-label">READ<br>ME</div>
-    </div>
-
-    <!-- Readme Overlay -->
-    <div id="readme-overlay" class="hidden">
-        <div id="readme-box">
-            <button id="readme-close">×</button>
-            <h2>SYSTEM MANUAL</h2>
-
-            <p>
-                <strong>MISSION:</strong><br>
-                Falling code fragments threaten the system integrity.<br>
-                Type the commands exactly as they appear to neutralize them.
-            </p>
-
-            <p>
-                <strong>PROTOCOL:</strong><br>
-                Prevent fragments from reaching the bottom.<br>
-                Maintain high accuracy for combo bonuses.
-            </p>
-
-            <div class="contact-info">
-                <div style="color: #888; margin-bottom: 15px; font-size: 0.9rem;">SYSTEM ADMINISTRATOR CONTACT</div>
-                <div class="contact-item">souluk319@gmail.com</div>
-                <div class="contact-item">+82-50-6933-1153</div>
-            </div>
-        </div>
-    </div>
-
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Readme Logic
-            const readmeWidget = document.getElementById('readme-widget');
-            const readmeOverlay = document.getElementById('readme-overlay');
-            const readmeClose = document.getElementById('readme-close');
-
-            if (readmeWidget && readmeOverlay && readmeClose) {
-                readmeWidget.addEventListener('click', () => {
-                    readmeOverlay.classList.remove('hidden');
-                    if (window.sfx) sfx.play('click');
-                });
-
-                readmeClose.addEventListener('click', () => {
-                    readmeOverlay.classList.add('hidden');
-                    if (window.sfx) sfx.play('click');
-                });
-
-                readmeOverlay.addEventListener('click', (e) => {
-                    if (e.target === readmeOverlay) {
-                        readmeOverlay.classList.add('hidden');
-                    }
-                });
-            } else {
-                console.error("Readme elements not found!");
-            }
-        });
     </script>
 
 </body>
