@@ -766,7 +766,7 @@
             requestAnimationFrame(gameLoop);
 
             // Play BGM
-            sfx.playBGM();
+            // // sfx.playBGM();
         }
 
         function togglePause() {
@@ -801,7 +801,7 @@
 
                 fetchLeaderboard();
                 initGameControls();
-                sfx.playBGM();
+                // sfx.playBGM();
             }
         }
 
@@ -812,7 +812,7 @@
             els.screens.result.classList.add('hidden');
             els.screens.start.classList.remove('hidden');
             fetchLeaderboard();
-            sfx.playBGM();
+            // sfx.playBGM();
         }
 
         function handleMusicWidgetClick(e) {
@@ -855,7 +855,7 @@
                 els.musicWidget.addEventListener('click', handleMusicWidgetClick);
             }
 
-            
+
             // Readme Logic
             const readmeWidget = document.getElementById('readme-widget');
             const readmeOverlay = document.getElementById('readme-overlay');
@@ -866,11 +866,11 @@
                     readmeOverlay.classList.remove('hidden');
                     sfx.playKey('Enter'); // Sound feedback
                 });
-                
+
                 readmeClose.addEventListener('click', () => {
                     readmeOverlay.classList.add('hidden');
                 });
-                
+
                 readmeOverlay.addEventListener('click', (e) => {
                     if (e.target === readmeOverlay) {
                         readmeOverlay.classList.add('hidden');
@@ -892,13 +892,16 @@
             fetchLeaderboard();
             initGameControls();
 
+            
             // Sfx Init on interaction
             const initAudio = () => {
                 sfx.init();
                 sfx.playBGM();
+                console.log("Audio Initialized & BGM Started");
                 document.removeEventListener('click', initAudio);
                 document.removeEventListener('keydown', initAudio);
             };
+
             document.addEventListener('click', initAudio);
             document.addEventListener('keydown', initAudio);
         }
