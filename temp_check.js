@@ -755,7 +755,7 @@
             state.spawnedCount = 0;
             state.activeWords = [];
             state.startTime = Date.now();
-            state.lastSpawnTime = Date.now();
+            state.lastSpawnTime = performance.now();
             state.totalCharsTyped = 0;
             state.correctCharsTyped = 0;
             state.targetId = null;
@@ -783,7 +783,7 @@
                 els.screens.pause.classList.add('hidden');
                 els.input.field.disabled = false;
                 els.input.field.focus();
-                state.lastSpawnTime = Date.now();
+                state.lastSpawnTime = performance.now();
             }
         }
 
