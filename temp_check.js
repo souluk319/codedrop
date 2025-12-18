@@ -855,6 +855,29 @@
                 els.musicWidget.addEventListener('click', handleMusicWidgetClick);
             }
 
+            
+            // Readme Logic
+            const readmeWidget = document.getElementById('readme-widget');
+            const readmeOverlay = document.getElementById('readme-overlay');
+            const readmeClose = document.getElementById('readme-close');
+
+            if (readmeWidget && readmeOverlay && readmeClose) {
+                readmeWidget.addEventListener('click', () => {
+                    readmeOverlay.classList.remove('hidden');
+                    sfx.playKey('Enter'); // Sound feedback
+                });
+                
+                readmeClose.addEventListener('click', () => {
+                    readmeOverlay.classList.add('hidden');
+                });
+                
+                readmeOverlay.addEventListener('click', (e) => {
+                    if (e.target === readmeOverlay) {
+                        readmeOverlay.classList.add('hidden');
+                    }
+                });
+            }
+
             console.log("Game Controls Initialized");
         }
 
