@@ -904,7 +904,7 @@
             
             // Sfx Init on interaction
             const initAudio = () => {
-                sfx.window.addEventListener('load', init);
+                sfx.init();
                 sfx.playBGM();
                 console.log("Audio Initialized & BGM Started");
                 document.removeEventListener('click', initAudio);
