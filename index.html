@@ -878,6 +878,85 @@
             overflow: visible;
             /* Allow text shadow/glow to bleed if needed, but text should fit */
         }
+
+        /* --- Auth UI --- */
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            cursor: pointer;
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            border: none;
+            outline: none;
+        }
+
+        .auth-tab.active {
+            background: rgba(0, 243, 255, 0.1);
+            color: var(--primary-neon);
+            border-bottom: 2px solid var(--primary-neon);
+        }
+
+        .auth-form {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .auth-form.active {
+            display: flex;
+        }
+
+        .auth-error {
+            color: var(--danger-color);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            min-height: 1.2em;
+        }
+
+        .logged-in-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .logged-in-view.active {
+            display: flex;
+        }
+
+        .welcome-msg {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .welcome-msg span {
+            color: var(--primary-neon);
+            font-weight: bold;
+        }
+
+        .btn-danger {
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+            margin-top: 10px;
+            font-size: 0.8rem;
+            padding: 8px 20px;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-color);
+            color: #fff;
+            box-shadow: 0 0 15px var(--danger-color);
+        }
     </style>
 </head>
 
@@ -943,32 +1022,61 @@
 
             <!-- Main Menu Card -->
             <div class="card">
-                <div class="select-group">
-                    <label>Identify Yourself</label>
-                    <input type="text" id="nickname-input" placeholder="ENTER_NICKNAME" maxlength="16"
-                        style="text-align: center;">
+                <!-- Auth Container -->
+                <div id="auth-container">
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" id="tab-login">LOGIN</button>
+                        <button class="auth-tab" id="tab-register">REGISTER</button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <div class="auth-form active" id="form-login">
+                        <input type="text" id="login-nick" placeholder="NICKNAME" maxlength="16">
+                        <input type="password" id="login-pass" placeholder="PASSWORD">
+                        <div class="auth-error" id="login-error"></div>
+                        <button class="btn" id="btn-login" style="margin-top: 10px;">LOGIN</button>
+                    </div>
+
+                    <!-- Register Form -->
+                    <div class="auth-form" id="form-register">
+                        <input type="text" id="reg-nick" placeholder="NICKNAME (3-16 chars)" maxlength="16">
+                        <input type="password" id="reg-pass" placeholder="PASSWORD (min 4 chars)">
+                        <input type="password" id="reg-pass-confirm" placeholder="CONFIRM PASSWORD">
+                        <div class="auth-error" id="reg-error"></div>
+                        <button class="btn" id="btn-register" style="margin-top: 10px;">REGISTER</button>
+                    </div>
                 </div>
 
-                <div class="select-group">
-                    <label>System Difficulty</label>
-                    <select id="difficulty-select">
-                        <option value="EASY">EASY [SAFE_MODE]</option>
-                        <option value="NORMAL" selected>NORMAL [STANDARD]</option>
-                        <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
-                    </select>
+                <!-- Logged In View -->
+                <div id="logged-in-view" class="logged-in-view">
+                    <div class="welcome-msg">WELCOME, <span id="user-display">AGENT</span></div>
+
+                    <div class="select-group">
+                        <label>System Difficulty</label>
+                        <select id="difficulty-select">
+                            <option value="EASY">EASY [SAFE_MODE]</option>
+                            <option value="NORMAL" selected>NORMAL [STANDARD]</option>
+                            <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
+                        </select>
+                    </div>
+                    <div class="select-group">
+                        <label>Data Pack</label>
+                        <select id="pack-select">
+                            <option value="PYTHON">Python Module</option>
+                            <option value="JS">JavaScript Runtime</option>
+                            <option value="HTTP">Network Protocols</option>
+                            <option value="CLI">Terminal Commands</option>
+                            <option value="VOCAB">Dev Vocabulary</option>
+                            <option value="MIX">Full System Mix</option>
+                        </select>
+                    </div>
+                    <button class="btn" id="start-btn">Initialize</button>
+
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        <button class="btn-small" id="btn-logout">LOGOUT</button>
+                        <button class="btn-small btn-danger" id="btn-withdraw">WITHDRAW</button>
+                    </div>
                 </div>
-                <div class="select-group">
-                    <label>Data Pack</label>
-                    <select id="pack-select">
-                        <option value="PYTHON">Python Module</option>
-                        <option value="JS">JavaScript Runtime</option>
-                        <option value="HTTP">Network Protocols</option>
-                        <option value="CLI">Terminal Commands</option>
-                        <option value="VOCAB">Dev Vocabulary</option>
-                        <option value="MIX">Full System Mix</option>
-                    </select>
-                </div>
-                <button class="btn" id="start-btn">Initialize</button>
             </div>
 
             <!-- Leaderboard Preview -->
@@ -1286,8 +1394,37 @@
                 packSelect: document.getElementById('pack-select'),
                 startBtn: document.getElementById('start-btn'),
                 restartBtn: document.getElementById('restart-btn'),
-                nickname: document.getElementById('nickname-input'),
                 leaderboard: document.getElementById('leaderboard-list')
+            },
+            auth: {
+                tabs: {
+                    login: document.getElementById('tab-login'),
+                    register: document.getElementById('tab-register')
+                },
+                forms: {
+                    login: document.getElementById('form-login'),
+                    register: document.getElementById('form-register')
+                },
+                inputs: {
+                    loginNick: document.getElementById('login-nick'),
+                    loginPass: document.getElementById('login-pass'),
+                    regNick: document.getElementById('reg-nick'),
+                    regPass: document.getElementById('reg-pass'),
+                    regPassConfirm: document.getElementById('reg-pass-confirm')
+                },
+                btns: {
+                    login: document.getElementById('btn-login'),
+                    register: document.getElementById('btn-register'),
+                    logout: document.getElementById('btn-logout'),
+                    withdraw: document.getElementById('btn-withdraw')
+                },
+                errors: {
+                    login: document.getElementById('login-error'),
+                    register: document.getElementById('reg-error')
+                },
+                loggedInView: document.getElementById('logged-in-view'),
+                authContainer: document.getElementById('auth-container'),
+                userDisplay: document.getElementById('user-display')
             },
             musicWidget: document.getElementById('music-widget')
         };
@@ -1388,6 +1525,7 @@
         // --- Game Logic ---
 
         function init() {
+            initAuth();
             // Restore Nickname
             const savedNick = localStorage.getItem('codedrop_nickname');
             if (savedNick) els.controls.nickname.value = savedNick;
@@ -1396,7 +1534,173 @@
             fetchLeaderboard();
 
             els.controls.startBtn.addEventListener('click', () => {
-                sfx.init(); // Initialize AudioContext on user gesture
+                sfx.
+        // --- Auth Logic ---
+        function initAuth() {
+            // Check LocalStorage
+            const storedUser = localStorage.getItem('codedrop_user');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                state.userId = user.id;
+                state.nickname = user.nickname;
+                showLoggedInView();
+            } else {
+                showAuthView();
+            }
+
+            // Tabs
+            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
+            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
+
+            // Buttons
+            els.auth.btns.login.addEventListener('click', handleLogin);
+            els.auth.btns.register.addEventListener('click', handleRegister);
+            els.auth.btns.logout.addEventListener('click', handleLogout);
+            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
+            
+            // Start Button (now in logged in view)
+            els.controls.startBtn.addEventListener('click', startGame);
+        }
+
+        function switchTab(tab) {
+            els.auth.tabs.login.classList.toggle('active', tab === 'login');
+            els.auth.tabs.register.classList.toggle('active', tab === 'register');
+            els.auth.forms.login.classList.toggle('active', tab === 'login');
+            els.auth.forms.register.classList.toggle('active', tab === 'register');
+            
+            // Clear errors
+            els.auth.errors.login.textContent = '';
+            els.auth.errors.register.textContent = '';
+        }
+
+        async function handleLogin() {
+            const nickname = els.auth.inputs.loginNick.value.trim();
+            const password = els.auth.inputs.loginPass.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.login.textContent = "Please enter nickname and password.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.login.textContent = data.error || "Login failed.";
+                }
+            } catch (e) {
+                els.auth.errors.login.textContent = "Server error.";
+            }
+        }
+
+        async function handleRegister() {
+            const nickname = els.auth.inputs.regNick.value.trim();
+            const password = els.auth.inputs.regPass.value.trim();
+            const confirm = els.auth.inputs.regPassConfirm.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.register.textContent = "All fields required.";
+                return;
+            }
+            if (password.length < 4) {
+                els.auth.errors.register.textContent = "Password too short (min 4).";
+                return;
+            }
+            if (password !== confirm) {
+                els.auth.errors.register.textContent = "Passwords do not match.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success -> Auto Login
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.register.textContent = data.error || "Registration failed.";
+                }
+            } catch (e) {
+                els.auth.errors.register.textContent = "Server error.";
+            }
+        }
+
+        function loginSuccess(id, nickname) {
+            state.userId = id;
+            state.nickname = nickname;
+            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
+            showLoggedInView();
+        }
+
+        function handleLogout() {
+            state.userId = null;
+            state.nickname = '';
+            localStorage.removeItem('codedrop_user');
+            
+            // Clear inputs
+            els.auth.inputs.loginNick.value = '';
+            els.auth.inputs.loginPass.value = '';
+            els.auth.inputs.regNick.value = '';
+            els.auth.inputs.regPass.value = '';
+            els.auth.inputs.regPassConfirm.value = '';
+
+            showAuthView();
+        }
+
+        async function handleWithdraw() {
+            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
+            
+            const password = prompt("Please enter your password to confirm deletion:");
+            if (!password) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: state.userId, password })
+                });
+                
+                if (res.ok) {
+                    alert("Account deleted.");
+                    handleLogout();
+                } else {
+                    const data = await res.json();
+                    alert("Failed: " + (data.error || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Server error.");
+            }
+        }
+
+        function showLoggedInView() {
+            els.auth.authContainer.style.display = 'none';
+            els.auth.loggedInView.classList.add('active');
+            els.auth.userDisplay.textContent = state.nickname;
+            
+            // Refresh leaderboard for default view
+            fetchLeaderboard();
+        }
+
+        function showAuthView() {
+            els.auth.authContainer.style.display = 'block';
+            els.auth.loggedInView.classList.remove('active');
+            switchTab('login');
+        }
+
+        init(); // Initialize AudioContext on user gesture
                 handleStartClick();
             });
 
@@ -1438,7 +1742,173 @@
             setInterval(fetchLeaderboard, 5000);
 
             // Start BGM if possible
-            sfx.init();
+            sfx.
+        // --- Auth Logic ---
+        function initAuth() {
+            // Check LocalStorage
+            const storedUser = localStorage.getItem('codedrop_user');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                state.userId = user.id;
+                state.nickname = user.nickname;
+                showLoggedInView();
+            } else {
+                showAuthView();
+            }
+
+            // Tabs
+            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
+            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
+
+            // Buttons
+            els.auth.btns.login.addEventListener('click', handleLogin);
+            els.auth.btns.register.addEventListener('click', handleRegister);
+            els.auth.btns.logout.addEventListener('click', handleLogout);
+            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
+            
+            // Start Button (now in logged in view)
+            els.controls.startBtn.addEventListener('click', startGame);
+        }
+
+        function switchTab(tab) {
+            els.auth.tabs.login.classList.toggle('active', tab === 'login');
+            els.auth.tabs.register.classList.toggle('active', tab === 'register');
+            els.auth.forms.login.classList.toggle('active', tab === 'login');
+            els.auth.forms.register.classList.toggle('active', tab === 'register');
+            
+            // Clear errors
+            els.auth.errors.login.textContent = '';
+            els.auth.errors.register.textContent = '';
+        }
+
+        async function handleLogin() {
+            const nickname = els.auth.inputs.loginNick.value.trim();
+            const password = els.auth.inputs.loginPass.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.login.textContent = "Please enter nickname and password.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.login.textContent = data.error || "Login failed.";
+                }
+            } catch (e) {
+                els.auth.errors.login.textContent = "Server error.";
+            }
+        }
+
+        async function handleRegister() {
+            const nickname = els.auth.inputs.regNick.value.trim();
+            const password = els.auth.inputs.regPass.value.trim();
+            const confirm = els.auth.inputs.regPassConfirm.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.register.textContent = "All fields required.";
+                return;
+            }
+            if (password.length < 4) {
+                els.auth.errors.register.textContent = "Password too short (min 4).";
+                return;
+            }
+            if (password !== confirm) {
+                els.auth.errors.register.textContent = "Passwords do not match.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success -> Auto Login
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.register.textContent = data.error || "Registration failed.";
+                }
+            } catch (e) {
+                els.auth.errors.register.textContent = "Server error.";
+            }
+        }
+
+        function loginSuccess(id, nickname) {
+            state.userId = id;
+            state.nickname = nickname;
+            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
+            showLoggedInView();
+        }
+
+        function handleLogout() {
+            state.userId = null;
+            state.nickname = '';
+            localStorage.removeItem('codedrop_user');
+            
+            // Clear inputs
+            els.auth.inputs.loginNick.value = '';
+            els.auth.inputs.loginPass.value = '';
+            els.auth.inputs.regNick.value = '';
+            els.auth.inputs.regPass.value = '';
+            els.auth.inputs.regPassConfirm.value = '';
+
+            showAuthView();
+        }
+
+        async function handleWithdraw() {
+            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
+            
+            const password = prompt("Please enter your password to confirm deletion:");
+            if (!password) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: state.userId, password })
+                });
+                
+                if (res.ok) {
+                    alert("Account deleted.");
+                    handleLogout();
+                } else {
+                    const data = await res.json();
+                    alert("Failed: " + (data.error || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Server error.");
+            }
+        }
+
+        function showLoggedInView() {
+            els.auth.authContainer.style.display = 'none';
+            els.auth.loggedInView.classList.add('active');
+            els.auth.userDisplay.textContent = state.nickname;
+            
+            // Refresh leaderboard for default view
+            fetchLeaderboard();
+        }
+
+        function showAuthView() {
+            els.auth.authContainer.style.display = 'block';
+            els.auth.loggedInView.classList.remove('active');
+            switchTab('login');
+        }
+
+        init();
             sfx.playBGM();
         }
 
@@ -1900,6 +2370,172 @@
         }
 
         // Start
+        
+        // --- Auth Logic ---
+        function initAuth() {
+            // Check LocalStorage
+            const storedUser = localStorage.getItem('codedrop_user');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                state.userId = user.id;
+                state.nickname = user.nickname;
+                showLoggedInView();
+            } else {
+                showAuthView();
+            }
+
+            // Tabs
+            els.auth.tabs.login.addEventListener('click', () => switchTab('login'));
+            els.auth.tabs.register.addEventListener('click', () => switchTab('register'));
+
+            // Buttons
+            els.auth.btns.login.addEventListener('click', handleLogin);
+            els.auth.btns.register.addEventListener('click', handleRegister);
+            els.auth.btns.logout.addEventListener('click', handleLogout);
+            els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
+            
+            // Start Button (now in logged in view)
+            els.controls.startBtn.addEventListener('click', startGame);
+        }
+
+        function switchTab(tab) {
+            els.auth.tabs.login.classList.toggle('active', tab === 'login');
+            els.auth.tabs.register.classList.toggle('active', tab === 'register');
+            els.auth.forms.login.classList.toggle('active', tab === 'login');
+            els.auth.forms.register.classList.toggle('active', tab === 'register');
+            
+            // Clear errors
+            els.auth.errors.login.textContent = '';
+            els.auth.errors.register.textContent = '';
+        }
+
+        async function handleLogin() {
+            const nickname = els.auth.inputs.loginNick.value.trim();
+            const password = els.auth.inputs.loginPass.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.login.textContent = "Please enter nickname and password.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.login.textContent = data.error || "Login failed.";
+                }
+            } catch (e) {
+                els.auth.errors.login.textContent = "Server error.";
+            }
+        }
+
+        async function handleRegister() {
+            const nickname = els.auth.inputs.regNick.value.trim();
+            const password = els.auth.inputs.regPass.value.trim();
+            const confirm = els.auth.inputs.regPassConfirm.value.trim();
+
+            if (!nickname || !password) {
+                els.auth.errors.register.textContent = "All fields required.";
+                return;
+            }
+            if (password.length < 4) {
+                els.auth.errors.register.textContent = "Password too short (min 4).";
+                return;
+            }
+            if (password !== confirm) {
+                els.auth.errors.register.textContent = "Passwords do not match.";
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nickname, password })
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    // Success -> Auto Login
+                    loginSuccess(data.user_id, data.nickname);
+                } else {
+                    els.auth.errors.register.textContent = data.error || "Registration failed.";
+                }
+            } catch (e) {
+                els.auth.errors.register.textContent = "Server error.";
+            }
+        }
+
+        function loginSuccess(id, nickname) {
+            state.userId = id;
+            state.nickname = nickname;
+            localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
+            showLoggedInView();
+        }
+
+        function handleLogout() {
+            state.userId = null;
+            state.nickname = '';
+            localStorage.removeItem('codedrop_user');
+            
+            // Clear inputs
+            els.auth.inputs.loginNick.value = '';
+            els.auth.inputs.loginPass.value = '';
+            els.auth.inputs.regNick.value = '';
+            els.auth.inputs.regPass.value = '';
+            els.auth.inputs.regPassConfirm.value = '';
+
+            showAuthView();
+        }
+
+        async function handleWithdraw() {
+            if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
+            
+            const password = prompt("Please enter your password to confirm deletion:");
+            if (!password) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/withdraw`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: state.userId, password })
+                });
+                
+                if (res.ok) {
+                    alert("Account deleted.");
+                    handleLogout();
+                } else {
+                    const data = await res.json();
+                    alert("Failed: " + (data.error || "Unknown error"));
+                }
+            } catch (e) {
+                alert("Server error.");
+            }
+        }
+
+        function showLoggedInView() {
+            els.auth.authContainer.style.display = 'none';
+            els.auth.loggedInView.classList.add('active');
+            els.auth.userDisplay.textContent = state.nickname;
+            
+            // Refresh leaderboard for default view
+            fetchLeaderboard();
+        }
+
+        function showAuthView() {
+            els.auth.authContainer.style.display = 'block';
+            els.auth.loggedInView.classList.remove('active');
+            switchTab('login');
+        }
+
         init();
 
 

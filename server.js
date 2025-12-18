@@ -4,6 +4,7 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import bcrypt from "bcrypt";
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -64,22 +65,82 @@ app.get("/health", async (req, res) => {
 
 // 🔹 API 구현
 
-// 1. 유저 등록/조회
-app.post("/user", async (req, res) => {
-    const { nickname } = req.body;
-    if (!nickname) return res.status(400).json({ error: "Nickname required" });
+// 1. 회원가입
+app.post("/register", async (req, res) => {
+    const { nickname, password } = req.body;
+    if (!nickname || !password) return res.status(400).json({ error: "Nickname and password required" });
+    if (password.length < 4) return res.status(400).json({ error: "Password must be at least 4 characters" });
 
     try {
         // Check if user exists
         const [rows] = await db.query("SELECT id FROM users WHERE nickname = ?", [nickname]);
-
         if (rows.length > 0) {
-            return res.json({ user_id: rows[0].id });
-        } else {
-            // Create new user
-            const [result] = await db.query("INSERT INTO users (nickname) VALUES (?)", [nickname]);
-            return res.json({ user_id: result.insertId });
+            return res.status(409).json({ error: "Nickname already taken" });
         }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create new user
+        const [result] = await db.query("INSERT INTO users (nickname, password) VALUES (?, ?)", [nickname, hashedPassword]);
+        return res.json({ user_id: result.insertId, nickname });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+// 2. 로그인
+app.post("/login", async (req, res) => {
+    const { nickname, password } = req.body;
+    if (!nickname || !password) return res.status(400).json({ error: "Nickname and password required" });
+
+    try {
+        const [rows] = await db.query("SELECT id, nickname, password FROM users WHERE nickname = ?", [nickname]);
+        if (rows.length === 0) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        const user = rows[0];
+
+        // Handle legacy users (no password)
+        if (!user.password) {
+            return res.status(401).json({ error: "Legacy account. Please contact admin or register new account." });
+        }
+
+        const match = await bcrypt.compare(password, user.password);
+        if (!match) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        return res.json({ user_id: user.id, nickname: user.nickname });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+// 3. 회원탈퇴
+app.post("/withdraw", async (req, res) => {
+    const { user_id, password } = req.body;
+    if (!user_id || !password) return res.status(400).json({ error: "Missing fields" });
+
+    try {
+        // Verify password before deleting
+        const [rows] = await db.query("SELECT password FROM users WHERE id = ?", [user_id]);
+        if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+
+        const match = await bcrypt.compare(password, rows[0].password);
+        if (!match) return res.status(401).json({ error: "Incorrect password" });
+
+        // Delete user (Cascade should handle leaderboard, but let's be safe or assume cascade is set. 
+        // If not, we might need to delete leaderboard entries first. 
+        // For now, let's assume simple delete user is enough or we leave leaderboard data as 'Unknown')
+        // Actually, let's delete leaderboard entries for privacy.
+        await db.query("DELETE FROM leaderboard WHERE user_id = ?", [user_id]);
+        await db.query("DELETE FROM users WHERE id = ?", [user_id]);
+
+        res.json({ ok: true });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Database error" });
