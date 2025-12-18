@@ -1061,95 +1061,48 @@
         }
     </style>
 
-    <style>
-        /* NUCLEAR MOBILE FIXES */
-        @media (max-width: 768px) {
-            /* General Sizing */
-            body, html {
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-                position: fixed; /* Prevent bouncy scroll */
-            }
+    
 
-            /* HUD */
+
+    <style>
+        @media (max-width: 768px) {
             #hud {
-                padding: 0 10px !important;
-                height: 60px !important;
+                padding: 0 15px;
+                height: 60px;
             }
             .hud-group {
-                gap: 15px !important;
+                gap: 15px;
             }
             .hud-value {
-                font-size: 1rem !important;
-            }
-            #lives-display {
-                font-size: 1.2rem !important;
-            }
-
-            /* Game Area */
-            #game-area {
-                width: 100% !important;
-            }
-            .word-item {
-                font-size: 0.9rem !important;
-                padding: 4px 8px !important;
-            }
-
-            /* Input Area */
-            #input-area {
-                height: 100px !important;
-                padding: 10px !important;
+                font-size: 1.2rem;
             }
             #input-field {
-                width: 100% !important;
-                max-width: 100% !important;
-                font-size: 1.2rem !important;
-                height: 50px !important;
+                font-size: 1.5rem;
+                height: 50px;
             }
-            #target-display {
-                font-size: 0.8rem !important;
-            }
-
-            /* Cards (Login, etc) */
             .card {
-                width: 95% !important;
-                max-width: 95% !important;
-                height: auto !important;
-                min-height: 400px !important;
-                padding: 15px !important;
-                margin: 0 auto !important;
+                width: 90%;
+                max-width: 400px;
+                margin: 0 auto;
             }
-            h1 {
-                font-size: 2rem !important;
-            }
-            .btn {
-                padding: 10px 20px !important;
-                font-size: 1rem !important;
-            }
-
-            /* Leaderboard */
             #leaderboard-preview {
-                width: 95% !important;
-                max-width: 95% !important;
-                height: 300px !important;
+                width: 90%;
+                max-width: 400px;
+                margin: 20px auto 0;
             }
-
-            /* Music Widget */
-            #music-widget {
-                bottom: 10px !important;
-                right: 10px !important;
-                transform: scale(0.8) !important;
-                transform-origin: bottom right !important;
+            /* Ensure container wraps */
+            #game-area {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
             }
-            
-            /* README Widget */
-            #readme-widget {
-                bottom: 10px !important;
-                left: 10px !important;
-                transform: scale(0.8) !important;
-                transform-origin: bottom left !important;
+            /* Adjust widgets */
+            #music-widget, #readme-widget {
+                transform: scale(0.8);
             }
+            #music-widget { right: 10px; bottom: 10px; transform-origin: bottom right; }
+            #readme-widget { left: 10px; bottom: 10px; transform-origin: bottom left; }
         }
     </style>
 
