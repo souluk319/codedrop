@@ -219,7 +219,7 @@
 
         #input-field {
             width: 700px;
-            max-width: 90%;
+            max-width: 400px;
             height: 60px;
             background: rgba(0, 0, 0, 0.5);
             border: 2px solid var(--glass-border);
@@ -476,7 +476,7 @@
             border-radius: 12px;
             border: 1px solid var(--glass-border);
             width: 400px;
-            max-width: 90%;
+            max-width: 400px;
             height: 550px;
             overflow-y: auto;
             display: flex;
@@ -797,7 +797,7 @@
 
         #readme-box {
             width: 600px;
-            max-width: 90%;
+            max-width: 400px;
             background: rgba(10, 10, 15, 0.95);
             border: 1px solid var(--primary-neon);
             border-radius: 16px;
@@ -1064,43 +1064,44 @@
     
 
 
+    
+
+
     <style>
+        /* MOBILE RESPONSIVE OVERRIDES */
         @media (max-width: 768px) {
+            /* Force Stack Layout */
+            #game-area {
+                flex-direction: column !important;
+                justify-content: flex-start !important;
+                padding-top: 20px !important;
+            }
+
+            /* Responsive Widths */
+            .card, #leaderboard-preview {
+                width: 90% !important;
+                max-width: 400px !important;
+                height: auto !important;
+                min-height: 400px !important;
+                margin: 10px auto !important;
+            }
+
+            /* Adjust Inputs & Text */
+            #input-field {
+                width: 95% !important;
+                font-size: 1.2rem !important;
+            }
+            h1 {
+                font-size: 2.5rem !important;
+            }
+            
+            /* HUD Adjustments */
             #hud {
-                padding: 0 15px;
-                height: 60px;
+                padding: 0 10px !important;
             }
             .hud-group {
-                gap: 15px;
+                gap: 10px !important;
             }
-            .hud-value {
-                font-size: 1.2rem;
-            }
-            #input-field {
-                font-size: 1.5rem;
-                height: 50px;
-            }
-            .card { width: 90% !important;
-                max-width: 400px;
-                margin: 0 auto;
-            }
-            #leaderboard-preview { width: 90% !important;
-                max-width: 400px;
-                margin: 20px auto 0;
-            }
-            /* Ensure container wraps */
-            #game-area {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-            }
-            /* Adjust widgets */
-            #music-widget, #readme-widget {
-                transform: scale(0.8);
-            }
-            #music-widget { right: 10px; bottom: 10px; transform-origin: bottom right; }
-            #readme-widget { left: 10px; bottom: 10px; transform-origin: bottom left; }
         }
     </style>
 
@@ -1322,7 +1323,7 @@
 
     <!-- Readme Overlay -->
     <div id="readme-overlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
-        <div id="readme-box" style="background: rgba(10, 10, 10, 0.95); border: 1px solid var(--primary-neon); padding: 40px; width: 90%; max-width: 600px; position: relative; box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);">
+        <div id="readme-box" style="background: rgba(10, 10, 10, 0.95); border: 1px solid var(--primary-neon); padding: 40px; width: 400px; max-width: 600px; position: relative; box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);">
             <button id="readme-close" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--primary-neon); font-size: 1.5rem; cursor: pointer;">X</button>
             <h2 style="color: var(--primary-neon); font-family: var(--font-display); margin-bottom: 20px; text-align: center; letter-spacing: 2px;">SYSTEM MANUAL</h2>
 
@@ -2453,30 +2454,19 @@
 
     </script>
 
+    
+
+
     <script>
         (function() {
-            // Aggressive Audio Unlocker
             const unlockAudio = () => {
-                if (window.sfx && window.sfx.ctx) {
-                    if (window.sfx.ctx.state === 'suspended') {
-                        window.sfx.ctx.resume().then(() => {
-                            console.log("AudioContext Resumed by User Interaction");
-                            // Try to play a silent sound to verify
-                            window.sfx.playTone(0, 'sine', 0.01, 0);
-                        });
-                    }
-                } else if (window.sfx && !window.sfx.ctx) {
-                     // Force init if not ready
-                     window.sfx.init();
+                if (window.sfx && window.sfx.ctx && window.sfx.ctx.state === 'suspended') {
+                    window.sfx.ctx.resume();
                 }
             };
-
-            // Attach to everything
             window.addEventListener('click', unlockAudio);
             window.addEventListener('touchstart', unlockAudio);
             window.addEventListener('keydown', unlockAudio);
-            window.addEventListener('mousedown', unlockAudio);
-            window.addEventListener('touchend', unlockAudio);
         })();
     </script>
 
