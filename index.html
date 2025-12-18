@@ -1271,7 +1271,7 @@
                         </svg>
                         BLOG
                     </a>
-                    <a href="mailto:souluk319@naver.com" class="contact-link">
+                    <a href="mailto:souluk319@gmail.com" class="contact-link">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                             <path
                                 d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
@@ -1720,6 +1720,11 @@
 
         function gameLoop(timestamp) {
             if (!state.isPlaying) return;
+            // Debug Log (Throttle to avoid spam, e.g., every 60 frames)
+            if (Math.floor(timestamp) % 60 === 0) {
+                console.log("Loop:", Math.floor(timestamp), "Last:", Math.floor(state.lastSpawnTime), "Diff:", Math.floor(timestamp - state.lastSpawnTime));
+            }
+
             if (state.isPaused) {
                 requestAnimationFrame(gameLoop);
                 return;
@@ -1757,6 +1762,7 @@
         }
 
         function spawnWord() {
+            console.log("Spawning Word...");
             state.spawnedCount++;
             updateHUD();
 
@@ -2171,6 +2177,7 @@
             const readmeClose = document.getElementById('readme-close');
 
             if (readmeWidget && readmeOverlay && readmeClose) {
+                console.log("README Elements Found & Listeners Attached");
                 readmeWidget.addEventListener('click', () => {
                     readmeOverlay.classList.remove('hidden');
                     sfx.playKey('Enter'); // Sound feedback
@@ -2432,7 +2439,7 @@
                         </svg>
                         BLOG
                     </a>
-                    <a href="mailto:souluk319@naver.com" class="contact-link">
+                    <a href="mailto:souluk319@gmail.com" class="contact-link">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                             <path
                                 d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />

@@ -411,6 +411,11 @@
 
         function gameLoop(timestamp) {
             if (!state.isPlaying) return;
+            // Debug Log (Throttle to avoid spam, e.g., every 60 frames)
+            if (Math.floor(timestamp) % 60 === 0) {
+                console.log("Loop:", Math.floor(timestamp), "Last:", Math.floor(state.lastSpawnTime), "Diff:", Math.floor(timestamp - state.lastSpawnTime));
+            }
+
             if (state.isPaused) {
                 requestAnimationFrame(gameLoop);
                 return;
@@ -448,6 +453,7 @@
         }
 
         function spawnWord() {
+            console.log("Spawning Word...");
             state.spawnedCount++;
             updateHUD();
 
@@ -862,6 +868,7 @@
             const readmeClose = document.getElementById('readme-close');
 
             if (readmeWidget && readmeOverlay && readmeClose) {
+                console.log("README Elements Found & Listeners Attached");
                 readmeWidget.addEventListener('click', () => {
                     readmeOverlay.classList.remove('hidden');
                     sfx.playKey('Enter'); // Sound feedback
