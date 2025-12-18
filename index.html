@@ -332,7 +332,7 @@
             padding: 30px;
             border-radius: 16px;
             text-align: center;
-            width: 400px;
+            width: 100%; max-width: 400px;
             height: 550px;
             box-shadow: 0 0 30px rgba(0, 243, 255, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5);
             position: relative;
@@ -475,7 +475,7 @@
             padding: 20px;
             border-radius: 12px;
             border: 1px solid var(--glass-border);
-            width: 400px;
+            width: 100%; max-width: 400px;
             max-width: 90%;
             height: 550px;
             overflow-y: auto;
@@ -719,7 +719,7 @@
                 padding: 30px;
                 border-radius: 16px;
                 text-align: center;
-                width: 400px;
+                width: 100%; max-width: 400px;
                 height: 550px;
                 box-shadow: 0 0 30px rgba(0, 243, 255, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5);
                 position: relative;
@@ -1632,9 +1632,11 @@
                             const playOnInteraction = () => {
                                 this.bgm.play();
                                 document.removeEventListener('click', playOnInteraction);
+                                document.removeEventListener('touchstart', playOnInteraction);
                                 document.removeEventListener('keydown', playOnInteraction);
                             };
                             document.addEventListener('click', playOnInteraction);
+                            document.addEventListener('touchstart', playOnInteraction);
                             document.addEventListener('keydown', playOnInteraction);
                         });
                     }
@@ -2222,10 +2224,12 @@
                 sfx.playBGM();
                 console.log("Audio Initialized & BGM Started");
                 document.removeEventListener('click', initAudio);
+                document.removeEventListener('touchstart', initAudio);
                 document.removeEventListener('keydown', initAudio);
             };
 
             document.addEventListener('click', initAudio);
+            document.addEventListener('touchstart', initAudio);
             document.addEventListener('keydown', initAudio);
         }
 

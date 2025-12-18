@@ -316,9 +316,11 @@
                             const playOnInteraction = () => {
                                 this.bgm.play();
                                 document.removeEventListener('click', playOnInteraction);
+                                document.removeEventListener('touchstart', playOnInteraction);
                                 document.removeEventListener('keydown', playOnInteraction);
                             };
                             document.addEventListener('click', playOnInteraction);
+                            document.addEventListener('touchstart', playOnInteraction);
                             document.addEventListener('keydown', playOnInteraction);
                         });
                     }
@@ -906,10 +908,12 @@
                 sfx.playBGM();
                 console.log("Audio Initialized & BGM Started");
                 document.removeEventListener('click', initAudio);
+                document.removeEventListener('touchstart', initAudio);
                 document.removeEventListener('keydown', initAudio);
             };
 
             document.addEventListener('click', initAudio);
+            document.addEventListener('touchstart', initAudio);
             document.addEventListener('keydown', initAudio);
         }
 
