@@ -371,13 +371,367 @@
 
         // --- Game Logic ---
 
-        
+
+        async function fetchLeaderboard() {
+            // Only fetch if start screen is visible (optimization)
+            if (els.screens.start.classList.contains('hidden')) return;
+
+            try {
+                const diff = els.controls.diffSelect.value.split(' ')[0].toLowerCase(); // Handle "EASY [SAFE_MODE]"
+                const pack = els.controls.packSelect.value.toLowerCase();
+
+                const res = await fetch(`${API_BASE}/leaderboard?difficulty=${diff}&pack=${pack}`);
+                const data = await res.json();
+
+                renderLeaderboard(data.top10);
+            } catch (e) {
+                console.error(e);
+                els.controls.leaderboard.innerHTML = '<div style="text-align:center; color:var(--danger-color);">CONNECTION LOST</div>';
+            }
+        }
+
+        function updateHUD() {
+            els.hud.score.textContent = state.score;
+            els.hud.combo.textContent = state.combo;
+            els.hud.progress.textContent = `${state.spawnedCount}/100`;
+
+            // Fix: Handle difficulty text with brackets
+            const diffKey = state.difficulty.split(' ')[0];
+            els.hud.diff.textContent = diffKey;
+
+            let hearts = '';
+            for (let i = 0; i < state.lives; i++) hearts += '♥';
+            els.hud.lives.textContent = hearts;
+
+            // Update Pause Button Text
+            if (els.hud.btnPause) {
+                els.hud.btnPause.textContent = state.isPaused ? "RESUME" : "PAUSE";
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (!state.isPlaying) return;
+            if (state.isPaused) {
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            // Parse difficulty from select value (e.g. "EASY [SAFE_MODE]")
+            const diffKey = state.difficulty.split(' ')[0];
+            const diffConfig = DIFFICULTY[diffKey];
+            const playfieldHeight = els.gameArea.clientHeight;
+
+            // Spawning
+            if (state.spawnedCount < 100) {
+                if (timestamp - state.lastSpawnTime > diffConfig.spawnRate) {
+                    spawnWord();
+                    state.lastSpawnTime = timestamp;
+                }
+            } else if (state.activeWords.length === 0) {
+                // All spawned and all cleared
+                gameOver(true);
+                return;
+            }
+
+            // Update Words
+            state.activeWords.forEach((word, index) => {
+                word.y += word.speed;
+                word.el.style.top = `${word.y}px`;
+
+                // Collision Check (Bottom)
+                if (word.y > playfieldHeight - 30) {
+                    handleDrop(index);
+                }
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnWord() {
+            state.spawnedCount++;
+            updateHUD();
+
+            const isEvent = [15, 30, 45, 60, 75, 90].includes(state.spawnedCount);
+
+            // Filter pool to exclude currently active words to prevent duplicates
+            let pool = WORD_PACKS[state.pack];
+            const activeTexts = state.activeWords.map(w => w.text);
+            const filteredPool = pool.filter(word => !activeTexts.includes(word));
+
+            // Use filtered pool if available, otherwise fallback to full pool
+            if (filteredPool.length > 0) {
+                pool = filteredPool;
+            }
+
+            const text = pool[Math.floor(Math.random() * pool.length)];
+            const diffKey = state.difficulty.split(' ')[0];
+            const diffConfig = DIFFICULTY[diffKey];
+
+            const word = {
+                id: Date.now() + Math.random(),
+                text: text,
+                x: Math.random() * 80 + 10, // 10% to 90%
+                y: -40,
+                speed: diffConfig.speedMin + Math.random() * (diffConfig.speedMax - diffConfig.speedMin),
+                isEvent: isEvent,
+                el: document.createElement('div')
+            };
+
+            // DOM Creation
+            word.el.className = 'word-item';
+            if (isEvent) word.el.classList.add('event');
+            word.el.textContent = text;
+            word.el.style.left = `${word.x}%`;
+            word.el.style.top = `${word.y}px`;
+
+            els.gameArea.appendChild(word.el);
+            state.activeWords.push(word);
+        }
+
+        function handleInput(e) {
+            const inputVal = e.target.value;
+            state.totalCharsTyped++;
+
+            // 1. Find Target if none
+            if (!state.targetId) {
+                // Find matching words (prefix match)
+                const matches = state.activeWords.filter(w => w.text.startsWith(inputVal));
+
+                if (matches.length > 0) {
+                    // Pick lowest (largest y)
+                    matches.sort((a, b) => b.y - a.y);
+                    const target = matches[0];
+                    state.targetId = target.id;
+
+                    // Highlight
+                    state.activeWords.forEach(w => w.el.classList.remove('target'));
+                    target.el.classList.add('target');
+                }
+            }
+
+            // 2. Validate against Target
+            if (state.targetId) {
+                const target = state.activeWords.find(w => w.id === state.targetId);
+
+                // If target disappeared (dropped) or input no longer matches prefix
+                if (!target || !target.text.startsWith(inputVal)) {
+                    // Reset target
+                    state.targetId = null;
+                    state.activeWords.forEach(w => w.el.classList.remove('target'));
+
+                    // If input is not empty, try to find new target immediately
+                    if (inputVal.length > 0) {
+                        handleInput(e); // Recursive check for new target
+                        return;
+                    }
+                } else {
+                    // Still matching target
+                    updateTargetDisplay(inputVal, target.text);
+                }
+            } else {
+                updateTargetDisplay(inputVal);
+            }
+        }
+
+        function handleKeydown(e) {
+            sfx.playKey(e.key);
+
+            if (e.key === 'Enter') {
+                const inputVal = els.input.field.value;
+
+                if (state.targetId) {
+                    const targetIndex = state.activeWords.findIndex(w => w.id === state.targetId);
+                    if (targetIndex !== -1) {
+                        const target = state.activeWords[targetIndex];
+                        if (target.text === inputVal) {
+                            // Success
+                            successWord(targetIndex);
+                        } else {
+                            // Typo Enter
+                            failTypo();
+                        }
+                    }
+                } else {
+                    // Enter with no target or no match
+                    failTypo();
+                }
+
+                // Clear input
+                els.input.field.value = '';
+                updateTargetDisplay('');
+                state.targetId = null;
+                state.activeWords.forEach(w => w.el.classList.remove('target'));
+            }
+        }
+
+        function successWord(index) {
+            const word = state.activeWords[index];
+
+            // Score
+            const points = word.isEvent ? 50 : 10;
+            state.combo++;
+            if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+
+            const bonus = Math.min(state.combo, 10);
+            state.score += points + bonus;
+
+            state.correctCharsTyped += word.text.length;
+
+            // Play Success Sound
+            sfx.playSuccess();
+
+            // Remove
+            word.el.classList.add('matched');
+            setTimeout(() => {
+                if (word.el.parentNode) word.el.parentNode.removeChild(word.el);
+            }, 200);
+
+            state.activeWords.splice(index, 1);
+            updateHUD();
+        }
+
+        function failTypo() {
+            // Play Fail Sound
+            sfx.playFail();
+
+            state.score = Math.max(0, state.score - 5);
+            state.combo = 0;
+            updateHUD();
+
+            // Shake input
+            els.input.field.classList.add('error');
+            setTimeout(() => els.input.field.classList.remove('error'), 300);
+        }
+
+        function updateTargetDisplay(input, fullText = '') {
+            if (!fullText) {
+                els.input.target.textContent = '';
+                return;
+            }
+
+            // Highlight matched part
+            const matched = fullText.substring(0, input.length);
+            const rest = fullText.substring(input.length);
+
+            els.input.target.innerHTML = `<span class="match">${matched}</span><span class="rest">${rest}</span>`;
+        }
+
+
+        function handleDrop(index) {
+            const word = state.activeWords[index];
+
+            // Remove from DOM
+            if (word.el.parentNode) word.el.parentNode.removeChild(word.el);
+
+            // Remove from array
+            state.activeWords.splice(index, 1);
+
+            // Reset Target if dropped
+            if (state.targetId === word.id) {
+                state.targetId = null;
+                updateTargetDisplay('');
+            }
+
+            // Logic
+            state.lives--;
+            state.combo = 0;
+            updateHUD();
+
+            // Visual Feedback
+            els.hud.lives.style.opacity = 0.5;
+            setTimeout(() => els.hud.lives.style.opacity = 1, 200);
+
+            if (state.lives <= 0) {
+                gameOver(false);
+            }
+        }
+
+        async function gameOver(victory = false) {
+            state.isPlaying = false;
+            state.isPaused = false;
+
+            // Calculate Stats
+            const durationMin = (Date.now() - state.startTime) / 60000;
+            const wpm = durationMin > 0 ? Math.round((state.correctCharsTyped / 5) / durationMin) : 0;
+            const accuracy = state.totalCharsTyped > 0 ? Math.round((state.correctCharsTyped / state.totalCharsTyped) * 100) : 0;
+
+            // Update Result Screen
+            els.result.title.textContent = victory ? "MISSION COMPLETE" : "SYSTEM FAILURE";
+            els.result.title.style.color = victory ? "var(--success-color)" : "var(--danger-color)";
+            els.result.title.style.textShadow = victory ? "0 0 20px var(--success-color)" : "0 0 20px var(--danger-color)";
+
+            els.result.score.textContent = state.score;
+            els.result.combo.textContent = state.maxCombo;
+            els.result.wpm.textContent = wpm;
+            els.result.acc.textContent = accuracy + "%";
+
+            els.screens.result.classList.remove('hidden');
+
+            // Submit Score
+            if (state.userId) {
+                els.result.status.textContent = "UPLOADING DATA...";
+                try {
+                    const res = await fetch(`${API_BASE}/submit`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_id: state.userId,
+                            score: state.score,
+                            wpm: wpm,
+                            accuracy: accuracy,
+                            difficulty: state.difficulty.toLowerCase(),
+                            pack: state.pack.toLowerCase()
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        els.result.status.textContent = "UPLOAD COMPLETE. CHECK RANKING.";
+                    } else {
+                        els.result.status.textContent = "UPLOAD FAILED.";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    els.result.status.textContent = "SERVER ERROR. DATA NOT SAVED.";
+                }
+            } else {
+                els.result.status.textContent = "OFFLINE MODE. DATA NOT SAVED.";
+            }
+        }
+
+        function renderLeaderboard(list) {
+            if (!list || list.length === 0) {
+                els.controls.leaderboard.innerHTML = '<div style="text-align:center; color:#666;">NO DATA FOUND. BE THE FIRST.</div>';
+                return;
+            }
+
+            let html = '<table>';
+            html += '<tr><th>RANK</th><th>AGENT</th><th style="text-align:right;">SCORE</th><th style="text-align:right;">WPM</th></tr>';
+
+            list.forEach((item, index) => {
+                const rank = index + 1;
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const nameStyle = rank <= 3 ? 'color:var(--primary-neon); font-weight:bold; font-size: 1.1em;' : 'color:var(--primary-neon);';
+
+                html += `<tr>
+            <td class="${rankClass}" style="font-weight:bold;">#${rank}</td>
+            <td style="${nameStyle}">${item.nickname}</td>
+            <td style="text-align:right; font-family:var(--font-code); color:#fff;">${item.score}</td>
+            <td style="text-align:right; font-family:var(--font-code); color:#888;">${item.wpm}</td>
+        </tr>`;
+            });
+            html += '</table>';
+
+            els.controls.leaderboard.innerHTML = html;
+        }
+
+
+
         function startGame() {
             console.log('Starting Game...');
             // Validate
             const diff = els.controls.diffSelect.value;
             const pack = els.controls.packSelect.value;
-            
+
             state.difficulty = diff;
             state.pack = pack;
 
@@ -390,7 +744,7 @@
             els.input.field.disabled = false;
             els.input.field.focus();
             els.hud.btnPause.textContent = "PAUSE";
-            
+
             // State Reset
             state.isPlaying = true;
             state.isPaused = false;
@@ -407,10 +761,10 @@
             state.targetId = null;
 
             updateHUD();
-            
+
             // Start Loop
             requestAnimationFrame(gameLoop);
-            
+
             // Play BGM
             sfx.playBGM();
         }
@@ -446,18 +800,18 @@
                 state.activeWords = [];
 
                 fetchLeaderboard();
-            initGameControls();
+                initGameControls();
                 sfx.playBGM();
             }
         }
 
         // Add Listeners for Game Controls
-        
+
         // Named handlers to prevent duplicates
         function handleRestart() {
             els.screens.result.classList.add('hidden');
             els.screens.start.classList.remove('hidden');
-            fetchLeaderboard(); 
+            fetchLeaderboard();
             sfx.playBGM();
         }
 
@@ -495,18 +849,18 @@
             els.hud.btnHome.addEventListener('click', goHome);
             els.screens.pause.addEventListener('click', togglePause);
             els.controls.restartBtn.addEventListener('click', handleRestart);
-            
+
             // Music Widget Logic
             if (els.musicWidget) {
                 els.musicWidget.addEventListener('click', handleMusicWidgetClick);
             }
-            
+
             console.log("Game Controls Initialized");
         }
 
         function init() {
             initAuth();
-            
+
             // Restore Nickname if any (though we use auth now)
             // const savedNick = localStorage.getItem('codedrop_nickname');
             // if (savedNick) els.controls.nickname.value = savedNick;
@@ -553,7 +907,7 @@
             els.auth.btns.register.addEventListener('click', handleRegister);
             els.auth.btns.logout.addEventListener('click', handleLogout);
             els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
-            
+
             // Start Button (now in logged in view)
             els.controls.startBtn.addEventListener('click', startGame);
         }
@@ -563,7 +917,7 @@
             els.auth.tabs.register.classList.toggle('active', tab === 'register');
             els.auth.forms.login.classList.toggle('active', tab === 'login');
             els.auth.forms.register.classList.toggle('active', tab === 'register');
-            
+
             // Clear errors
             els.auth.errors.login.textContent = '';
             els.auth.errors.register.textContent = '';
@@ -645,7 +999,7 @@
             state.userId = null;
             state.nickname = '';
             localStorage.removeItem('codedrop_user');
-            
+
             // Clear inputs
             els.auth.inputs.loginNick.value = '';
             els.auth.inputs.loginPass.value = '';
@@ -658,7 +1012,7 @@
 
         async function handleWithdraw() {
             if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-            
+
             const password = prompt("Please enter your password to confirm deletion:");
             if (!password) return;
 
@@ -668,7 +1022,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: state.userId, password })
                 });
-                
+
                 if (res.ok) {
                     alert("Account deleted.");
                     handleLogout();
@@ -685,7 +1039,7 @@
             els.auth.authContainer.style.display = 'none';
             els.auth.loggedInView.classList.add('active');
             els.auth.userDisplay.textContent = state.nickname;
-            
+
             // Refresh leaderboard for default view
             fetchLeaderboard();
             initGameControls();
