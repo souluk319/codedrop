@@ -634,14 +634,17 @@
             box-shadow: 0 0 40px rgba(0, 243, 255, 0.2);
             display: flex;
             flex-direction: column;
-            opacity: 0.3; /* Semi-transparent when playing */
+            opacity: 0.3;
+            /* Semi-transparent when playing */
             transition: opacity 0.3s ease;
         }
 
         #music-widget.open:hover {
-            opacity: 1; /* Fully visible on hover */
+            opacity: 1;
+            /* Fully visible on hover */
             box-shadow: 0 0 60px rgba(0, 243, 255, 0.4);
-            z-index: 10000; /* Ensure it's on top when interacting */
+            z-index: 10000;
+            /* Ensure it's on top when interacting */
         }
 
         #music-widget.open .widget-icon {
@@ -860,20 +863,21 @@
             padding-bottom: 50px;
             /* Ensure space for button */
         }
-    
+
         #result-screen h1 {
-            font-size: 3rem; /* Reduced from 4rem */
+            font-size: 3rem;
+            /* Reduced from 4rem */
             line-height: 1.1;
             word-wrap: break-word;
             max-width: 100%;
             margin-bottom: 20px;
         }
-        
+
         /* Ensure the card itself handles overflow gracefully if needed, though we want to avoid scrollbars inside the card */
         #result-screen .card {
-            overflow: visible; /* Allow text shadow/glow to bleed if needed, but text should fit */
+            overflow: visible;
+            /* Allow text shadow/glow to bleed if needed, but text should fit */
         }
-
     </style>
 </head>
 
@@ -949,7 +953,7 @@
                     <label>System Difficulty</label>
                     <select id="difficulty-select">
                         <option value="EASY">EASY [SAFE_MODE]</option>
-                        <option value="NORMAL">NORMAL [STANDARD]</option>
+                        <option value="NORMAL" selected>NORMAL [STANDARD]</option>
                         <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
                     </select>
                 </div>
@@ -1236,7 +1240,7 @@
             activeWords: [], // { id, text, x, y, speed, el, isEvent }
             isPlaying: false,
             isPaused: false,
-            difficulty: 'EASY',
+            difficulty: 'NORMAL',
             pack: 'PYTHON',
             startTime: 0,
             totalCharsTyped: 0,
@@ -1623,7 +1627,7 @@
                 const rank = index + 1;
                 const rankClass = rank <= 3 ? `rank-${rank}` : '';
                 const nameStyle = rank <= 3 ? 'color:var(--primary-neon); font-weight:bold; font-size: 1.1em;' : 'color:var(--primary-neon);';
-                
+
                 html += `<tr>
             <td class="${rankClass}" style="font-weight:bold;">#${rank}</td>
             <td style="${nameStyle}">${item.nickname}</td>

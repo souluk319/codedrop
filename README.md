@@ -8,8 +8,13 @@
 
 ## 🇬🇧 English Description
 
-### Overview
-**CodeDrop** is a high-octane, cyberpunk-themed typing game designed for developers and typing enthusiasts. Defend your system from falling code fragments by typing commands before they breach the firewall. Featuring a sleek neon aesthetic, immersive sound effects, and a global leaderboard, CodeDrop tests your typing speed and accuracy under pressure.
+### ⌨️ Codedrop: Coding Terminology Typing Game
+Codedrop is a web-based typing practice game where you score points by quickly typing coding terms falling from the sky. Themed around keywords, library names, and system terms familiar to developers, it offers both learning and fun.
+
+### 🎯 Planning Intent & Target
+**Target:** Novice developers who are slow at typing and juniors who want to get familiar with keywords of specific languages.
+
+**Goal:** Beyond simple typing, naturally familiarize users with special characters and keyword combinations frequently used in coding.
 
 ### Key Features
 - **Cyberpunk Aesthetic**: Immersive neon visuals with CRT scanlines, glassmorphism, and dynamic background effects.
@@ -61,8 +66,13 @@
 
 ## 🇰🇷 한국어 설명 (Korean Description)
 
-### 개요
-**CodeDrop**은 개발자와 타자 연습을 즐기는 분들을 위한 사이버펑크 테마의 타자 게임입니다. 떨어지는 코드 조각들이 방화벽을 뚫기 전에 명령어를 입력하여 시스템을 방어하세요. 세련된 네온 스타일, 몰입감 넘치는 사운드, 그리고 글로벌 리더보드를 통해 긴장감 넘치는 타자 연습 경험을 제공합니다.
+### ⌨️ Codedrop: Coding Terminology Typing Game
+Codedrop은 하늘에서 떨어지는 코딩 용어들을 빠르게 입력하여 점수를 얻는 웹 기반 타자 연습 게임입니다. 개발자들에게 익숙한 예약어, 라이브러리명, 시스템 용어 등을 테마로 하여 학습과 재미를 동시에 제공합니다.
+
+### 🎯 기획 의도 및 타겟
+**Target:** 키보드 입력이 서툰 입문 개발자 및 특정 언어의 예약어에 익숙해지고 싶은 주니어.
+
+**Goal:** 단순 타이핑을 넘어, 코딩에 자주 쓰이는 특수 문자와 예약어 조합을 자연스럽게 손에 익히게 함.
 
 ### 주요 기능
 - **사이버펑크 디자인**: CRT 스캔라인, 글래스모피즘, 역동적인 배경 효과가 어우러진 네온 비주얼.
