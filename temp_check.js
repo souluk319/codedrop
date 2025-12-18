@@ -902,7 +902,7 @@
             
             // Sfx Init on interaction
             const initAudio = () => {
-                sfx.init();
+                sfx.window.addEventListener('load', init);
                 sfx.playBGM();
                 console.log("Audio Initialized & BGM Started");
                 document.removeEventListener('click', initAudio);
@@ -1085,6 +1085,6 @@
         }
 
         // Start
-        init();
+        window.addEventListener('load', init);
 
     
