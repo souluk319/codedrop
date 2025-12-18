@@ -915,6 +915,18 @@
             document.addEventListener('click', initAudio);
             document.addEventListener('touchstart', initAudio);
             document.addEventListener('keydown', initAudio);
+
+            // Global Enter to Start
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    // Only if Start Screen is visible, User is Logged In, and Game is NOT playing
+                    if (!els.screens.start.classList.contains('hidden') && 
+                        els.auth.loggedInView.classList.contains('active') && 
+                        !state.isPlaying) {
+                        startGame();
+                    }
+                }
+            });
         }
 
         // --- Auth Logic ---
@@ -947,6 +959,14 @@
 
             // Start Button (now in logged in view)
             els.controls.startBtn.addEventListener('click', startGame);
+
+            // Enter key shortcuts for Auth
+            els.auth.inputs.loginPass.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+            els.auth.inputs.regPassConfirm.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleRegister();
+            });
         }
 
         function switchTab(tab) {
