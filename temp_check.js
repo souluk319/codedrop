@@ -373,6 +373,7 @@
 
         
         function startGame() {
+            console.log('Starting Game...');
             // Validate
             const diff = els.controls.diffSelect.value;
             const pack = els.controls.packSelect.value;
@@ -451,44 +452,56 @@
         }
 
         // Add Listeners for Game Controls
+        
+        // Named handlers to prevent duplicates
+        function handleRestart() {
+            els.screens.result.classList.add('hidden');
+            els.screens.start.classList.remove('hidden');
+            fetchLeaderboard(); 
+            sfx.playBGM();
+        }
+
+        function handleMusicWidgetClick(e) {
+            // If clicking close button, minimize
+            if (e.target.id === 'close-player') {
+                e.stopPropagation();
+                els.musicWidget.classList.remove('open');
+                els.musicWidget.classList.add('closed');
+                return;
+            }
+
+            // If closed, open it
+            if (els.musicWidget.classList.contains('closed')) {
+                els.musicWidget.classList.remove('closed');
+                els.musicWidget.classList.add('open');
+            }
+        }
+
+        // Add Listeners for Game Controls
         function initGameControls() {
+            // Remove existing to be safe (though named functions handle this mostly)
+            els.input.field.removeEventListener('input', handleInput);
+            els.input.field.removeEventListener('keydown', handleKeydown);
+            els.hud.btnPause.removeEventListener('click', togglePause);
+            els.hud.btnHome.removeEventListener('click', goHome);
+            els.screens.pause.removeEventListener('click', togglePause);
+            els.controls.restartBtn.removeEventListener('click', handleRestart);
+            if (els.musicWidget) els.musicWidget.removeEventListener('click', handleMusicWidgetClick);
+
+            // Add
             els.input.field.addEventListener('input', handleInput);
             els.input.field.addEventListener('keydown', handleKeydown);
-
-            // Controls
             els.hud.btnPause.addEventListener('click', togglePause);
             els.hud.btnHome.addEventListener('click', goHome);
-
-            // Resume on overlay click
             els.screens.pause.addEventListener('click', togglePause);
+            els.controls.restartBtn.addEventListener('click', handleRestart);
             
-            // Restart from Result
-            els.controls.restartBtn.addEventListener('click', () => {
-                els.screens.result.classList.add('hidden');
-                els.screens.start.classList.remove('hidden');
-                fetchLeaderboard();
-            initGameControls(); 
-                sfx.playBGM();
-            });
-
             // Music Widget Logic
             if (els.musicWidget) {
-                els.musicWidget.addEventListener('click', (e) => {
-                    // If clicking close button, minimize
-                    if (e.target.id === 'close-player') {
-                        e.stopPropagation();
-                        els.musicWidget.classList.remove('open');
-                        els.musicWidget.classList.add('closed');
-                        return;
-                    }
-
-                    // If closed, open it
-                    if (els.musicWidget.classList.contains('closed')) {
-                        els.musicWidget.classList.remove('closed');
-                        els.musicWidget.classList.add('open');
-                    }
-                });
+                els.musicWidget.addEventListener('click', handleMusicWidgetClick);
             }
+            
+            console.log("Game Controls Initialized");
         }
 
         function init() {
