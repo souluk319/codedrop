@@ -1357,33 +1357,65 @@
 
         const WORD_PACKS = {
             PYTHON: [
-                // basics
-                "def", "return", "class", "self", "import", "from", "as", "pass",
-                "if", "elif", "else", "for", "while", "break", "continue",
-                "try", "except", "finally", "raise", "with", "lambda",
+                // Essential Methods (Must Know)
 
-                // built-in functions
-                "print()", "input()", "len()", "range()", "open()", "type()", "id()",
-                "str()", "int()", "float()", "bool()", "list()", "dict()", "set()", "tuple()",
-                "enumerate()", "zip()", "map()", "filter()", "sorted()", "sum()", "min()", "max()",
-                "any()", "all()", "dir()", "help()", "isinstance()",
 
-                // common methods
-                ".append()", ".pop()", ".sort()", ".reverse()", ".index()", ".count()",
-                ".get()", ".items()", ".keys()", ".values()", ".update()",
-                ".split()", ".join()", ".strip()", ".replace()", ".lower()", ".upper()",
-                ".startswith()", ".endswith()", ".find()", ".format()",
 
-                // standard library
-                "import os", "import sys", "import time", "import math", "import random",
-                "import json", "import re", "import datetime", "import collections",
-                "os.path.join()", "os.listdir()", "sys.argv", "time.sleep()",
-                "math.pi", "math.sqrt()", "random.randint()", "random.choice()",
-                "json.loads()", "json.dumps()", "datetime.now()",
 
-                // dunder methods
-                "__init__", "__str__", "__repr__", "__name__", "__main__"
+                ".get()", ".items()", ".append()", ".extend()", ".pop()",
+                ".split()", ".join()", ".strip()", ".replace()", ".format()",
+                ".startswith()", ".endswith()", ".find()", ".count()",
+
+                // Control Flow & Context
+                "with open()", "try:", "except:", "finally:", "raise",
+                "if __name__ == \"__main__\":", "yield", "lambda x:",
+                "break", "continue", "pass",
+                // Built-in Power Tools
+                "enumerate()", "zip()", "isinstance()", "getattr()", "hasattr()",
+                "map()", "filter()", "any()", "all()", "sorted()",
+                "len()", "range()", "type()", "id()", "super()",
+
+                // Standard Library (Daily Use)
+                "datetime.now()", "json.loads()", "json.dumps()",
+                "re.search()", "re.match()", "re.sub()",
+                "os.path.join()", "os.listdir()", "sys.argv",
+                "collections.Counter", "collections.defaultdict",
+                "math.ceil()", "math.floor()", "random.choice()",
+                // Modern Typing (3.10+)
+                "list[str]", "dict[str, int]", "Optional[]", "Union[]",
+                "Callable", "Any", "TypeVar", "Generic",
+
+                // Pythonic Idioms
+                "[x for x in list]", "{k:v for k,v in d}",
+                "f\"{value}\"", "*args", "**kwargs",
+                "__init__", "__str__", "__repr__",
+
+                // Safe Keywords & Types (Pinky Friendly)
+                "async", "await", "global", "nonlocal", "assert", "del", "yield", "lambda", "pass", "break", "continue",
+                "True", "False", "None", "and", "or", "not", "is", "in", "Ellipsis",
+                "Exception", "ValueError", "TypeError", "IndexError", "KeyError", "AttributeError", "NameError", "ImportError", "StopIteration", "KeyboardInterrupt",
+                "object", "int", "str", "float", "bool", "list", "dict", "set", "tuple", "bytes", "complex",
+                "self", "cls", "args", "kwargs", "module", "package", "wrapper", "decorator",
+                "os", "sys", "math", "random", "json", "re", "datetime", "time", "collections", "itertools", "functools", "pathlib",
+                "pip", "venv", "poetry", "pytest", "black", "mypy", "pylint", "flake8"
             ],
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             JS: [
                 // variables & syntax
@@ -1810,7 +1842,10 @@
 
             // Filter pool to exclude currently active words to prevent duplicates
             // Helper to check for symbols (non-alphanumeric, excluding spaces)
+
             const hasSymbol = (str) => /[^a-zA-Z0-9\s]/.test(str);
+            // Helper for Heavy Words (Symbol + >10 chars)
+            const isHeavy = (str) => str.length > 10 && hasSymbol(str);
 
             // Check if any currently active word has a symbol
             const activeHasSymbol = state.activeWords.some(w => hasSymbol(w.text));
@@ -1822,14 +1857,28 @@
             const activeTexts = state.activeWords.map(w => w.text);
             let filteredPool = pool.filter(word => !activeTexts.includes(word));
 
-            // 2. If a symbol word is already active, filter out words with symbols
+            // 2. Apply Constraints
             if (activeHasSymbol) {
-                const noSymbolPool = filteredPool.filter(word => !hasSymbol(word));
-                // Only apply if we have enough non-symbol words (prevent empty pool)
-                if (noSymbolPool.length > 0) {
-                    filteredPool = noSymbolPool;
+                // If symbol word exists, ONLY allow safe words (no symbols)
+                const safePool = filteredPool.filter(word => !hasSymbol(word));
+                if (safePool.length > 0) filteredPool = safePool;
+            } else {
+                // No symbol word active.
+                // Check Heavy Word constraint: Only allow heavy words every 10th spawn
+                if (state.spawnedCount % 10 !== 0) {
+                    const noHeavyPool = filteredPool.filter(word => !isHeavy(word));
+                    if (noHeavyPool.length > 0) filteredPool = noHeavyPool;
                 }
             }
+
+
+
+
+
+
+
+
+
 
             // Use filtered pool if available, otherwise fallback to full pool (rare case)
             if (filteredPool.length > 0) {
@@ -1847,12 +1896,18 @@
             const diffKey = state.difficulty.split(' ')[0];
             const diffConfig = DIFFICULTY[diffKey];
 
+            // Calculate Speed (Increase by 20% after 50 spawns)
+            let baseSpeed = diffConfig.speedMin + Math.random() * (diffConfig.speedMax - diffConfig.speedMin);
+            if (state.spawnedCount > 50) {
+                baseSpeed *= 1.2;
+            }
+
             const word = {
                 id: Date.now() + Math.random(),
                 text: text,
                 x: Math.random() * 80 + 10, // 10% to 90%
                 y: -40,
-                speed: diffConfig.speedMin + Math.random() * (diffConfig.speedMax - diffConfig.speedMin),
+                speed: baseSpeed,
                 isEvent: isEvent,
                 el: document.createElement('div')
             };
