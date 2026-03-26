@@ -55,6 +55,9 @@ spec:
       - name: IMAGE
         # 위에서 정의한 registry.ocp.test.com... 주소로 이미지를 빌드해 푸시합니다.
         value: $(params.image_url)
+      - name: TLSVERIFY
+        # 사내 레지스트리의 사설 인증서(Self-signed)를 무시하고 푸시하도록 설정합니다.
+        value: "false"
       taskRef:
         name: buildah
       workspaces:
