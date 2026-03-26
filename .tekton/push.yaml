@@ -79,3 +79,5 @@ spec:
     secret:
       # PaC가 동적으로 채워주는 시크릿 이름입니다 (settings에 등록된 값)
       secretName: '{{ git_auth_secret }}'
+
+# TEST3
