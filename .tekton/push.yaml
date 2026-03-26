@@ -2,22 +2,36 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
+    # --- Pipelines as Code (PaC) 설정 영역 ---
+    # 파이프라인 실행 이력을 최대 몇 개까지 남길지 설정 (오래된 건 자동 삭제)
     pipelinesascode.tekton.dev/max-keep-runs: "5"
-    pipelinesascode.tekton.dev/on-event: pull_request
-    pipelinesascode.tekton.dev/on-target-branch: main
-    pipelinesascode.tekton.dev/task: git-clone
-  name: pipelinerun-generic
+    # GitHub에서 어떤 이벤트가 발생했을 때 이 파일을 실행할지 (여기선 push)
+    pipelinesascode.tekton.dev/on-event: "[push]"
+    # 어떤 브랜치에서 이벤트가 발생해야 하는지 (여기선 main)
+    pipelinesascode.tekton.dev/on-target-branch: "[main]"
+    # 이 파이프라인에서 사용할 Tekton ClusterTask/Task들 (오픈시프트에 사전 설치 필요)
+    pipelinesascode.tekton.dev/task: "[git-clone, buildah, git-cli]"
+  name: pipelinerun-user3
 spec:
   params:
   - name: repo_url
+    # PaC가 자동으로 채워주는 변수입니다 (GitHub 저장소 URL)
     value: '{{ repo_url }}'
   - name: revision
+    # PaC가 자동으로 채워주는 변수입니다 (현재 Git Commit ID)
     value: '{{ revision }}'
+  - name: image_url
+    # 빌드된 이미지가 저장될 전체 주소입니다.
+    # {{ revision }}을 사용하여 매 커밋마다 고유한 태그를 가지게 됩니다.
+    value: "registry.ocp.test.com:5000/demo/codedrop:{{ revision }}"
+  
   pipelineSpec:
     params:
     - name: repo_url
     - name: revision
+    - name: image_url
     tasks:
+    # [태스크 1] 저장소에서 코드 가져오기
     - name: fetch-repository
       params:
       - name: url
@@ -31,26 +45,27 @@ spec:
         workspace: source
       - name: basic-auth
         workspace: basic-auth
-    - displayName: Task with no effect
-      name: noop-task
+
+    # [태스크 2] Docker빌드 및 이미지 푸시 (Buildah)
+    - name: build-image
+      # fetch-repository 태스크가 성공한 후에만 실행됩니다.
       runAfter:
       - fetch-repository
-      taskSpec:
-        steps:
-        - image: registry.access.redhat.com/ubi9/ubi-micro
-          name: noop-task
-          script: |
-            exit 0
-          workingDir: $(workspaces.source.path)
-        workspaces:
-        - name: source
+      params:
+      - name: IMAGE
+        # 위에서 정의한 registry.ocp.test.com... 주소로 이미지를 빌드해 푸시합니다.
+        value: $(params.image_url)
+      taskRef:
+        name: buildah
       workspaces:
       - name: source
         workspace: source
+
     workspaces:
     - name: source
     - name: basic-auth
   workspaces:
+  # 소스 코드와 임시 파일들이 저장될 공용 저장 공간 (PVC 자동 생성)
   - name: source
     volumeClaimTemplate:
       spec:
@@ -59,8 +74,8 @@ spec:
         resources:
           requests:
             storage: 1Gi
+  # GitHub 클론 시 필요한 인증 정보를 담은 시크릿 연결 영역
   - name: basic-auth
     secret:
+      # PaC가 동적으로 채워주는 시크릿 이름입니다 (settings에 등록된 값)
       secretName: '{{ git_auth_secret }}'
-
-#test1
