@@ -1,0 +1,7 @@
+apiVersion: pipelinesascode.tekton.dev/v1alpha1
+kind: Repository
+metadata:
+  name: codedrop
+spec:
+  # 이 URL이 GitHub 저장소와 정확히 일치해야 PaC가 이벤트를 매칭합니다.
+  url: "https://github.com/souluk319/codedrop"
