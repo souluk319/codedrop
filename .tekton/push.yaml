@@ -63,6 +63,8 @@ spec:
       workspaces:
       - name: source
         workspace: source
+      - name: basic-auth # GitOps 레포 푸시 권한용
+        workspace: basic-auth
 
     workspaces:
     - name: source
@@ -82,5 +84,10 @@ spec:
     secret:
       # PaC가 동적으로 채워주는 시크릿 이름입니다 (settings에 등록된 값)
       secretName: '{{ git_auth_secret }}'
-
+  - name: docker-config
+    secret:
+      secretName: "my-registry-secret"
+      items: 
+        - key: .dockerconfigjson
+          path: config.json
 # TEST6
