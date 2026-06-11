@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KUGNUS-BRAIN Meta Review</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; line-height: 1.65; color: #e0e6ed; background: radial-gradient(circle at top left, rgba(0,243,255,.16), transparent 32rem), #050505; }
+    main { max-width: 940px; margin: 48px auto; padding: 32px; background: rgba(10,10,12,.9); border: 1px solid rgba(0,243,255,.25); border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,.35); }
+    h1, h2 { color: #00f3ff; }
+    a { color: #05ffa1; }
+    code, pre { background: #15151d; border-radius: 8px; }
+    code { padding: 2px 5px; }
+    pre { padding: 16px; overflow-x: auto; }
+    .card { border: 1px solid rgba(188,19,254,.25); border-radius: 14px; padding: 16px; margin: 12px 0; background: rgba(188,19,254,.08); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>KUGNUS-BRAIN Meta App Review Instructions</h1>
+    <p>Effective date: 2026-06-11</p>
+
+    <div class="card">
+      <strong>Public app surface:</strong> <a href="/">CodeDrop</a><br>
+      <strong>Requested permission:</strong> <code>threads_profile_discovery</code><br>
+      <strong>Developer contact:</strong> <a href="mailto:souluk319@gmail.com">souluk319@gmail.com</a>
+    </div>
+
+    <h2>What This App Does</h2>
+    <p>CodeDrop is the public deployed web app operated by the developer. KUGNUS-BRAIN is the developer's private single-user knowledge assistant workflow. The Threads feature watches a small owner-selected list of public Threads profiles and turns public posts into private local research notes.</p>
+
+    <h2>Why Threads Profile Discovery Is Needed</h2>
+    <p>The owner can already authenticate with Threads OAuth and read the owner account with <code>threads_basic</code>. The missing capability is retrieving public posts from selected public profiles that are not the authenticated owner account. The official Threads API endpoint <code>GET /profile_posts?username=...</code> requires <code>threads_profile_discovery</code>.</p>
+
+    <h2>Current Watchlist</h2>
+    <ul>
+      <li><code>choi.openai</code></li>
+      <li><code>unclejobs.ai</code></li>
+      <li><code>real_black_cow</code></li>
+    </ul>
+
+    <h2>How Reviewers Can Test</h2>
+    <ol>
+      <li>Open the public deployed app at <a href="/">https://codedrop-se9n.onrender.com/</a>.</li>
+      <li>Open this review page at <a href="/meta-review.html">/meta-review.html</a>.</li>
+      <li>Review the attached screen recording in the Meta App Review submission.</li>
+      <li>The recording shows Threads OAuth for the owner account, successful owner profile and own-post API calls, the selected public watchlist, the blocked public-profile call, and the private report output.</li>
+    </ol>
+
+    <h2>Demo Commands Shown In Recording</h2>
+    <pre><code>/Users/kugnus/Agent/Hermes/scripts/threads-api.sh me
+/Users/kugnus/Agent/Hermes/scripts/threads-api.sh own-posts
+/Users/kugnus/Agent/Hermes/scripts/threads-api.sh profile-posts choi.openai
+/Users/kugnus/Agent/Hermes/scripts/threads-watch-automation.sh report</code></pre>
+
+    <h2>Actions Not Performed</h2>
+    <p>The Threads integration does not publish, delete, like, reply, repost, message, share, sell, or publicly redistribute Threads data. It only summarizes selected public posts into private owner notes and notifications.</p>
+
+    <h2>Policy Links</h2>
+    <ul>
+      <li><a href="/privacy.html">Privacy Policy</a></li>
+      <li><a href="/terms.html">Terms of Service</a></li>
+      <li><a href="/data-deletion.html">Data Deletion Instructions</a></li>
+    </ul>
+  </main>
+</body>
+</html>
