@@ -4,6 +4,12 @@
 
 **Play Now:** [https://codedrop-se9n.onrender.com/](https://codedrop-se9n.onrender.com/)
 
+**Policies & Review Pages:**
+- Privacy Policy: [https://codedrop-se9n.onrender.com/privacy.html](https://codedrop-se9n.onrender.com/privacy.html)
+- Terms of Service: [https://codedrop-se9n.onrender.com/terms.html](https://codedrop-se9n.onrender.com/terms.html)
+- Data Deletion: [https://codedrop-se9n.onrender.com/data-deletion.html](https://codedrop-se9n.onrender.com/data-deletion.html)
+- Meta Review Notes: [https://codedrop-se9n.onrender.com/meta-review.html](https://codedrop-se9n.onrender.com/meta-review.html)
+
 ---
 
 ## 🇬🇧 English Description
