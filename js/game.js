@@ -142,7 +142,7 @@ const sfx = {
                 promise.catch(error => {
                     console.log("BGM Autoplay blocked. Waiting for interaction.");
                     const playOnInteraction = () => {
-                        this.bgm.play();
+                        this.bgm.play().catch(() => { });
                         document.removeEventListener('click', playOnInteraction);
                         document.removeEventListener('touchstart', playOnInteraction);
                         document.removeEventListener('keydown', playOnInteraction);
@@ -456,6 +456,31 @@ function successWord(index) {
 
     state.activeWords.splice(index, 1);
     updateHUD();
+
+    showDescToast(word.text);
+}
+
+// --- Desc Toast (명령어 한줄 설명) ---
+let descToastTimer = null;
+
+function showDescToast(text) {
+    if (typeof WORD_DESCS === 'undefined' || !WORD_DESCS[text]) return;
+
+    // startGame()이 gameArea.innerHTML = '' 로 비우므로 없으면 재생성
+    let toast = document.getElementById('desc-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'desc-toast';
+        els.gameArea.appendChild(toast);
+    }
+
+    toast.innerHTML = `<span class="cmd"></span> &nbsp;→&nbsp; <span class="desc"></span>`;
+    toast.querySelector('.cmd').textContent = text;
+    toast.querySelector('.desc').textContent = WORD_DESCS[text];
+    toast.classList.add('show');
+
+    clearTimeout(descToastTimer);
+    descToastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
 }
 
 function failTypo() {
@@ -593,6 +618,143 @@ function renderLeaderboard(list) {
 }
 
 
+
+// --- Mode Routing (DROP / SCENARIO / LAB / EXAM) ---
+let gameMode = 'DROP';
+let editionBurstTimer = null;
+
+function isOcpEditionActive() {
+    return document.body.classList.contains('ocp-edition');
+}
+
+function triggerEditionBurst() {
+    document.body.classList.remove('edition-burst');
+    // Reflow so repeated edition switches replay the one-shot CSS animation.
+    void document.body.offsetWidth;
+    document.body.classList.add('edition-burst');
+
+    clearTimeout(editionBurstTimer);
+    editionBurstTimer = setTimeout(() => {
+        document.body.classList.remove('edition-burst');
+    }, 760);
+}
+
+function handleStart() {
+    if (gameMode === 'SCENARIO') {
+        const catSelect = document.getElementById('scenario-category-select');
+        els.screens.start.classList.add('hidden');
+        ScenarioMode.start(catSelect.value);
+    } else if (gameMode === 'LAB') {
+        const labSelect = document.getElementById('lab-select');
+        els.screens.start.classList.add('hidden');
+        LabMode.start(labSelect.value);
+    } else if (gameMode === 'EXAM') {
+        els.screens.start.classList.add('hidden');
+        ScenarioMode.startExam();
+    } else {
+        if (isOcpEditionActive()) {
+            const ocpDiff = document.getElementById('ocp-difficulty-select');
+            if (ocpDiff) els.controls.diffSelect.value = ocpDiff.value;
+            els.controls.packSelect.value = 'OC_CORE';
+        }
+        startGame();
+    }
+}
+
+function initModeControls() {
+    const modeButtons = Array.from(document.querySelectorAll('[data-mode]'));
+    const catSelect = document.getElementById('scenario-category-select');
+    const labSelect = document.getElementById('lab-select');
+    const standardMenu = document.getElementById('standard-menu');
+    const ocpMenu = document.getElementById('ocp-menu');
+    const editionCodeBtn = document.getElementById('edition-code-btn');
+    const editionOcpBtn = document.getElementById('edition-ocp-btn');
+    const ocpStartBtn = document.getElementById('ocp-start-btn');
+    const dashboardBtn = document.getElementById('dashboard-btn');
+    const modeGroups = {
+        DROP: ['ocp-drop-group'],
+        SCENARIO: ['scenario-select-group'],
+        LAB: ['lab-select-group'],
+        EXAM: ['exam-info-group']
+    };
+
+    if (modeButtons.length === 0) return;
+
+    // 카테고리 옵션을 SCENARIO_PACKS에서 자동 생성
+    if (typeof SCENARIO_PACKS !== 'undefined' && catSelect && catSelect.options.length === 0) {
+        Object.entries(SCENARIO_PACKS).forEach(([key, pack]) => {
+            const opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = pack.label;
+            catSelect.appendChild(opt);
+        });
+    }
+
+    if (typeof MOCK_LABS !== 'undefined' && labSelect && labSelect.options.length === 0) {
+        MOCK_LABS.forEach((lab, index) => {
+            const opt = document.createElement('option');
+            opt.value = lab.id;
+            opt.textContent = `${String(index + 1).padStart(2, '0')}. ${lab.title}`;
+            labSelect.appendChild(opt);
+        });
+    }
+
+    function setMode(mode) {
+        gameMode = mode;
+        modeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
+
+        Object.entries(modeGroups).forEach(([groupMode, ids]) => {
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.toggle('hidden', groupMode !== mode);
+            });
+        });
+    }
+
+    function openOcpEdition() {
+        if (isOcpEditionActive()) return;
+        document.body.classList.add('ocp-edition');
+        triggerEditionBurst();
+        if (standardMenu) standardMenu.classList.add('hidden');
+        if (ocpMenu) ocpMenu.classList.remove('hidden');
+        if (editionCodeBtn) editionCodeBtn.classList.remove('active');
+        if (editionOcpBtn) editionOcpBtn.classList.add('active');
+        setMode('DROP');
+    }
+
+    function closeOcpEdition() {
+        if (!isOcpEditionActive()) return;
+        triggerEditionBurst();
+        document.body.classList.remove('ocp-edition');
+        if (ocpMenu) ocpMenu.classList.add('hidden');
+        if (standardMenu) standardMenu.classList.remove('hidden');
+        if (editionOcpBtn) editionOcpBtn.classList.remove('active');
+        if (editionCodeBtn) editionCodeBtn.classList.add('active');
+        setMode('DROP');
+    }
+
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+
+    if (editionOcpBtn) {
+        editionOcpBtn.addEventListener('click', openOcpEdition);
+    }
+
+    if (editionCodeBtn) {
+        editionCodeBtn.addEventListener('click', closeOcpEdition);
+    }
+
+    if (ocpStartBtn) {
+        ocpStartBtn.addEventListener('click', handleStart);
+    }
+
+    if (dashboardBtn) {
+        dashboardBtn.addEventListener('click', () => Dashboard.open());
+    }
+
+    setMode(gameMode);
+}
 
 function startGame() {
     console.log('Starting Game...');
@@ -760,6 +922,7 @@ function init() {
     // Load Initial Leaderboard
     fetchLeaderboard();
     initGameControls();
+    initModeControls();
 
 
     // Sfx Init on interaction
@@ -780,10 +943,16 @@ function init() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             // Only if Start Screen is visible, User is Logged In, and Game is NOT playing
+            const dashboard = document.getElementById('dashboard-screen');
             if (!els.screens.start.classList.contains('hidden') &&
                 els.auth.loggedInView.classList.contains('active') &&
+                (!dashboard || dashboard.classList.contains('hidden')) &&
                 !state.isPlaying) {
-                startGame();
+                if (isOcpEditionActive()) {
+                    handleStart();
+                } else {
+                    startGame();
+                }
             }
         }
     });
@@ -840,6 +1009,58 @@ function switchTab(tab) {
     els.auth.errors.register.textContent = '';
 }
 
+const LOCAL_AUTH_KEY = 'codedrop_local_auth_users';
+
+function isLocalDevAuthEnabled() {
+    return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
+function readLocalAuthUsers() {
+    if (!isLocalDevAuthEnabled()) return {};
+
+    try {
+        const users = JSON.parse(localStorage.getItem(LOCAL_AUTH_KEY)) || {};
+        if (!users.test) {
+            users.test = { id: 'local-test', nickname: 'test', password: 'test' };
+            localStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(users));
+        }
+        return users;
+    } catch (e) {
+        return { test: { id: 'local-test', nickname: 'test', password: 'test' } };
+    }
+}
+
+function saveLocalAuthUsers(users) {
+    localStorage.setItem(LOCAL_AUTH_KEY, JSON.stringify(users));
+}
+
+function tryLocalDevLogin(nickname, password) {
+    const key = nickname.toLowerCase();
+    const users = readLocalAuthUsers();
+    const user = users[key];
+
+    if (!user || user.password !== password) return false;
+    loginSuccess(user.id, user.nickname);
+    return true;
+}
+
+function createLocalDevUser(nickname, password) {
+    if (!isLocalDevAuthEnabled()) return { ok: false, error: 'Local auth disabled.' };
+
+    const key = nickname.toLowerCase();
+    const users = readLocalAuthUsers();
+    if (users[key]) return { ok: false, error: 'Nickname already taken locally.' };
+
+    users[key] = {
+        id: `local-${Date.now()}`,
+        nickname,
+        password
+    };
+    saveLocalAuthUsers(users);
+    loginSuccess(users[key].id, nickname);
+    return { ok: true };
+}
+
 async function handleLogin() {
     const nickname = els.auth.inputs.loginNick.value.trim();
     const password = els.auth.inputs.loginPass.value.trim();
@@ -860,11 +1081,18 @@ async function handleLogin() {
         if (res.ok) {
             // Success
             loginSuccess(data.user_id, data.nickname);
+        } else if (res.status >= 500 && tryLocalDevLogin(nickname, password)) {
+            return;
         } else {
-            els.auth.errors.login.textContent = data.error || "Login failed.";
+            els.auth.errors.login.textContent = res.status >= 500 && isLocalDevAuthEnabled()
+                ? "DB offline. Local dev login: test / test"
+                : data.error || "Login failed.";
         }
     } catch (e) {
-        els.auth.errors.login.textContent = "Server error.";
+        if (tryLocalDevLogin(nickname, password)) return;
+        els.auth.errors.login.textContent = isLocalDevAuthEnabled()
+            ? "Server offline. Local dev login: test / test"
+            : "Server error.";
     }
 }
 
@@ -897,11 +1125,17 @@ async function handleRegister() {
         if (res.ok) {
             // Success -> Auto Login
             loginSuccess(data.user_id, data.nickname);
+        } else if (res.status >= 500 && createLocalDevUser(nickname, password).ok) {
+            return;
         } else {
             els.auth.errors.register.textContent = data.error || "Registration failed.";
         }
     } catch (e) {
-        els.auth.errors.register.textContent = "Server error.";
+        const localResult = createLocalDevUser(nickname, password);
+        if (localResult.ok) return;
+        els.auth.errors.register.textContent = isLocalDevAuthEnabled()
+            ? localResult.error
+            : "Server error.";
     }
 }
 
@@ -963,6 +1197,15 @@ function showLoggedInView() {
 }
 
 function showAuthView() {
+    document.body.classList.remove('ocp-edition');
+    const standardMenu = document.getElementById('standard-menu');
+    const ocpMenu = document.getElementById('ocp-menu');
+    const editionCodeBtn = document.getElementById('edition-code-btn');
+    const editionOcpBtn = document.getElementById('edition-ocp-btn');
+    if (standardMenu) standardMenu.classList.remove('hidden');
+    if (ocpMenu) ocpMenu.classList.add('hidden');
+    if (editionOcpBtn) editionOcpBtn.classList.remove('active');
+    if (editionCodeBtn) editionCodeBtn.classList.add('active');
     els.auth.authContainer.style.display = 'block';
     els.auth.loggedInView.classList.remove('active');
     switchTab('login');
