@@ -133,7 +133,7 @@ const SCENARIO_PACKS = {
                 id: "auth-01",
                 scenario: "htpasswd 인증 공급자용 사용자 파일을 생성하세요. 파일: /tmp/htpasswd, 사용자: admin, 비밀번호: redhat (새 파일 생성, bcrypt 해시, 비밀번호는 명령 인자로)",
                 answers: [
-                    "htpasswd (?:-c -B -b|-c -b -B|-B -c -b|-B -b -c|-b -c -B|-b -B -c|-[cbB]{3}) /tmp/htpasswd admin redhat"
+                    "htpasswd (?:-c -B -b|-c -b -B|-B -c -b|-B -b -c|-b -c -B|-b -B -c|-cbB|-cBb|-Bcb|-Bbc|-bcB|-bBc) /tmp/htpasswd admin redhat"
                 ],
                 canonical: "htpasswd -c -B -b /tmp/htpasswd admin redhat",
                 hint: "htpasswd -c(생성) -B(bcrypt) -b(배치) <파일> <유저> <암호>",
@@ -143,7 +143,7 @@ const SCENARIO_PACKS = {
                 id: "auth-02",
                 scenario: "기존 /tmp/htpasswd 파일에 사용자 developer(비밀번호 devpass)를 추가하세요. (bcrypt, 배치 모드)",
                 answers: [
-                    "htpasswd (?:-B -b|-b -B|-[bB]{2}) /tmp/htpasswd developer devpass"
+                    "htpasswd (?:-B -b|-b -B|-Bb|-bB) /tmp/htpasswd developer devpass"
                 ],
                 canonical: "htpasswd -B -b /tmp/htpasswd developer devpass",
                 hint: "기존 파일에 추가할 때는 -c를 빼세요",
@@ -373,7 +373,9 @@ const SCENARIO_PACKS = {
                 scenario: "apps 네임스페이스의 app 디플로이먼트에 db-secret Secret을 /etc/secret 경로에 볼륨으로 마운트하세요.",
                 answers: [
                     "oc set volumes? (?:deployment|deploy)(?:/| )app --add (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) --mount-path[ =]/etc/secret (?:-n|--namespace)[ =]apps",
-                    "oc set volumes? (?:deployment|deploy)(?:/| )app (?:-n|--namespace)[ =]apps --add (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) --mount-path[ =]/etc/secret"
+                    "oc set volumes? (?:deployment|deploy)(?:/| )app (?:-n|--namespace)[ =]apps --add (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) --mount-path[ =]/etc/secret",
+                    "oc set volumes? (?:deployment|deploy)(?:/| )app --add --mount-path[ =]/etc/secret (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) (?:-n|--namespace)[ =]apps",
+                    "oc set volumes? (?:deployment|deploy)(?:/| )app (?:-n|--namespace)[ =]apps --add --mount-path[ =]/etc/secret (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret)"
                 ],
                 canonical: "oc set volume deployment/app --add --type secret --secret-name db-secret --mount-path /etc/secret -n apps",
                 hint: "oc set volume deployment/<이름> --add --type secret --secret-name <시크릿> --mount-path <경로>",
@@ -497,6 +499,81 @@ const SCENARIO_PACKS = {
                 canonical: "oc get networkpolicy -n apps",
                 hint: "oc get networkpolicy (축약형: netpol)",
                 explain: "NetworkPolicy는 파드 간 트래픽을 제어합니다. 빈 podSelector({})는 네임스페이스 전체에 적용됨을 의미합니다."
+            }
+        ]
+    },
+
+    NETWORK_SECURITY: {
+        label: "네트워크 보안/외부 노출",
+        questions: [
+            {
+                id: "net-01",
+                scenario: "클러스터의 IngressController 목록을 확인하세요.",
+                answers: [
+                    "oc get ingresscontrollers? (?:-n|--namespace)[ =]openshift-ingress-operator",
+                    "oc (?:-n|--namespace)[ =]openshift-ingress-operator get ingresscontrollers?"
+                ],
+                canonical: "oc get ingresscontroller -n openshift-ingress-operator",
+                hint: "oc get ingresscontroller -n openshift-ingress-operator",
+                explain: "IngressController는 OpenShift 라우터의 배치와 노출 방식을 관리합니다. 외부 접근 문제는 여기 상태 확인부터 시작합니다."
+            },
+            {
+                id: "net-02",
+                scenario: "기본 IngressController(default)의 상세 상태를 확인하세요.",
+                answers: [
+                    "oc describe ingresscontrollers? default (?:-n|--namespace)[ =]openshift-ingress-operator",
+                    "oc (?:-n|--namespace)[ =]openshift-ingress-operator describe ingresscontrollers? default"
+                ],
+                canonical: "oc describe ingresscontroller default -n openshift-ingress-operator",
+                hint: "oc describe ingresscontroller default -n openshift-ingress-operator",
+                explain: "라우터 replica, endpoint publishing 전략, degraded/progressing 조건을 확인해 ingress 문제의 원인을 좁힙니다."
+            },
+            {
+                id: "net-03",
+                scenario: "apps 네임스페이스에 db 라는 LoadBalancer 서비스를 만들고, 5432 포트를 5432 타깃 포트로 노출하세요.",
+                answers: [
+                    "oc create service loadbalancer db --tcp[ =]5432:5432 (?:-n|--namespace)[ =]apps",
+                    "oc create service loadbalancer db (?:-n|--namespace)[ =]apps --tcp[ =]5432:5432",
+                    "oc (?:-n|--namespace)[ =]apps create service loadbalancer db --tcp[ =]5432:5432"
+                ],
+                canonical: "oc create service loadbalancer db --tcp=5432:5432 -n apps",
+                hint: "oc create service loadbalancer <name> --tcp=<port>:<targetPort>",
+                explain: "HTTP Route가 아닌 TCP 서비스 노출은 LoadBalancer Service가 시험 목표에 포함됩니다. 환경에 따라 외부 IP/호스트 할당은 인프라가 담당합니다."
+            },
+            {
+                id: "net-04",
+                scenario: "apps 네임스페이스에서 api 서비스의 8443 포트를 TLS passthrough 방식의 tls-api Route로 노출하세요.",
+                answers: [
+                    "oc create route passthrough tls-api --service[ =]api --port[ =]8443 (?:-n|--namespace)[ =]apps",
+                    "oc create route passthrough tls-api --port[ =]8443 --service[ =]api (?:-n|--namespace)[ =]apps",
+                    "oc create route passthrough tls-api (?:-n|--namespace)[ =]apps --service[ =]api --port[ =]8443"
+                ],
+                canonical: "oc create route passthrough tls-api --service api --port 8443 -n apps",
+                hint: "oc create route passthrough <route> --service <svc> --port <port>",
+                explain: "passthrough Route는 TLS를 라우터에서 해제하지 않고 백엔드로 전달합니다. SNI 기반 non-HTTP TLS 노출을 다룰 때 핵심입니다."
+            },
+            {
+                id: "net-05",
+                scenario: "apps 네임스페이스에서 web 서비스에 edge TLS Route secure-web을 만들고 인증서 tls.crt, 키 tls.key, CA ca.crt를 지정하세요.",
+                answers: [
+                    "oc create route edge secure-web --service[ =]web --cert[ =]tls\\.crt --key[ =]tls\\.key --ca-cert[ =]ca\\.crt (?:-n|--namespace)[ =]apps",
+                    "oc create route edge secure-web --service[ =]web --key[ =]tls\\.key --cert[ =]tls\\.crt --ca-cert[ =]ca\\.crt (?:-n|--namespace)[ =]apps",
+                    "oc create route edge secure-web (?:-n|--namespace)[ =]apps --service[ =]web --cert[ =]tls\\.crt --key[ =]tls\\.key --ca-cert[ =]ca\\.crt"
+                ],
+                canonical: "oc create route edge secure-web --service web --cert tls.crt --key tls.key --ca-cert ca.crt -n apps",
+                hint: "oc create route edge <route> --service <svc> --cert <crt> --key <key> --ca-cert <ca>",
+                explain: "edge Route는 라우터가 TLS를 종료합니다. 사용자 제공 인증서를 지정해야 하는 문제가 나오면 cert/key/ca-cert 플래그를 함께 챙깁니다."
+            },
+            {
+                id: "net-06",
+                scenario: "apps 네임스페이스에 deny-all.yaml NetworkPolicy 매니페스트를 적용하세요.",
+                answers: [
+                    "oc apply -f deny-all\\.yaml (?:-n|--namespace)[ =]apps",
+                    "oc apply (?:-n|--namespace)[ =]apps -f deny-all\\.yaml"
+                ],
+                canonical: "oc apply -f deny-all.yaml -n apps",
+                hint: "oc apply -f <networkpolicy.yaml> -n <ns>",
+                explain: "NetworkPolicy는 YAML로 작성해 적용하는 경우가 많습니다. 적용 후 oc describe networkpolicy로 podSelector와 ingress/egress를 확인합니다."
             }
         ]
     },

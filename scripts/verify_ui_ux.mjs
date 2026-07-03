@@ -111,28 +111,42 @@ assert(pxValue(baseCard, 'width') === 520, 'standard card width should stay comp
 assert(pxValue(baseCard, 'height') === 540, 'standard card height should stay compact');
 
 const ocpCard = cssBlock('body.ocp-edition #start-screen .card');
-assert(pxValue(ocpCard, 'width') === 700, 'OCP card must widen to fit the larger mode menu');
-assert(pxValue(ocpCard, 'height') === 700, 'OCP card must grow vertically to fit all controls');
-assert(pxValue(ocpCard, 'min-height') === 700, 'OCP card min-height must protect against clipping');
+assert(pxValue(ocpCard, 'width') === 780, 'OCP card must widen to fit the larger mode menu');
+assert(pxValue(ocpCard, 'height') === 680, 'OCP card must grow into a balanced larger frame');
+assert(pxValue(ocpCard, 'min-height') === 680, 'OCP card min-height must protect against clipping');
+assert(ocpCard.includes('overflow: hidden;'), 'OCP desktop card should grow instead of relying on inner scroll');
 
 const ocpLoggedIn = cssBlock('body.ocp-edition #logged-in-view');
-assert(ocpLoggedIn.includes('height: 100%;'), 'OCP logged-in view should fill the enlarged card');
+assert(ocpLoggedIn.includes('height: 100%;'), 'OCP logged-in view should fill the enlarged card without squeezing controls');
+assert(ocpLoggedIn.includes('min-height: 0;'), 'OCP logged-in view should allow balanced inner grid sizing');
 assert(ocpLoggedIn.includes('justify-content: flex-start;'), 'OCP controls should not be vertically squeezed');
 
 const ocpMenu = cssBlock('body.ocp-edition .ocp-menu');
-assert(ocpMenu.includes('flex: 1;'), 'OCP menu should use the enlarged card space');
+assert(ocpMenu.includes('display: grid;'), 'OCP menu should use the expanded frame instead of stacking every control');
+assert(ocpMenu.includes('grid-template-columns: minmax(0, 1.24fr) minmax(250px, 0.9fr);'), 'OCP menu should balance mode tiles and controls side-by-side');
 assert(ocpMenu.includes('border: 0;'), 'OCP menu should not look like a nested card frame');
 assert(ocpMenu.includes('background: transparent;'), 'OCP menu should rely on the outer card frame');
 
+const editionSwitch = cssBlock('.edition-switch');
+assert(editionSwitch.includes('min-height: 42px;'), 'edition switch needs a stable tap height');
+assert(!index.includes('font-size: 5rem; text-shadow: 0 0 20px var(--primary-neon);'), 'brand title should not use fixed inline mobile-hostile sizing');
+
 const modeGrid = cssBlock('body.ocp-edition .mode-grid');
 assert(modeGrid.includes('repeat(2, minmax(0, 1fr))'), 'OCP mode grid should remain a balanced 2x2 grid');
+assert(index.includes('grid-auto-rows: minmax(70px, auto);'), 'compact OCP mode grid must keep tile height instead of collapsing');
+assert(index.includes('min-height: 152px;'), 'short viewport OCP grid needs a stable two-row height');
 
 const modeChoice = cssBlock('body.ocp-edition .mode-choice');
 assert(pxValue(modeChoice, 'min-height') >= 80, 'OCP mode tiles should be large enough to read comfortably');
 
 const ocpLeaderboard = cssBlock('body.ocp-edition #leaderboard-preview');
-assert(pxValue(ocpLeaderboard, 'width') === 400, 'OCP leaderboard should stay narrower than the main card');
-assert(pxValue(ocpLeaderboard, 'height') === 700, 'OCP leaderboard should align with the taller main card');
+assert(pxValue(ocpLeaderboard, 'width') === 360, 'OCP leaderboard should stay smaller than the expanded main card');
+assert(pxValue(ocpLeaderboard, 'height') === 560, 'OCP leaderboard should read as a secondary panel');
+assert(ocpLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'OCP leaderboard should not overflow short desktop viewports');
+
+const dashboardCard = cssBlock('.dashboard-card');
+assert(dashboardCard.includes('max-height: calc(100dvh - 80px);'), 'dashboard card should be scrollable inside the viewport');
+assert(dashboardCard.includes('overflow-y: auto;'), 'dashboard card should not clip its content');
 
 const surgeAfter = cssBlock('.edition-surge::after');
 assert(!surgeAfter.includes('linear-gradient(112deg'), 'old X transition gradient should not return');
@@ -142,15 +156,20 @@ assert(index.includes('body.edition-burst .edition-surge'), 'edition switch burs
 assert(game.includes("const LOCAL_AUTH_KEY = 'codedrop_local_auth_users';"), 'local dev auth key is missing');
 assert(game.includes("users.test = { id: 'local-test', nickname: 'test', password: 'test' };"), 'local test/test auth seed is missing');
 assert(game.includes('tryLocalDevLogin(nickname, password)'), 'login flow does not call local dev fallback');
+assert(game.includes('if (isLocalDevAuthEnabled() && tryLocalDevLogin(nickname, password)) return;'), 'local test/test login should work before remote API rejection');
 assert(game.includes("els.controls.packSelect.value = 'OC_CORE';"), 'OCP CLI Drop must force the OC_CORE pack');
 assert(game.includes('ScenarioMode.startExam()'), 'EXAM mode route is missing');
 assert(game.includes('LabMode.start(labSelect.value)'), 'LAB mode route is missing');
 assert(game.includes('Dashboard.open()'), 'dashboard route is missing');
+assert(game.includes("document.createElement('table')") || game.includes('document.createElement("table")'), 'leaderboard should be rendered with DOM nodes');
+assert(!game.includes('${item.nickname}'), 'leaderboard nickname must not be interpolated into innerHTML');
+assert(!game.includes('user_id: state.userId'), 'score submit should not trust client-side user_id');
+assert(game.includes('Authorization'), 'authenticated API calls should send a bearer token');
 
 console.log(JSON.stringify({
     ui: 'ok',
     standardCard: { width: 520, height: 540 },
-    ocpCard: { width: 700, height: 700 },
-    ocpLeaderboard: { width: 400, height: 700 },
+    ocpCard: { width: 780, height: 680 },
+    ocpLeaderboard: { width: 360, height: 560 },
     scriptCount: expectedOrder.length
 }, null, 2));

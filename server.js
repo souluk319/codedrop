@@ -5,14 +5,33 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ||
+    "http://localhost:3001,http://127.0.0.1:3001,https://codedrop-se9n.onrender.com")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(null, false);
+    },
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 app.use(express.json());
+app.use((req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    next();
+});
 
 // 🔹 Request Logger
 app.use((req, res, next) => {
@@ -32,7 +51,15 @@ app.get('/', (req, res) => {
     });
 });
 
-app.use(express.static(__dirname)); // Serve static files from current directory
+["privacy.html", "terms.html", "data-deletion.html", "meta-review.html"].forEach(file => {
+    app.get(`/${file}`, (req, res) => {
+        res.sendFile(path.join(__dirname, file));
+    });
+});
+
+app.use("/js", express.static(path.join(__dirname, "js")));
+app.use("/assets", express.static(path.join(__dirname, "assets")));
+app.use("/sound", express.static(path.join(__dirname, "sound")));
 
 // 🔹 MySQL 연결 설정
 const db = mysql.createPool({
@@ -53,11 +80,69 @@ const db = mysql.createPool({
     connectionLimit: 10,
 });
 
+const sessions = new Map();
+const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
+const DIFFICULTIES = new Set(["easy", "normal", "developer"]);
+const PACKS = new Set(["python", "js", "http", "cli", "linux", "oc_core", "vocab", "mix"]);
+const NICKNAME_RE = /^[A-Za-z0-9_-]{3,16}$/;
+
+function createSession(user) {
+    const token = crypto.randomBytes(32).toString("hex");
+    sessions.set(token, {
+        userId: user.id,
+        nickname: user.nickname,
+        expiresAt: Date.now() + SESSION_TTL_MS
+    });
+    return token;
+}
+
+function authUser(req, res, next) {
+    const header = req.get("authorization") || "";
+    const match = header.match(/^Bearer\s+([a-f0-9]{64})$/i);
+    if (!match) return res.status(401).json({ error: "Authentication required" });
+
+    const session = sessions.get(match[1]);
+    if (!session || session.expiresAt < Date.now()) {
+        if (session) sessions.delete(match[1]);
+        return res.status(401).json({ error: "Session expired" });
+    }
+
+    req.user = { id: session.userId, nickname: session.nickname };
+    next();
+}
+
+function validNickname(nickname) {
+    return typeof nickname === "string" && NICKNAME_RE.test(nickname);
+}
+
+function boundedNumber(value, min, max) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return null;
+    return Math.max(min, Math.min(max, Math.round(num)));
+}
+
+function normalizeCategory(value, allowed) {
+    if (value === undefined || value === null || value === "") return null;
+    const normalized = String(value).toLowerCase();
+    return allowed.has(normalized) ? normalized : false;
+}
+
 // 🔹 서버 + DB 살아있는지 확인용
 // 🔹 서버 + DB 살아있는지 확인용 (DB 체크 임시 비활성화)
 app.get("/health", (req, res) => {
-    // DB 연결 문제로 서버가 죽는 것을 방지하기 위해 일단 무조건 OK 반환
-    res.json({ server: "ok", db: "skipped_for_debugging" });
+    res.json({ server: "ok" });
+});
+
+app.get("/ready", async (req, res) => {
+    try {
+        await Promise.race([
+            db.query("SELECT 1"),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("DB readiness timeout")), 1000))
+        ]);
+        res.json({ server: "ok", db: "ok" });
+    } catch (err) {
+        res.status(503).json({ server: "ok", db: "unavailable" });
+    }
 });
 
 // 🔹 API 구현
@@ -66,6 +151,7 @@ app.get("/health", (req, res) => {
 app.post("/register", async (req, res) => {
     const { nickname, password } = req.body;
     if (!nickname || !password) return res.status(400).json({ error: "Nickname and password required" });
+    if (!validNickname(nickname)) return res.status(400).json({ error: "Nickname must be 3-16 letters, numbers, _ or -" });
     if (password.length < 4) return res.status(400).json({ error: "Password must be at least 4 characters" });
 
     try {
@@ -80,7 +166,8 @@ app.post("/register", async (req, res) => {
 
         // Create new user
         const [result] = await db.query("INSERT INTO users (nickname, password) VALUES (?, ?)", [nickname, hashedPassword]);
-        return res.json({ user_id: result.insertId, nickname });
+        const token = createSession({ id: result.insertId, nickname });
+        return res.json({ user_id: result.insertId, nickname, token });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Database error" });
@@ -91,6 +178,7 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
     const { nickname, password } = req.body;
     if (!nickname || !password) return res.status(400).json({ error: "Nickname and password required" });
+    if (!validNickname(nickname)) return res.status(400).json({ error: "Invalid nickname format" });
 
     try {
         const [rows] = await db.query("SELECT id, nickname, password FROM users WHERE nickname = ?", [nickname]);
@@ -110,7 +198,8 @@ app.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        return res.json({ user_id: user.id, nickname: user.nickname });
+        const token = createSession({ id: user.id, nickname: user.nickname });
+        return res.json({ user_id: user.id, nickname: user.nickname, token });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Database error" });
@@ -118,48 +207,67 @@ app.post("/login", async (req, res) => {
 });
 
 // 3. 회원탈퇴
-app.post("/withdraw", async (req, res) => {
-    const { user_id, password } = req.body;
-    if (!user_id || !password) return res.status(400).json({ error: "Missing fields" });
+app.post("/withdraw", authUser, async (req, res) => {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: "Missing fields" });
+
+    const connection = await db.getConnection();
 
     try {
+        await connection.beginTransaction();
         // Verify password before deleting
-        const [rows] = await db.query("SELECT password FROM users WHERE id = ?", [user_id]);
-        if (rows.length === 0) return res.status(404).json({ error: "User not found" });
+        const [rows] = await connection.query("SELECT password FROM users WHERE id = ?", [req.user.id]);
+        if (rows.length === 0) {
+            await connection.rollback();
+            return res.status(404).json({ error: "User not found" });
+        }
 
         const match = await bcrypt.compare(password, rows[0].password);
-        if (!match) return res.status(401).json({ error: "Incorrect password" });
+        if (!match) {
+            await connection.rollback();
+            return res.status(401).json({ error: "Incorrect password" });
+        }
 
         // Delete user (Cascade should handle leaderboard, but let's be safe or assume cascade is set. 
         // If not, we might need to delete leaderboard entries first. 
         // For now, let's assume simple delete user is enough or we leave leaderboard data as 'Unknown')
         // Actually, let's delete leaderboard entries for privacy.
-        await db.query("DELETE FROM leaderboard WHERE user_id = ?", [user_id]);
-        await db.query("DELETE FROM users WHERE id = ?", [user_id]);
+        await connection.query("DELETE FROM leaderboard WHERE user_id = ?", [req.user.id]);
+        await connection.query("DELETE FROM users WHERE id = ?", [req.user.id]);
+        await connection.commit();
 
         res.json({ ok: true });
     } catch (err) {
+        await connection.rollback();
         console.error(err);
         res.status(500).json({ error: "Database error" });
+    } finally {
+        connection.release();
     }
 });
 
 // 2. 점수 제출
-app.post("/submit", async (req, res) => {
-    const { user_id, score, wpm, accuracy, difficulty, pack } = req.body;
+app.post("/submit", authUser, async (req, res) => {
+    const { score, wpm, accuracy, difficulty, pack } = req.body;
 
-    if (!user_id || score === undefined) {
+    const safeScore = boundedNumber(score, 0, 1000000);
+    const safeWpm = boundedNumber(wpm ?? 0, 0, 1000);
+    const safeAccuracy = boundedNumber(accuracy ?? 0, 0, 100);
+    const safeDifficulty = normalizeCategory(difficulty, DIFFICULTIES);
+    const safePack = normalizeCategory(pack, PACKS);
+
+    if (safeScore === null || safeWpm === null || safeAccuracy === null || !safeDifficulty || !safePack) {
         return res.status(400).json({ error: "Missing fields" });
     }
 
     try {
         await db.query(
             "INSERT INTO leaderboard (user_id, score, wpm, accuracy, difficulty, pack) VALUES (?, ?, ?, ?, ?, ?)",
-            [user_id, score, wpm, accuracy, difficulty, pack]
+            [req.user.id, safeScore, safeWpm, safeAccuracy, safeDifficulty, safePack]
         );
 
         // Return updated top 10 for this category
-        const top10 = await getLeaderboard(difficulty, pack);
+        const top10 = await getLeaderboard(safeDifficulty, safePack);
         res.json({ ok: true, top10 });
     } catch (err) {
         console.error(err);
@@ -169,7 +277,12 @@ app.post("/submit", async (req, res) => {
 
 // 3. 리더보드 조회
 app.get("/leaderboard", async (req, res) => {
-    const { difficulty, pack } = req.query;
+    const difficulty = normalizeCategory(req.query.difficulty, DIFFICULTIES);
+    const pack = normalizeCategory(req.query.pack, PACKS);
+    if (difficulty === false || pack === false) {
+        return res.status(400).json({ error: "Invalid leaderboard filter" });
+    }
+
     try {
         const top10 = await getLeaderboard(difficulty, pack);
         res.json({ top10 });

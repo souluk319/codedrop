@@ -25,6 +25,7 @@ vm.runInContext(
 
 const { WORD_PACKS, WORD_DESCS, SCENARIO_PACKS, MOCK_LABS, StudyCore, StudyStats } = context.__codedrop;
 const ids = new Set();
+const itemsById = new Map();
 
 function assert(condition, message) {
     if (!condition) throw new Error(message);
@@ -33,6 +34,7 @@ function assert(condition, message) {
 function validateItem(item, type) {
     assert(!ids.has(item.id), `duplicate id: ${item.id}`);
     ids.add(item.id);
+    itemsById.set(item.id, item);
 
     ['scenario', 'canonical', 'hint', 'explain'].forEach(field => {
         assert(Boolean(item[field]), `${item.id} missing ${field}`);
@@ -69,7 +71,8 @@ const examBlueprint = {
     RBAC: 2,
     SCC_SA: 2,
     RESOURCES: 2,
-    WORKLOADS: 2,
+    WORKLOADS: 1,
+    NETWORK_SECURITY: 1,
     DEPLOY: 1,
     TROUBLESHOOT: 1,
     MANIFESTS: 1,
@@ -87,6 +90,41 @@ Object.entries(examBlueprint).forEach(([key, count]) => {
 assert(WORD_PACKS.OC_CORE && WORD_PACKS.OC_CORE.length >= 40, 'OC_CORE pack is too small');
 assert(WORD_PACKS.MIX.includes('oc whoami'), 'OC_CORE words are not included in MIX');
 assert(WORD_DESCS['oc whoami'], 'OC_CORE descriptions are not registered');
+
+Object.entries(WORD_PACKS).forEach(([pack, words]) => {
+    assert(Array.isArray(words), `${pack} is not an array`);
+    words.forEach(word => assert(typeof word === 'string' && word.trim(), `${pack} has an empty word`));
+});
+['LINUX', 'OC_CORE'].forEach(pack => {
+    const unique = new Set(WORD_PACKS[pack]);
+    assert(unique.size === WORD_PACKS[pack].length, `${pack} has duplicate commands`);
+    WORD_PACKS[pack].forEach(word => assert(WORD_DESCS[word], `${pack} command missing description: ${word}`));
+});
+const flattenedMix = Object.entries(WORD_PACKS)
+    .filter(([pack]) => pack !== 'MIX')
+    .flatMap(([, words]) => words);
+assert(JSON.stringify(WORD_PACKS.MIX) === JSON.stringify(flattenedMix), 'MIX should exactly flatten source packs');
+
+[
+    ['auth-01', 'htpasswd -ccc /tmp/htpasswd admin redhat', false],
+    ['auth-01', 'htpasswd -cbB /tmp/htpasswd admin redhat', true],
+    ['auth-02', 'htpasswd -BB /tmp/htpasswd developer devpass', false],
+    ['auth-02', 'htpasswd -bB /tmp/htpasswd developer devpass', true],
+    ['res-06', 'oc set volume deployment/app --add --mount-path=/etc/secret --type=secret --secret-name=db-secret -n apps', true],
+    ['net-03', 'oc create service loadbalancer db --tcp=5432:5432 -n apps', true],
+    ['net-04', 'oc create route passthrough tls-api --service=api --port=8443 -n apps', true],
+    ['net-05', 'oc create route edge secure-web --service=web --cert=tls.crt --key=tls.key --ca-cert=ca.crt -n apps', true],
+    ['lab-02-02', 'htpasswd -bb /tmp/htpasswd auditor redhat', false],
+    ['lab-02-02', 'htpasswd -Bb /tmp/htpasswd auditor redhat', true],
+    ['lab-05-04', 'oc set volume deployment/app --add --mount-path=/etc/secret --secret-name=db-secret --type=secret -n apps', true],
+    ['lab-08-05', 'oc create route passthrough api-tls --port=8443 --service=api -n apps', true],
+    ['lab-08-06', 'oc create service loadbalancer db --tcp=5432:5432 -n apps', true],
+    ['lab-06-03', 'oc set resources deployment/front --limits=memory=256Mi --requests=cpu=100m -n project1', true]
+].forEach(([id, command, expected]) => {
+    const item = itemsById.get(id);
+    assert(item, `fixture missing item ${id}`);
+    assert(StudyCore.isCorrect(command, item) === expected, `matcher fixture failed for ${id}: ${command}`);
+});
 
 context.localStorage.store = {};
 context.localStorage.getItem = key => context.localStorage.store[key] || null;

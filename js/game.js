@@ -28,9 +28,11 @@ const state = {
     startTime: 0,
     totalCharsTyped: 0,
     correctCharsTyped: 0,
+    lastInputLength: 0,
     targetId: null, // ID of the word currently being targeted
     lastSpawnTime: 0,
     userId: null, // From API
+    userToken: null,
     nickname: ''
 };
 
@@ -198,17 +200,40 @@ const sfx = {
         this.playTone(100, 'square', 0.3, 0.1);
     }
 };
+window.sfx = sfx;
 
 // --- Game Logic ---
 
+function renderLeaderboardMessage(message, color = '#666') {
+    els.controls.leaderboard.innerHTML = '';
+    const empty = document.createElement('div');
+    empty.style.textAlign = 'center';
+    empty.style.color = color;
+    empty.textContent = message;
+    els.controls.leaderboard.appendChild(empty);
+}
+
+function leaderboardSelection() {
+    if (isOcpEditionActive()) {
+        const ocpDiff = document.getElementById('ocp-difficulty-select');
+        return {
+            diff: ((ocpDiff && ocpDiff.value) || 'NORMAL').toLowerCase(),
+            pack: 'oc_core'
+        };
+    }
+
+    return {
+        diff: els.controls.diffSelect.value.split(' ')[0].toLowerCase(),
+        pack: els.controls.packSelect.value.toLowerCase()
+    };
+}
 
 async function fetchLeaderboard() {
     // Only fetch if start screen is visible (optimization)
     if (els.screens.start.classList.contains('hidden')) return;
 
     try {
-        const diff = els.controls.diffSelect.value.split(' ')[0].toLowerCase(); // Handle "EASY [SAFE_MODE]"
-        const pack = els.controls.packSelect.value.toLowerCase();
+        const { diff, pack } = leaderboardSelection();
 
         const res = await fetch(`${API_BASE}/leaderboard?difficulty=${diff}&pack=${pack}`);
         const data = await res.json();
@@ -216,7 +241,7 @@ async function fetchLeaderboard() {
         renderLeaderboard(data.top10);
     } catch (e) {
         console.error(e);
-        els.controls.leaderboard.innerHTML = '<div style="text-align:center; color:var(--danger-color);">CONNECTION LOST</div>';
+        renderLeaderboardMessage('CONNECTION LOST', 'var(--danger-color)');
     }
 }
 
@@ -268,8 +293,9 @@ function gameLoop(timestamp) {
         return;
     }
 
-    // Update Words
-    state.activeWords.forEach((word, index) => {
+    // Update Words. Iterate backwards because handleDrop mutates activeWords.
+    for (let index = state.activeWords.length - 1; index >= 0; index--) {
+        const word = state.activeWords[index];
         word.y += word.speed;
         word.el.style.top = `${word.y}px`;
 
@@ -277,7 +303,7 @@ function gameLoop(timestamp) {
         if (word.y > playfieldHeight - 30) {
             handleDrop(index);
         }
-    });
+    }
 
     requestAnimationFrame(gameLoop);
 }
@@ -357,8 +383,19 @@ function spawnWord() {
 }
 
 function handleInput(e) {
+    if (!state.isPlaying || state.isPaused) return;
+
     const inputVal = e.target.value;
-    state.totalCharsTyped++;
+    const delta = Math.max(0, inputVal.length - state.lastInputLength);
+    state.totalCharsTyped += delta;
+    state.lastInputLength = inputVal.length;
+
+    if (inputVal.length === 0) {
+        state.targetId = null;
+        state.activeWords.forEach(w => w.el.classList.remove('target'));
+        updateTargetDisplay('');
+        return;
+    }
 
     // 1. Find Target if none
     if (!state.targetId) {
@@ -387,10 +424,15 @@ function handleInput(e) {
             state.targetId = null;
             state.activeWords.forEach(w => w.el.classList.remove('target'));
 
-            // If input is not empty, try to find new target immediately
-            if (inputVal.length > 0) {
-                handleInput(e); // Recursive check for new target
-                return;
+            const matches = state.activeWords.filter(w => w.text.startsWith(inputVal));
+            if (matches.length > 0) {
+                matches.sort((a, b) => b.y - a.y);
+                const nextTarget = matches[0];
+                state.targetId = nextTarget.id;
+                nextTarget.el.classList.add('target');
+                updateTargetDisplay(inputVal, nextTarget.text);
+            } else {
+                updateTargetDisplay(inputVal);
             }
         } else {
             // Still matching target
@@ -402,6 +444,8 @@ function handleInput(e) {
 }
 
 function handleKeydown(e) {
+    if (!state.isPlaying || state.isPaused) return;
+
     sfx.playKey(e.key);
 
     if (e.key === 'Enter') {
@@ -426,6 +470,7 @@ function handleKeydown(e) {
 
         // Clear input
         els.input.field.value = '';
+        state.lastInputLength = 0;
         updateTargetDisplay('');
         state.targetId = null;
         state.activeWords.forEach(w => w.el.classList.remove('target'));
@@ -512,6 +557,7 @@ function updateTargetDisplay(input, fullText = '') {
 
 function handleDrop(index) {
     const word = state.activeWords[index];
+    if (!state.isPlaying || !word) return;
 
     // Remove from DOM
     if (word.el.parentNode) word.el.parentNode.removeChild(word.el);
@@ -540,13 +586,25 @@ function handleDrop(index) {
 }
 
 async function gameOver(victory = false) {
+    if (!state.isPlaying && !els.screens.result.classList.contains('hidden')) return;
+
     state.isPlaying = false;
     state.isPaused = false;
+    state.targetId = null;
+    state.lastInputLength = 0;
+    els.input.field.value = '';
+    els.input.field.disabled = true;
+    updateTargetDisplay('');
+    state.activeWords.forEach(word => {
+        if (word.el && word.el.parentNode) word.el.parentNode.removeChild(word.el);
+    });
+    state.activeWords = [];
 
     // Calculate Stats
     const durationMin = (Date.now() - state.startTime) / 60000;
     const wpm = durationMin > 0 ? Math.round((state.correctCharsTyped / 5) / durationMin) : 0;
-    const accuracy = state.totalCharsTyped > 0 ? Math.round((state.correctCharsTyped / state.totalCharsTyped) * 100) : 0;
+    const rawAccuracy = state.totalCharsTyped > 0 ? Math.round((state.correctCharsTyped / state.totalCharsTyped) * 100) : 0;
+    const accuracy = Math.max(0, Math.min(100, rawAccuracy));
 
     // Update Result Screen
     els.result.title.textContent = victory ? "MISSION COMPLETE" : "SYSTEM FAILURE";
@@ -561,14 +619,16 @@ async function gameOver(victory = false) {
     els.screens.result.classList.remove('hidden');
 
     // Submit Score
-    if (state.userId) {
+    if (state.userToken) {
         els.result.status.textContent = "UPLOADING DATA...";
         try {
             const res = await fetch(`${API_BASE}/submit`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.userToken}`
+                },
                 body: JSON.stringify({
-                    user_id: state.userId,
                     score: state.score,
                     wpm: wpm,
                     accuracy: accuracy,
@@ -592,29 +652,58 @@ async function gameOver(victory = false) {
 }
 
 function renderLeaderboard(list) {
+    els.controls.leaderboard.innerHTML = '';
+
     if (!list || list.length === 0) {
-        els.controls.leaderboard.innerHTML = '<div style="text-align:center; color:#666;">NO DATA FOUND. BE THE FIRST.</div>';
+        renderLeaderboardMessage('NO DATA FOUND. BE THE FIRST.');
         return;
     }
 
-    let html = '<table>';
-    html += '<tr><th>RANK</th><th>AGENT</th><th style="text-align:right;">SCORE</th><th style="text-align:right;">WPM</th></tr>';
+    const table = document.createElement('table');
+    const headRow = document.createElement('tr');
+    ['RANK', 'AGENT', 'SCORE', 'WPM'].forEach((label, index) => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        if (index >= 2) th.style.textAlign = 'right';
+        headRow.appendChild(th);
+    });
+    table.appendChild(headRow);
 
     list.forEach((item, index) => {
         const rank = index + 1;
         const rankClass = rank <= 3 ? `rank-${rank}` : '';
-        const nameStyle = rank <= 3 ? 'color:var(--primary-neon); font-weight:bold; font-size: 1.1em;' : 'color:var(--primary-neon);';
 
-        html += `<tr>
-    <td class="${rankClass}" style="font-weight:bold;">#${rank}</td>
-    <td style="${nameStyle}">${item.nickname}</td>
-    <td style="text-align:right; font-family:var(--font-code); color:#fff;">${item.score}</td>
-    <td style="text-align:right; font-family:var(--font-code); color:#888;">${item.wpm}</td>
-</tr>`;
+        const row = document.createElement('tr');
+        const rankCell = document.createElement('td');
+        rankCell.textContent = `#${rank}`;
+        rankCell.style.fontWeight = 'bold';
+        if (rankClass) rankCell.className = rankClass;
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = String(item.nickname || 'unknown');
+        nameCell.style.color = 'var(--primary-neon)';
+        if (rank <= 3) {
+            nameCell.style.fontWeight = 'bold';
+            nameCell.style.fontSize = '1.1em';
+        }
+
+        const scoreCell = document.createElement('td');
+        scoreCell.textContent = String(Number(item.score) || 0);
+        scoreCell.style.textAlign = 'right';
+        scoreCell.style.fontFamily = 'var(--font-code)';
+        scoreCell.style.color = '#fff';
+
+        const wpmCell = document.createElement('td');
+        wpmCell.textContent = String(Number(item.wpm) || 0);
+        wpmCell.style.textAlign = 'right';
+        wpmCell.style.fontFamily = 'var(--font-code)';
+        wpmCell.style.color = '#888';
+
+        row.append(rankCell, nameCell, scoreCell, wpmCell);
+        table.appendChild(row);
     });
-    html += '</table>';
 
-    els.controls.leaderboard.innerHTML = html;
+    els.controls.leaderboard.appendChild(table);
 }
 
 
@@ -669,6 +758,7 @@ function initModeControls() {
     const ocpMenu = document.getElementById('ocp-menu');
     const editionCodeBtn = document.getElementById('edition-code-btn');
     const editionOcpBtn = document.getElementById('edition-ocp-btn');
+    const ocpDiffSelect = document.getElementById('ocp-difficulty-select');
     const ocpStartBtn = document.getElementById('ocp-start-btn');
     const dashboardBtn = document.getElementById('dashboard-btn');
     const modeGroups = {
@@ -720,6 +810,7 @@ function initModeControls() {
         if (editionCodeBtn) editionCodeBtn.classList.remove('active');
         if (editionOcpBtn) editionOcpBtn.classList.add('active');
         setMode('DROP');
+        fetchLeaderboard();
     }
 
     function closeOcpEdition() {
@@ -731,6 +822,7 @@ function initModeControls() {
         if (editionOcpBtn) editionOcpBtn.classList.remove('active');
         if (editionCodeBtn) editionCodeBtn.classList.add('active');
         setMode('DROP');
+        fetchLeaderboard();
     }
 
     modeButtons.forEach(btn => {
@@ -753,6 +845,16 @@ function initModeControls() {
         dashboardBtn.addEventListener('click', () => Dashboard.open());
     }
 
+    if (els.controls.diffSelect) {
+        els.controls.diffSelect.addEventListener('change', fetchLeaderboard);
+    }
+    if (els.controls.packSelect) {
+        els.controls.packSelect.addEventListener('change', fetchLeaderboard);
+    }
+    if (ocpDiffSelect) {
+        ocpDiffSelect.addEventListener('change', fetchLeaderboard);
+    }
+
     setMode(gameMode);
 }
 
@@ -771,8 +873,10 @@ function startGame() {
     els.screens.result.classList.add('hidden');
     els.gameArea.innerHTML = ''; // Clear words
     els.input.field.value = '';
+    state.lastInputLength = 0;
     els.input.field.disabled = false;
     els.input.field.focus();
+    updateTargetDisplay('');
     els.hud.btnPause.textContent = "PAUSE";
 
     // State Reset
@@ -824,6 +928,11 @@ function goHome() {
         els.screens.pause.classList.add('hidden');
         els.screens.result.classList.add('hidden');
         els.screens.start.classList.remove('hidden');
+        els.input.field.value = '';
+        els.input.field.disabled = true;
+        updateTargetDisplay('');
+        state.targetId = null;
+        state.lastInputLength = 0;
 
         // Clear game area
         els.gameArea.innerHTML = '';
@@ -841,6 +950,11 @@ function goHome() {
 function handleRestart() {
     els.screens.result.classList.add('hidden');
     els.screens.start.classList.remove('hidden');
+    els.input.field.value = '';
+    els.input.field.disabled = true;
+    updateTargetDisplay('');
+    state.targetId = null;
+    state.lastInputLength = 0;
     fetchLeaderboard();
     // sfx.playBGM();
 }
@@ -858,6 +972,24 @@ function handleMusicWidgetClick(e) {
     if (els.musicWidget.classList.contains('closed')) {
         els.musicWidget.classList.remove('closed');
         els.musicWidget.classList.add('open');
+    }
+}
+
+function handleReadmeWidgetClick() {
+    const readmeOverlay = document.getElementById('readme-overlay');
+    if (!readmeOverlay) return;
+    readmeOverlay.classList.remove('hidden');
+    sfx.playKey('Enter');
+}
+
+function handleReadmeCloseClick() {
+    const readmeOverlay = document.getElementById('readme-overlay');
+    if (readmeOverlay) readmeOverlay.classList.add('hidden');
+}
+
+function handleReadmeOverlayClick(e) {
+    if (e.target === e.currentTarget) {
+        e.currentTarget.classList.add('hidden');
     }
 }
 
@@ -893,20 +1025,12 @@ function initGameControls() {
 
     if (readmeWidget && readmeOverlay && readmeClose) {
         console.log("README Elements Found & Listeners Attached");
-        readmeWidget.addEventListener('click', () => {
-            readmeOverlay.classList.remove('hidden');
-            sfx.playKey('Enter'); // Sound feedback
-        });
-
-        readmeClose.addEventListener('click', () => {
-            readmeOverlay.classList.add('hidden');
-        });
-
-        readmeOverlay.addEventListener('click', (e) => {
-            if (e.target === readmeOverlay) {
-                readmeOverlay.classList.add('hidden');
-            }
-        });
+        readmeWidget.removeEventListener('click', handleReadmeWidgetClick);
+        readmeClose.removeEventListener('click', handleReadmeCloseClick);
+        readmeOverlay.removeEventListener('click', handleReadmeOverlayClick);
+        readmeWidget.addEventListener('click', handleReadmeWidgetClick);
+        readmeClose.addEventListener('click', handleReadmeCloseClick);
+        readmeOverlay.addEventListener('click', handleReadmeOverlayClick);
     }
 
     console.log("Game Controls Initialized");
@@ -966,6 +1090,7 @@ function initAuth() {
         try {
             const user = JSON.parse(storedUser);
             state.userId = user.id;
+            state.userToken = user.token || null;
             state.nickname = user.nickname;
             showLoggedInView();
         } catch (e) {
@@ -1040,7 +1165,7 @@ function tryLocalDevLogin(nickname, password) {
     const user = users[key];
 
     if (!user || user.password !== password) return false;
-    loginSuccess(user.id, user.nickname);
+    loginSuccess(user.id, user.nickname, null);
     return true;
 }
 
@@ -1057,7 +1182,7 @@ function createLocalDevUser(nickname, password) {
         password
     };
     saveLocalAuthUsers(users);
-    loginSuccess(users[key].id, nickname);
+    loginSuccess(users[key].id, nickname, null);
     return { ok: true };
 }
 
@@ -1070,6 +1195,8 @@ async function handleLogin() {
         return;
     }
 
+    if (isLocalDevAuthEnabled() && tryLocalDevLogin(nickname, password)) return;
+
     try {
         const res = await fetch(`${API_BASE}/login`, {
             method: 'POST',
@@ -1080,7 +1207,7 @@ async function handleLogin() {
 
         if (res.ok) {
             // Success
-            loginSuccess(data.user_id, data.nickname);
+            loginSuccess(data.user_id, data.nickname, data.token);
         } else if (res.status >= 500 && tryLocalDevLogin(nickname, password)) {
             return;
         } else {
@@ -1124,7 +1251,7 @@ async function handleRegister() {
 
         if (res.ok) {
             // Success -> Auto Login
-            loginSuccess(data.user_id, data.nickname);
+            loginSuccess(data.user_id, data.nickname, data.token);
         } else if (res.status >= 500 && createLocalDevUser(nickname, password).ok) {
             return;
         } else {
@@ -1139,15 +1266,17 @@ async function handleRegister() {
     }
 }
 
-function loginSuccess(id, nickname) {
+function loginSuccess(id, nickname, token = null) {
     state.userId = id;
+    state.userToken = token;
     state.nickname = nickname;
-    localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname }));
+    localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname, token }));
     showLoggedInView();
 }
 
 function handleLogout() {
     state.userId = null;
+    state.userToken = null;
     state.nickname = '';
     localStorage.removeItem('codedrop_user');
 
@@ -1170,8 +1299,11 @@ async function handleWithdraw() {
     try {
         const res = await fetch(`${API_BASE}/withdraw`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: state.userId, password })
+            headers: {
+                'Content-Type': 'application/json',
+                ...(state.userToken ? { 'Authorization': `Bearer ${state.userToken}` } : {})
+            },
+            body: JSON.stringify({ password })
         });
 
         if (res.ok) {

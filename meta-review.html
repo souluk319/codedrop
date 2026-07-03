@@ -33,11 +33,7 @@
     <p>The owner can already authenticate with Threads OAuth and read the owner account with <code>threads_basic</code>. The missing capability is retrieving public posts from selected public profiles that are not the authenticated owner account. The official Threads API endpoint <code>GET /profile_posts?username=...</code> requires <code>threads_profile_discovery</code>.</p>
 
     <h2>Current Watchlist</h2>
-    <ul>
-      <li><code>choi.openai</code></li>
-      <li><code>unclejobs.ai</code></li>
-      <li><code>real_black_cow</code></li>
-    </ul>
+    <p>The private workflow uses an owner-selected list of public Threads profiles. The exact operational list is not exposed on this public review page.</p>
 
     <h2>How Reviewers Can Test</h2>
     <ol>
@@ -48,10 +44,10 @@
     </ol>
 
     <h2>Demo Commands Shown In Recording</h2>
-    <pre><code>/Users/kugnus/Agent/Hermes/scripts/threads-api.sh me
-/Users/kugnus/Agent/Hermes/scripts/threads-api.sh own-posts
-/Users/kugnus/Agent/Hermes/scripts/threads-api.sh profile-posts choi.openai
-/Users/kugnus/Agent/Hermes/scripts/threads-watch-automation.sh report</code></pre>
+    <pre><code>threads-api.sh me
+threads-api.sh own-posts
+threads-api.sh profile-posts &lt;public-username&gt;
+threads-watch-automation.sh report</code></pre>
 
     <h2>Actions Not Performed</h2>
     <p>The Threads integration does not publish, delete, like, reply, repost, message, share, sell, or publicly redistribute Threads data. It only summarizes selected public posts into private owner notes and notifications.</p>

@@ -93,7 +93,7 @@ const MOCK_LABS = [
             {
                 id: "lab-02-02",
                 scenario: "/tmp/htpasswd에 사용자 auditor, 비밀번호 redhat을 bcrypt 배치 모드로 추가하세요.",
-                answers: ["htpasswd (?:-B -b|-b -B|-[bB]{2}) /tmp/htpasswd auditor redhat"],
+                answers: ["htpasswd (?:-B -b|-b -B|-Bb|-bB) /tmp/htpasswd auditor redhat"],
                 canonical: "htpasswd -B -b /tmp/htpasswd auditor redhat",
                 hint: "기존 파일 수정이므로 -c는 쓰지 않습니다.",
                 explain: "-c는 새 파일 생성이라 기존 사용자를 날릴 수 있습니다."
@@ -280,7 +280,9 @@ const MOCK_LABS = [
                 scenario: "app 디플로이먼트에 db-secret을 /etc/secret 경로로 마운트하세요.",
                 answers: [
                     "oc set volumes? (?:deployment|deploy)(?:/| )app --add (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) --mount-path[ =]/etc/secret (?:-n|--namespace)[ =]apps",
-                    "oc set volumes? (?:deployment|deploy)(?:/| )app (?:-n|--namespace)[ =]apps --add (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) --mount-path[ =]/etc/secret"
+                    "oc set volumes? (?:deployment|deploy)(?:/| )app (?:-n|--namespace)[ =]apps --add (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) --mount-path[ =]/etc/secret",
+                    "oc set volumes? (?:deployment|deploy)(?:/| )app --add --mount-path[ =]/etc/secret (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret) (?:-n|--namespace)[ =]apps",
+                    "oc set volumes? (?:deployment|deploy)(?:/| )app (?:-n|--namespace)[ =]apps --add --mount-path[ =]/etc/secret (?:--type[ =]secret --secret-name[ =]db-secret|--secret-name[ =]db-secret --type[ =]secret)"
                 ],
                 canonical: "oc set volume deployment/app --add --type secret --secret-name db-secret --mount-path /etc/secret -n apps",
                 hint: "oc set volume deployment/<name> --add --type secret --secret-name <secret>",
@@ -320,7 +322,9 @@ const MOCK_LABS = [
                 scenario: "front 디플로이먼트에 CPU request 100m, memory limit 256Mi를 설정하세요.",
                 answers: [
                     "oc set resources (?:deployment|deploy)(?:/| )front --requests[ =]cpu=100m --limits[ =]memory=256Mi (?:-n|--namespace)[ =]project1",
-                    "oc set resources (?:deployment|deploy)(?:/| )front (?:-n|--namespace)[ =]project1 --requests[ =]cpu=100m --limits[ =]memory=256Mi"
+                    "oc set resources (?:deployment|deploy)(?:/| )front (?:-n|--namespace)[ =]project1 --requests[ =]cpu=100m --limits[ =]memory=256Mi",
+                    "oc set resources (?:deployment|deploy)(?:/| )front --limits[ =]memory=256Mi --requests[ =]cpu=100m (?:-n|--namespace)[ =]project1",
+                    "oc set resources (?:deployment|deploy)(?:/| )front (?:-n|--namespace)[ =]project1 --limits[ =]memory=256Mi --requests[ =]cpu=100m"
                 ],
                 canonical: "oc set resources deployment/front --requests=cpu=100m --limits=memory=256Mi -n project1",
                 hint: "oc set resources deployment/<name> --requests=... --limits=...",
@@ -435,6 +439,30 @@ const MOCK_LABS = [
                 canonical: "oc get routes -n apps",
                 hint: "oc get route -n <ns>",
                 explain: "생성한 Route 이름과 HOST/PORT를 최종 확인합니다."
+            },
+            {
+                id: "lab-08-05",
+                scenario: "apps의 api 서비스 8443 포트를 passthrough TLS Route api-tls로 노출하세요.",
+                answers: [
+                    "oc create route passthrough api-tls --service[ =]api --port[ =]8443 (?:-n|--namespace)[ =]apps",
+                    "oc create route passthrough api-tls --port[ =]8443 --service[ =]api (?:-n|--namespace)[ =]apps",
+                    "oc create route passthrough api-tls (?:-n|--namespace)[ =]apps --service[ =]api --port[ =]8443"
+                ],
+                canonical: "oc create route passthrough api-tls --service api --port 8443 -n apps",
+                hint: "oc create route passthrough <route> --service <svc> --port <port>",
+                explain: "passthrough는 TLS를 백엔드까지 넘깁니다. SNI 기반 non-HTTP/TLS 접근 문제에서 자주 쓰는 루틴입니다."
+            },
+            {
+                id: "lab-08-06",
+                scenario: "apps 네임스페이스에 db LoadBalancer 서비스를 만들고 5432:5432 TCP 포트를 노출하세요.",
+                answers: [
+                    "oc create service loadbalancer db --tcp[ =]5432:5432 (?:-n|--namespace)[ =]apps",
+                    "oc create service loadbalancer db (?:-n|--namespace)[ =]apps --tcp[ =]5432:5432",
+                    "oc (?:-n|--namespace)[ =]apps create service loadbalancer db --tcp[ =]5432:5432"
+                ],
+                canonical: "oc create service loadbalancer db --tcp=5432:5432 -n apps",
+                hint: "oc create service loadbalancer <name> --tcp=<port>:<targetPort>",
+                explain: "HTTP Route로 처리하지 않는 TCP 앱은 LoadBalancer Service로 노출합니다. 생성 후 EXTERNAL-IP/HOSTNAME을 확인합니다."
             }
         ]
     },

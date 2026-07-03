@@ -15,8 +15,9 @@ const ScenarioMode = (() => {
 
     // 시험 출제 청사진 (우선순위 가중, LINUX_BASIC 제외) — 합계 15
     const EXAM_BLUEPRINT = {
-        AUTH: 2, RBAC: 2, SCC_SA: 2, RESOURCES: 2, WORKLOADS: 2,
-        DEPLOY: 1, TROUBLESHOOT: 1, MANIFESTS: 1, OPERATORS: 1, JOBS: 1
+        AUTH: 2, RBAC: 2, SCC_SA: 2, RESOURCES: 2,
+        WORKLOADS: 1, NETWORK_SECURITY: 1, DEPLOY: 1, TROUBLESHOOT: 1,
+        MANIFESTS: 1, OPERATORS: 1, JOBS: 1
     };
     const EXAM_TIME_PER_Q = 90;   // 초
     const EXAM_PASS_RATE = 0.7;

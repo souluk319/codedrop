@@ -28,6 +28,10 @@
             user-select: none;
         }
 
+        html {
+            overflow: hidden;
+        }
+
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -41,9 +45,9 @@
 
         /* --- Background Effects --- */
         .bg-grid {
-            position: absolute;
-            top: 0;
-            left: 0;
+            position: fixed;
+            top: -50%;
+            left: -50%;
             width: 200%;
             height: 200%;
             background-image:
@@ -301,7 +305,6 @@
             border: 1px solid var(--primary-neon);
             box-shadow: 0 0 10px var(--primary-neon), inset 0 0 10px rgba(0, 243, 255, 0.2);
             text-shadow: 0 0 5px var(--primary-neon);
-            white-space: nowrap;
             transition: all 0.1s;
         }
 
@@ -375,7 +378,8 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            white-space: nowrap;
+            flex-wrap: wrap;
+            min-width: 0;
         }
 
         .scenario-badge {
@@ -495,6 +499,7 @@
         .scenario-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .scenario-summary-title {
@@ -643,6 +648,11 @@
             scrollbar-gutter: stable;
             /* Force scrollbar to prevent layout shift */
             padding: 40px 0;
+        }
+
+        #start-screen {
+            justify-content: flex-start;
+            gap: 24px;
         }
 
         /* Electric Background Effect */
@@ -1086,15 +1096,17 @@
                 padding: 30px;
                 border-radius: 16px;
                 text-align: center;
-                width: 400px;
-                height: 550px;
+                width: min(400px, 92vw);
+                height: auto;
+                min-height: 0;
+                max-height: calc(100dvh - 160px);
                 box-shadow: 0 0 30px rgba(0, 243, 255, 0.1), inset 0 0 20px rgba(0, 0, 0, 0.5);
                 position: relative;
-                overflow: hidden;
+                overflow-y: auto;
                 margin: 0;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
+                justify-content: flex-start;
             }
 
             .btn {
@@ -1447,6 +1459,9 @@
             justify-content: center;
             position: relative;
             line-height: 1;
+            font-size: clamp(2.35rem, 8vw, 5rem);
+            margin-bottom: 24px;
+            text-shadow: 0 0 20px var(--primary-neon);
         }
 
         .logo-c {
@@ -1577,6 +1592,8 @@
             grid-template-columns: 1fr 1fr;
             gap: 0;
             width: 100%;
+            flex: 0 0 auto;
+            min-height: 42px;
             border: 1px solid var(--glass-border);
             border-radius: 6px;
             overflow: hidden;
@@ -1639,7 +1656,7 @@
         }
 
         body.ocp-edition #start-screen {
-            padding: 40px 0;
+            padding: 46px 0 32px;
             scrollbar-gutter: stable;
         }
 
@@ -1648,22 +1665,26 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            gap: 40px;
+            max-width: 1240px;
+            gap: 28px;
         }
 
         body.ocp-edition #start-screen .card {
-            width: 700px;
-            height: 700px;
-            min-height: 700px;
+            width: 780px;
+            height: 680px;
+            min-height: 680px;
             max-width: 92vw;
-            padding: 30px 42px;
+            max-height: calc(100dvh - 120px);
+            overflow: hidden;
+            padding: 32px 46px;
         }
 
         body.ocp-edition #logged-in-view {
             height: 100%;
+            min-height: 0;
             justify-content: flex-start;
             gap: 12px;
-            padding: 0 18px;
+            padding: 0 10px;
         }
 
         body.ocp-edition #logged-in-view .welcome-msg {
@@ -1675,19 +1696,22 @@
         }
 
         body.ocp-edition .ocp-menu {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            gap: 12px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.24fr) minmax(250px, 0.9fr);
+            grid-template-rows: auto minmax(0, 1fr) auto auto;
+            gap: 14px 18px;
+            flex: 1 1 auto;
             padding: 4px 0 0;
             border: 0;
             border-radius: 0;
             background: transparent;
             box-shadow: none;
-            min-height: auto;
+            min-height: 0;
+            align-content: stretch;
         }
 
         body.ocp-edition .ocp-header {
+            grid-column: 1 / -1;
             margin-bottom: 0;
             padding-bottom: 10px;
             border-bottom: 1px solid rgba(255, 48, 69, 0.28);
@@ -1698,13 +1722,20 @@
         }
 
         body.ocp-edition .mode-grid {
+            grid-column: 1;
+            grid-row: 2 / 5;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(118px, 1fr);
             gap: 12px;
+            min-height: 0;
         }
 
         body.ocp-edition .mode-choice {
-            min-height: 84px;
-            padding: 12px 14px;
+            min-height: 118px;
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         body.ocp-edition .mode-choice strong {
@@ -1721,7 +1752,10 @@
         body.ocp-edition #scenario-select-group,
         body.ocp-edition #lab-select-group,
         body.ocp-edition #exam-info-group {
-            margin-bottom: 4px;
+            grid-column: 2;
+            grid-row: 2;
+            align-self: start;
+            margin: 0;
             gap: 6px;
         }
 
@@ -1736,6 +1770,9 @@
         }
 
         body.ocp-edition #ocp-start-btn {
+            grid-column: 2;
+            grid-row: 3;
+            align-self: end;
             margin: 0;
             padding: 14px;
             font-size: 1.12rem;
@@ -1744,44 +1781,92 @@
         }
 
         body.ocp-edition #dashboard-btn {
+            grid-column: 2;
+            grid-row: 4;
             margin: 0;
         }
 
         body.ocp-edition #leaderboard-preview {
             position: static;
-            width: 400px;
-            max-width: 400px;
-            height: 700px;
+            width: 360px;
+            max-width: min(360px, 28vw);
+            height: 560px;
+            max-height: calc(100dvh - 120px);
             transform: none;
             opacity: 1;
             overflow-y: auto;
+            align-self: center;
         }
 
         body.ocp-edition #logged-in-view>div:last-child {
             margin-top: 2px !important;
         }
 
-        @media (max-width: 980px) {
+        @media (max-width: 980px), (max-height: 780px) {
+            #leaderboard-preview,
             body.ocp-edition #leaderboard-preview {
                 display: none;
+            }
+
+            .start-layout {
+                gap: 20px;
+            }
+        }
+
+        @media (max-height: 780px) {
+            #start-screen {
+                padding: 32px 0 18px;
+            }
+
+            .brand-title {
+                font-size: clamp(2.35rem, 7vh, 4.5rem);
+                margin-bottom: 12px;
+            }
+
+            #start-screen .card,
+            body.ocp-edition #start-screen .card {
+                height: auto;
+                min-height: 0;
+                max-height: calc(100dvh - 150px);
+                overflow-y: auto;
+            }
+
+            body.ocp-edition .ocp-menu {
+                display: flex;
+                flex-direction: column;
+            }
+
+            body.ocp-edition .mode-grid {
+                flex: 0 0 auto;
+                grid-column: auto;
+                grid-row: auto;
+                grid-auto-rows: minmax(70px, auto);
+                min-height: 152px;
+            }
+
+            body.ocp-edition .mode-choice {
+                min-height: 70px;
             }
         }
 
         @media (max-width: 700px) {
             body.ocp-edition #start-screen {
                 overflow-y: auto;
-                padding: 24px 0;
+                padding: 18px 0;
             }
 
             body.ocp-edition #start-screen .card {
-                height: 620px;
-                min-height: 620px;
-                padding: 28px 32px;
+                height: auto;
+                min-height: 0;
+                max-height: calc(100dvh - 130px);
+                padding: 24px;
             }
 
             body.ocp-edition .ocp-menu {
                 gap: 8px;
                 padding: 12px;
+                display: flex;
+                flex-direction: column;
             }
 
             body.ocp-edition .mode-grid {
@@ -1994,6 +2079,8 @@
             max-width: 92vw;
             height: auto;
             min-height: 560px;
+            max-height: calc(100dvh - 80px);
+            overflow-y: auto;
             justify-content: flex-start;
             text-align: left;
             gap: 18px;
@@ -2060,10 +2147,50 @@
         }
 
         @media (max-width: 720px) {
+            .overlay {
+                justify-content: flex-start;
+                padding: 24px 0;
+            }
+
+            .brand-title {
+                font-size: clamp(2.2rem, 12.5vw, 4rem);
+            }
+
+            #start-screen .card {
+                width: min(520px, 92vw);
+                height: auto;
+                min-height: 0;
+                max-height: calc(100dvh - 130px);
+                overflow-y: auto;
+            }
+
+            .card.scenario-card,
+            .dashboard-card {
+                width: min(640px, 92vw);
+                min-height: 0;
+                max-height: calc(100dvh - 64px);
+                overflow-y: auto;
+            }
+
+            .scenario-top {
+                white-space: normal;
+                align-items: flex-start;
+            }
+
+            #scenario-score,
+            #lab-score {
+                margin-left: 0;
+            }
+
             .mode-grid,
             .dashboard-summary,
             .dashboard-body {
                 grid-template-columns: 1fr;
+            }
+
+            body.ocp-edition .mode-grid {
+                grid-auto-rows: minmax(62px, auto);
+                min-height: 280px;
             }
 
             .exam-cat-row,
@@ -2145,7 +2272,7 @@
     <!-- Start Screen -->
     <!-- Start Screen -->
     <div id="start-screen" class="overlay">
-        <h1 class="brand-title" style="margin-bottom: 40px; font-size: 5rem; text-shadow: 0 0 20px var(--primary-neon);">
+        <h1 class="brand-title">
             <span class="logo-c">C<span class="ocp-hat" aria-hidden="true"><img src="assets/red-hat-logo.svg" alt=""></span></span>ODEDROP
         </h1>
 
