@@ -158,14 +158,15 @@ const PackMaker = (() => {
         return stateRef.draft;
     }
 
-    function renderDraft() {
+    function renderDraft(options = {}) {
         if (!ui.title || !ui.itemBody) return;
+        const updateStatus = options.updateStatus !== false;
         ui.title.value = stateRef.draft.title || '';
         ui.description.value = stateRef.draft.description || '';
         clearNode(ui.itemBody);
 
         stateRef.draft.items.forEach((item, index) => addItemRow(item, index));
-        renderStatus(`${stateRef.draft.items.length}/120 ITEMS`);
+        if (updateStatus) renderStatus(`${stateRef.draft.items.length}/120 ITEMS`);
         persistDraft();
     }
 
@@ -313,14 +314,14 @@ const PackMaker = (() => {
 
     function open() {
         if (!ui.screen) return;
-        if (!state.userToken) {
-            renderStatus('REMOTE LOGIN REQUIRED', true);
-        }
         els.screens.start.classList.add('hidden');
         ui.screen.classList.remove('hidden');
         syncOverlayChrome();
         refreshPacks();
-        renderDraft();
+        renderDraft({ updateStatus: Boolean(state.userToken) });
+        if (!state.userToken) {
+            renderStatus('REMOTE LOGIN REQUIRED', true);
+        }
         ui.input.focus();
     }
 

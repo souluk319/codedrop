@@ -21,8 +21,9 @@
             --font-display: 'Orbitron', sans-serif;
             --corner-widget-size: 60px;
             --corner-widget-offset: 24px;
-            --music-island-width: min(380px, calc(100vw - 120px));
-            --music-island-expanded-width: min(640px, max(var(--music-island-width), calc(50vw - 264px)));
+            --music-island-safe-width: calc(100vw - (var(--corner-widget-offset) * 2) - 12px);
+            --music-island-width: min(380px, var(--music-island-safe-width));
+            --music-island-expanded-width: min(640px, var(--music-island-safe-width));
             --command-input-lift: -10px;
         }
 
@@ -1086,6 +1087,7 @@
         #music-widget[data-player-ui="island"].island-open {
             width: var(--music-island-width);
             height: var(--corner-widget-size);
+            z-index: 132;
             border-radius: 999px;
             background:
                 linear-gradient(90deg, rgba(0, 243, 255, 0.14), rgba(5, 5, 10, 0.98) 32%, rgba(5, 5, 10, 0.94));
@@ -1124,7 +1126,8 @@
         }
 
         #music-widget[data-player-ui="island"].island-open.track-open .widget-content {
-            padding-left: 12px;
+            gap: 8px;
+            padding: 0 10px 0 12px;
         }
 
         #music-widget[data-player-ui="island"].island-open .player-header {
@@ -1171,7 +1174,7 @@
 
         .music-island-copy {
             min-width: 0;
-            flex: 1;
+            flex: 1 1 110px;
             display: flex;
             flex-direction: column;
             gap: 4px;
@@ -1207,6 +1210,7 @@
 
         #music-widget.track-open .music-now-info {
             display: grid;
+            flex: 0 1 230px;
             gap: 4px;
         }
 
@@ -1237,13 +1241,14 @@
 
         #music-widget.track-open .music-track-toggle {
             display: inline-flex;
+            flex: 0 0 auto;
         }
 
         .music-track-popover {
             position: absolute;
-            right: 18px;
+            right: 0;
             bottom: calc(100% + 12px);
-            width: min(330px, calc(100vw - 40px));
+            width: min(330px, var(--music-island-safe-width));
             padding: 12px;
             border: 1px solid rgba(0, 243, 255, 0.58);
             border-radius: 10px;
@@ -1357,6 +1362,7 @@
 
         .music-control-btn {
             min-width: 58px;
+            flex: 0 0 auto;
             padding: 0 10px;
             border-radius: 999px;
             display: inline-flex;
@@ -1424,6 +1430,7 @@
         #music-widget.open.legacy-open {
             width: 350px;
             height: 350px;
+            z-index: 132;
             border-radius: 12px;
             background: rgba(5, 5, 10, 0.95);
             border: 1px solid var(--primary-neon);
@@ -1765,8 +1772,9 @@
             :root {
                 --corner-widget-size: 56px;
                 --corner-widget-offset: 16px;
-                --music-island-width: calc(100vw - 36px);
-                --music-island-expanded-width: calc(100vw - 36px);
+                --music-island-safe-width: calc(100vw - (var(--corner-widget-offset) * 2) - 12px);
+                --music-island-width: var(--music-island-safe-width);
+                --music-island-expanded-width: var(--music-island-safe-width);
                 --command-input-lift: -6px;
             }
 
@@ -1811,6 +1819,10 @@
             #input-field {
                 font-size: 1.5rem;
                 height: 50px;
+            }
+
+            #music-widget[data-player-ui="island"].island-open {
+                bottom: calc(var(--corner-widget-offset) + var(--corner-widget-size) + 12px);
             }
 
             body.game-active #music-widget[data-player-ui="island"].island-open {
