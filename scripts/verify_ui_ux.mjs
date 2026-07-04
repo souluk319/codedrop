@@ -267,11 +267,14 @@ assert(learn.includes("ui.hintBtn.classList.toggle('hidden', review || !hasStepH
 assert(learn.includes('session.stepHintOpen = !') || learn.includes('if (session.stepHintOpen)'), 'learn step hints should be closable after opening');
 assert(learn.includes('session.quizHintOpen = !') || learn.includes('if (session.quizHintOpen)'), 'learn quiz hints should be closable after opening');
 assert(learn.includes("ui.peekBtn.textContent = session.peeked ? '정답 닫기' : '정답 보기';"), 'learn answer peek should toggle open and closed');
-assert(index.includes('ASK TO KUGNUS AI'), 'learn chat should title the assistant as KUGNUS AI');
+assert(index.includes('ASK TO GPT 5.4 MINI'), 'learn chat should default the assistant title to GPT 5.4 MINI during testing');
 assert(index.includes('data-engine="kugnus"') && index.includes('KUGNUS SERVER'), 'learn chat should expose KUGNUS SERVER as the local engine choice');
 assert(index.includes('data-engine="openai"') && index.includes('GPT 5.4 MINI'), 'learn chat should expose GPT 5.4 MINI as an engine choice');
+assert(index.includes('<option value="openai" selected>GPT 5.4 MINI</option>'), 'learn chat hidden select should default to GPT 5.4 MINI');
 assert(learn.includes("fetch('/api/learn-chat/stream'"), 'learn chat should call the streaming server-side LLM proxy');
 assert(learn.includes("engine: ui.chatEngine.value"), 'learn chat should send the selected LLM engine');
+assert(learn.includes("const TEST_CHAT_ENGINE = TEST_ENGINE_LOCK_HOSTS.has(TEST_CHAT_HOSTNAME) ? 'openai' : null;"), 'localhost learn chat testing should be locked to GPT 5.4 MINI');
+assert(learn.includes("localStorage.setItem(CHAT_ENGINE_STORAGE_KEY, TEST_CHAT_ENGINE);"), 'localhost engine lock should overwrite stale KUGNUS localStorage');
 assert(learn.includes('function syncChatEngineUi()'), 'custom learn chat engine picker should sync with the hidden select value');
 assert(learn.includes('function toggleChatEngineMenu()'), 'custom learn chat engine picker should use a themed popover');
 assert(index.includes('.learn-engine-menu'), 'learn chat engine popover should be themeable instead of native browser blue');
@@ -296,6 +299,7 @@ assert(server.includes('process.env.LLM_MODEL'), 'learn chat proxy should read L
 assert(server.includes('OPENAI_API_KEY'), 'learn chat proxy should read OPENAI_API_KEY for GPT 5.4 mini fallback');
 assert(server.includes('OPENAI_MODEL'), 'learn chat proxy should allow OPENAI_MODEL override');
 assert(server.includes('normalizeOpenAiMiniModel'), 'OpenAI model ids should be normalized before use');
+assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "openai"'), 'server chat engine default should prefer GPT 5.4 MINI during testing');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'learn chat must refuse non-mini OpenAI models');
 assert(server.includes('DUCKDUCKGO_API_KEY'), 'future web search should support DUCKDUCKGO_API_KEY');
 assert(server.includes('DDG_API_KEY'), 'future web search should support DDG_API_KEY');

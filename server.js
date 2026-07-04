@@ -269,7 +269,7 @@ function sanitizeChatHistory(history) {
 }
 
 function normalizeChatEngine(value) {
-    const engine = String(value || "kugnus").toLowerCase().replace(/[\s_]+/g, "-");
+    const engine = String(value || process.env.DEFAULT_CHAT_ENGINE || "openai").toLowerCase().replace(/[\s_]+/g, "-");
     if (engine === "openai" || engine === "gpt-5-4-mini" || engine === "gpt54-mini") return "openai";
     if (engine === "kugnus" || engine === "kugnus-ai" || engine === "local") return "kugnus";
     return CHAT_ENGINES.has(engine) ? engine : null;
