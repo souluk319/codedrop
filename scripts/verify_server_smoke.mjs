@@ -88,6 +88,30 @@ try {
     });
     assert(unauthSubmit.status === 401, '/submit should require a bearer token');
 
+    const unauthPackChat = await request('/api/pack-maker/chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'linux network terms', engine: 'kugnus' })
+    });
+    assert(unauthPackChat.status === 401, '/api/pack-maker/chat/stream should require a bearer token');
+
+    const unauthPackSave = await request('/api/packs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Linux Net', items: [] })
+    });
+    assert(unauthPackSave.status === 401, '/api/packs should require a bearer token');
+
+    const unauthPackList = await request('/api/packs?scope=mine');
+    assert(unauthPackList.status === 401, '/api/packs list should require a bearer token');
+
+    const unauthPackScore = await request('/api/packs/1/submit-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ score: 100, difficulty: 'normal' })
+    });
+    assert(unauthPackScore.status === 401, '/api/packs/:id/submit-score should require a bearer token');
+
     const emptyLearnChat = await request('/api/learn-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,7 +151,8 @@ try {
         protectedPaths: denied.length,
         authSmoke: 'ok',
         learnChatSmoke: 'ok',
-        learnChatStreamSmoke: 'ok'
+        learnChatStreamSmoke: 'ok',
+        packMakerSmoke: 'ok'
     }, null, 2));
 } catch (err) {
     err.message = `${err.message}\nServer output:\n${output}`;

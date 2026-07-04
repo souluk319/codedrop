@@ -72,7 +72,8 @@ const expectedOrder = [
     'js/scenario_mode.js',
     'js/lab_mode.js',
     'js/learn_mode.js',
-    'js/dashboard.js'
+    'js/dashboard.js',
+    'js/pack_maker.js'
 ];
 
 let lastIndex = -1;
@@ -166,6 +167,23 @@ expectedOrder.forEach(src => {
     'mode-learn',
     'learn-info-group',
     'exam-gate-note'
+    ,
+    'pack-maker-btn',
+    'pack-maker-screen',
+    'pack-maker-close',
+    'pack-maker-status',
+    'pack-maker-engine',
+    'pack-maker-chat-log',
+    'pack-maker-chat-form',
+    'pack-maker-input',
+    'pack-maker-send',
+    'pack-maker-title',
+    'pack-maker-description',
+    'pack-maker-item-table',
+    'pack-maker-items-body',
+    'pack-maker-add-item',
+    'pack-maker-save',
+    'pack-maker-submit'
 ].forEach(id => assert(hasId(id), `missing DOM id: ${id}`));
 
 assert(game.includes('LearnMode.openPicker()'), 'LEARN mode route is missing');
@@ -264,7 +282,7 @@ assert(server.includes('writeNdjson(res, "meta"'), 'streaming learn chat should 
 assert(server.includes('writeNdjson(res, "delta"'), 'streaming learn chat should emit delta events');
 assert(server.includes('writeNdjson(res, "done"'), 'streaming learn chat should emit done events');
 assert(server.includes('writeNdjson(res, "error"'), 'streaming learn chat should emit error events');
-assert(server.includes('llmPayload(target, messages, true)'), 'LLM stream requests must set stream:true');
+assert(server.includes('llmPayload(target, messages, true'), 'LLM stream requests must set stream:true');
 assert(learn.includes('new AbortController()'), 'learn chat should use AbortController for STOP');
 assert(learn.includes("ui.chatSend.textContent = busy ? 'STOP' : 'ASK'"), 'ASK button should turn into STOP while streaming');
 assert(index.includes('learn-chat-bottom'), 'learn chat should include a scroll-to-latest button');
@@ -358,6 +376,19 @@ assert(game.includes("const MUSIC_UI_STORAGE_KEY = 'codedrop_music_ui'"), 'music
 assert(!game.includes("playToggle.textContent = musicPlaying ? 'PAUSE' : 'PLAY'"), 'music play icon should not be replaced with text');
 assert(game.includes('function openMusicWidget'), 'music widget should open through a mode-aware helper');
 assert(game.includes("els.musicWidget.classList.add('island-open')"), 'music widget default UI should open as a dynamic island');
+
+assert(server.includes('app.post("/api/pack-maker/chat/stream", authUser'), 'pack maker stream endpoint should require auth');
+assert(server.includes('app.post("/api/packs", authUser'), 'custom pack save endpoint should require auth');
+assert(server.includes('app.get("/api/packs?') === false, 'custom pack list should not be hardcoded as a static route');
+assert(server.includes('PACK_ADMIN_NICKNAMES'), 'pack review should be guarded by admin nicknames');
+assert(server.includes('custom_pack_scores'), 'custom pack scores should be stored separately from official leaderboard');
+assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
+assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
+assert(index.includes('<option value="openai" selected>GPT 5.4 MINI</option>'), 'pack maker should default to GPT 5.4 MINI while home server is unavailable');
+const packMaker = read('js/pack_maker.js');
+assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client should call the stream endpoint');
+assert(packMaker.includes('SAVE MY PACK') || index.includes('SAVE MY PACK'), 'pack maker save action should be visible');
+assert(!packMaker.includes('innerHTML'), 'pack maker client should avoid raw innerHTML rendering');
 assert(game.includes("els.musicWidget.classList.add('open', 'legacy-open')"), 'music widget SoundCloud icon should open the legacy square player');
 assert(game.includes('function toggleMusicDetails'), 'music island should expand/collapse track details from the left toggle');
 assert(game.includes('function toggleMusicTrackList'), 'music island should show/hide the playlist popover');

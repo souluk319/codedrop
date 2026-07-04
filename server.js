@@ -91,6 +91,21 @@ const MAX_CHAT_MESSAGE_LEN = 1200;
 const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
 const CHAT_ENGINES = new Set(["kugnus", "openai"]);
+const PACK_STATUSES = new Set(["draft", "pending", "approved", "rejected"]);
+const MAX_PACK_TITLE_LEN = 60;
+const MAX_PACK_DESC_LEN = 240;
+const MIN_PACK_ITEMS = 10;
+const MAX_PACK_ITEMS = 120;
+const MAX_PACK_TERM_LEN = 80;
+const MAX_PACK_ITEM_DESC_LEN = 180;
+const MAX_PACK_SOURCES = 3;
+const PACK_ADMIN_NICKNAMES = new Set(
+    (process.env.PACK_ADMIN_NICKNAMES || "")
+        .split(",")
+        .map(name => name.trim().toLowerCase())
+        .filter(Boolean)
+);
+let customPackTablesReady = null;
 
 function envFirst(names) {
     for (const name of names) {
@@ -143,6 +158,17 @@ const LEARN_CHAT_SYSTEM_PROMPT = [
     "정답만 던지기보다 왜 이 명령을 쓰는지, 자주 틀리는 플래그, 검증 명령을 함께 알려준다.",
     "사용자가 현재 퀴즈를 풀고 있으면 먼저 힌트와 사고 방향을 주고, 사용자가 명시적으로 정답을 원할 때만 완성 명령을 제시한다.",
     "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다."
+].join(" ");
+
+const PACK_MAKER_SYSTEM_PROMPT = [
+    "너는 CodeDrop의 PACK MAKER다.",
+    "사용자가 특정 도메인을 익히기 위해 단문 낙하 타자게임용 데이터팩을 만들고 있다.",
+    "검색 결과를 근거로 고유명사, 명령어, 약어, 제품명, 핵심 용어를 골라라.",
+    "너무 긴 문장보다 손에 익힐 수 있는 짧은 term을 우선한다.",
+    "항상 한국어로 간결하게 설명하고, 마지막에는 반드시 JSON draft를 포함한다.",
+    "JSON 형식은 {\"title\":\"...\",\"description\":\"...\",\"items\":[{\"term\":\"...\",\"desc\":\"...\",\"sources\":[{\"title\":\"...\",\"url\":\"https://...\",\"snippet\":\"...\"}]}]} 이다.",
+    "items는 가능한 20개 이상 제안하되, 중복 term은 넣지 않는다.",
+    "raw HTML은 절대 쓰지 않는다."
 ].join(" ");
 
 function createSession(user) {
@@ -328,13 +354,303 @@ function duckDuckGoConfig() {
     };
 }
 
+function isPackAdmin(user) {
+    return Boolean(user?.nickname && PACK_ADMIN_NICKNAMES.has(String(user.nickname).toLowerCase()));
+}
+
+function packId(value) {
+    const id = Number(value);
+    if (!Number.isInteger(id) || id <= 0) {
+        const err = new Error("Invalid pack id");
+        err.status = 400;
+        throw err;
+    }
+    return id;
+}
+
+function sanitizePackText(value, limit) {
+    if (typeof value !== "string") return "";
+    return value.replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function sanitizeSourceUrl(value) {
+    const text = sanitizePackText(value, 500);
+    if (!text) return "";
+    try {
+        const url = new URL(text);
+        if (url.protocol !== "http:" && url.protocol !== "https:") return "";
+        return url.toString().slice(0, 500);
+    } catch (err) {
+        return "";
+    }
+}
+
+function sanitizePackSource(source) {
+    const url = sanitizeSourceUrl(source?.url);
+    if (!url) return null;
+    return {
+        title: sanitizePackText(source?.title, 120) || url,
+        url,
+        snippet: sanitizePackText(source?.snippet, 220)
+    };
+}
+
+function sanitizePackItems(items, { strict = true, fallbackSources = [] } = {}) {
+    if (!Array.isArray(items)) return [];
+    const seen = new Set();
+    const sanitized = [];
+    const fallback = fallbackSources.map(sanitizePackSource).filter(Boolean).slice(0, MAX_PACK_SOURCES);
+
+    for (const item of items) {
+        const term = sanitizePackText(item?.term ?? item?.text ?? item?.word, MAX_PACK_TERM_LEN);
+        const desc = sanitizePackText(item?.desc ?? item?.description ?? item?.explain, MAX_PACK_ITEM_DESC_LEN);
+        if (!term || !desc) continue;
+
+        const key = term.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        let sources = Array.isArray(item?.sources)
+            ? item.sources.map(sanitizePackSource).filter(Boolean).slice(0, MAX_PACK_SOURCES)
+            : [];
+        if (sources.length === 0) sources = fallback;
+        if (strict && sources.length === 0) continue;
+
+        sanitized.push({ term, desc, sources });
+        if (sanitized.length >= MAX_PACK_ITEMS) break;
+    }
+
+    return sanitized;
+}
+
+function sanitizePackPayload(body, { strict = true } = {}) {
+    const title = sanitizePackText(body?.title, MAX_PACK_TITLE_LEN);
+    const description = sanitizePackText(body?.description, MAX_PACK_DESC_LEN);
+    const items = sanitizePackItems(body?.items, { strict });
+
+    if (strict) {
+        if (title.length < 3) {
+            const err = new Error("Pack title must be 3-60 characters");
+            err.status = 400;
+            throw err;
+        }
+        if (items.length < MIN_PACK_ITEMS || items.length > MAX_PACK_ITEMS) {
+            const err = new Error(`Pack must contain ${MIN_PACK_ITEMS}-${MAX_PACK_ITEMS} valid items`);
+            err.status = 400;
+            throw err;
+        }
+    }
+
+    return {
+        id: body?.id ? packId(body.id) : null,
+        title,
+        description,
+        items,
+        submitForReview: body?.submitForReview === true
+    };
+}
+
+function normalizeDraftFromLlm(value, fallbackSources = []) {
+    const source = value && typeof value === "object" ? value : {};
+    const title = sanitizePackText(source.title, MAX_PACK_TITLE_LEN) || "Generated Data Pack";
+    const description = sanitizePackText(source.description, MAX_PACK_DESC_LEN) || "Pack Maker draft";
+    const items = sanitizePackItems(source.items, { strict: false, fallbackSources });
+    return { title, description, items };
+}
+
+function extractDraftJson(answer) {
+    const text = String(answer || "");
+    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fence ? fence[1] : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+    if (!candidate || !candidate.trim().startsWith("{")) return null;
+    try {
+        return JSON.parse(candidate);
+    } catch (err) {
+        return null;
+    }
+}
+
+async function ensureCustomPackTables() {
+    if (!customPackTablesReady) {
+        customPackTablesReady = (async () => {
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS custom_packs (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    owner_id BIGINT NOT NULL,
+                    title VARCHAR(60) NOT NULL,
+                    description VARCHAR(240) DEFAULT '',
+                    status VARCHAR(16) NOT NULL DEFAULT 'draft',
+                    review_reason VARCHAR(240) DEFAULT '',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_custom_packs_owner (owner_id, status),
+                    INDEX idx_custom_packs_status (status, updated_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS custom_pack_items (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    pack_id BIGINT NOT NULL,
+                    term VARCHAR(80) NOT NULL,
+                    description VARCHAR(180) NOT NULL,
+                    sources_json TEXT NOT NULL,
+                    sort_order INT NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_custom_pack_items_pack (pack_id, sort_order)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS custom_pack_scores (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    pack_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    score INT NOT NULL,
+                    wpm INT NOT NULL DEFAULT 0,
+                    accuracy INT NOT NULL DEFAULT 0,
+                    difficulty VARCHAR(16) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_custom_pack_scores_pack (pack_id, difficulty, score),
+                    INDEX idx_custom_pack_scores_user (user_id, created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+        })().catch(err => {
+            customPackTablesReady = null;
+            throw err;
+        });
+    }
+
+    return customPackTablesReady;
+}
+
+function packRowVisibleToUser(row, user) {
+    return row && (row.status === "approved" || row.owner_id === user.id);
+}
+
+function serializePackRow(row, items = undefined) {
+    const pack = {
+        id: row.id,
+        title: row.title,
+        description: row.description || "",
+        status: row.status,
+        ownerId: row.owner_id,
+        ownerNickname: row.owner_nickname || "",
+        reviewReason: row.review_reason || "",
+        updatedAt: row.updated_at,
+        itemCount: Number(row.item_count || 0)
+    };
+    if (items) pack.items = items;
+    return pack;
+}
+
+function serializePackItem(row) {
+    let sources = [];
+    try {
+        sources = JSON.parse(row.sources_json || "[]");
+    } catch (err) {
+        sources = [];
+    }
+    return {
+        id: row.id,
+        term: row.term,
+        desc: row.description,
+        sources: Array.isArray(sources) ? sources : []
+    };
+}
+
+async function fetchPackRow(id) {
+    const [rows] = await db.query(`
+        SELECT p.*, u.nickname AS owner_nickname,
+            (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id) AS item_count
+        FROM custom_packs p
+        JOIN users u ON u.id = p.owner_id
+        WHERE p.id = ?
+        LIMIT 1
+    `, [id]);
+    return rows[0] || null;
+}
+
+async function fetchPackItems(id) {
+    const [rows] = await db.query(`
+        SELECT id, term, description, sources_json
+        FROM custom_pack_items
+        WHERE pack_id = ?
+        ORDER BY sort_order ASC, id ASC
+    `, [id]);
+    return rows.map(serializePackItem);
+}
+
+async function savePackItems(connection, packIdValue, items) {
+    await connection.query("DELETE FROM custom_pack_items WHERE pack_id = ?", [packIdValue]);
+    for (const [index, item] of items.entries()) {
+        await connection.query(
+            "INSERT INTO custom_pack_items (pack_id, term, description, sources_json, sort_order) VALUES (?, ?, ?, ?, ?)",
+            [packIdValue, item.term, item.desc, JSON.stringify(item.sources), index]
+        );
+    }
+}
+
+async function duckDuckGoSearch(query) {
+    const cleanQuery = sanitizeChatText(query, 180);
+    if (!cleanQuery) return [];
+
+    const config = duckDuckGoConfig();
+    const url = new URL(config.baseUrl);
+    url.searchParams.set("q", cleanQuery);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("no_html", "1");
+    url.searchParams.set("skip_disambig", "1");
+
+    const headers = {};
+    if (config.apiKey) {
+        headers.Authorization = `Bearer ${config.apiKey}`;
+        headers["X-API-Key"] = config.apiKey;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    try {
+        const res = await fetch(url, { headers, signal: controller.signal });
+        if (!res.ok) throw new Error(`DuckDuckGo request failed (${res.status})`);
+        const data = await res.json();
+        const results = [];
+        const add = (title, sourceUrl, snippet) => {
+            const safeUrl = sanitizeSourceUrl(sourceUrl);
+            const safeSnippet = sanitizePackText(snippet, 260);
+            const safeTitle = sanitizePackText(title, 120) || safeUrl;
+            if (!safeUrl || !safeSnippet) return;
+            if (results.some(item => item.url === safeUrl)) return;
+            results.push({ title: safeTitle, url: safeUrl, snippet: safeSnippet });
+        };
+
+        add(data.Heading, data.AbstractURL, data.AbstractText);
+        (data.Results || []).forEach(item => add(item.Text, item.FirstURL, item.Text));
+        const walk = items => {
+            (items || []).forEach(item => {
+                if (item.Topics) walk(item.Topics);
+                else add(item.Text, item.FirstURL, item.Text);
+            });
+        };
+        walk(data.RelatedTopics);
+        return results.slice(0, 8);
+    } catch (err) {
+        console.warn("DuckDuckGo search failed:", err.message);
+        return [];
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 function llmHeaders(target) {
     const headers = { "Content-Type": "application/json" };
     if (target.provider !== "ollama" && target.apiKey) headers.Authorization = `Bearer ${target.apiKey}`;
     return headers;
 }
 
-function llmPayload(target, messages, stream = false) {
+function llmPayload(target, messages, stream = false, options = {}) {
+    const maxTokens = Number(options.maxTokens) || 700;
     if (target.provider === "ollama") {
         return {
             model: target.model,
@@ -348,7 +664,7 @@ function llmPayload(target, messages, stream = false) {
         return {
             model: target.model,
             messages,
-            max_completion_tokens: 700,
+            max_completion_tokens: maxTokens,
             stream
         };
     }
@@ -357,7 +673,7 @@ function llmPayload(target, messages, stream = false) {
         model: target.model,
         messages,
         temperature: 0.2,
-        max_tokens: 700,
+        max_tokens: maxTokens,
         stream
     };
 }
@@ -431,6 +747,44 @@ function buildLearnMessages(body) {
     };
 }
 
+function buildPackMakerMessages(body, searchResults) {
+    const message = sanitizeChatText(body?.message);
+    if (!message) {
+        const err = new Error("Message required");
+        err.status = 400;
+        throw err;
+    }
+
+    const engine = normalizeChatEngine(body?.engine);
+    if (!engine) {
+        const err = new Error("Invalid LLM engine");
+        err.status = 400;
+        throw err;
+    }
+
+    const history = sanitizeChatHistory(body?.history);
+    const draft = normalizeDraftFromLlm(body?.draft || {}, searchResults);
+    const sourceBundle = searchResults.length
+        ? searchResults.map((item, index) => `${index + 1}. ${item.title}\nURL: ${item.url}\n요약: ${item.snippet}`).join("\n\n")
+        : "검색 결과가 비어 있습니다. 일반 지식으로 초안을 만들되 출처가 부족하다고 표시하세요.";
+
+    const currentDraft = draft.items.length
+        ? JSON.stringify(draft).slice(0, 5000)
+        : "아직 저장된 draft가 없습니다.";
+
+    return {
+        engine,
+        message,
+        messages: [
+            { role: "system", content: PACK_MAKER_SYSTEM_PROMPT },
+            { role: "system", content: `검색 결과:\n${sourceBundle}` },
+            { role: "system", content: `현재 draft:\n${currentDraft}` },
+            ...history,
+            { role: "user", content: message }
+        ]
+    };
+}
+
 function parseStreamDelta(provider, data) {
     if (provider === "ollama") {
         return data?.message?.content || data?.response || "";
@@ -440,11 +794,11 @@ function parseStreamDelta(provider, data) {
     return choice.delta?.content || choice.message?.content || choice.text || "";
 }
 
-async function readLearnLlmStream(target, messages, signal, onDelta) {
+async function readLearnLlmStream(target, messages, signal, onDelta, options = {}) {
     const response = await fetch(target.url, {
         method: "POST",
         headers: llmHeaders(target),
-        body: JSON.stringify(llmPayload(target, messages, true)),
+        body: JSON.stringify(llmPayload(target, messages, true, options)),
         signal
     });
 
@@ -642,6 +996,281 @@ app.post("/api/learn-chat/stream", rateLimit("learn-chat-stream", 40, 60_000), a
     }
 });
 
+app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 20, 60_000, req => req.user.id), async (req, res) => {
+    const message = sanitizeChatText(req.body?.message);
+    if (!message) return res.status(400).json({ error: "Message required" });
+
+    const engine = normalizeChatEngine(req.body?.engine);
+    if (!engine) return res.status(400).json({ error: "Invalid LLM engine" });
+
+    let target;
+    try {
+        target = buildLlmTarget(engine);
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    let finished = false;
+
+    res.on("close", () => {
+        if (!finished) controller.abort();
+    });
+
+    res.status(200);
+    res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    if (typeof res.flushHeaders === "function") res.flushHeaders();
+
+    writeNdjson(res, "meta", {
+        provider: target.provider,
+        model: target.model,
+        engine: target.engine,
+        label: target.label
+    });
+
+    try {
+        const searchResults = await duckDuckGoSearch(`${message} glossary key terms official docs`);
+        writeNdjson(res, "search", { results: searchResults });
+        const payload = buildPackMakerMessages(req.body, searchResults);
+
+        const answer = await readLearnLlmStream(target, payload.messages, controller.signal, text => {
+            writeNdjson(res, "delta", { text });
+        }, { maxTokens: 2200 });
+
+        if (!answer) {
+            const err = new Error("Empty LLM response");
+            err.status = 502;
+            throw err;
+        }
+
+        const parsed = extractDraftJson(answer);
+        const draft = normalizeDraftFromLlm(parsed || {
+            title: message.slice(0, MAX_PACK_TITLE_LEN),
+            description: "Pack Maker generated draft",
+            items: []
+        }, searchResults);
+
+        finished = true;
+        writeNdjson(res, "draft", { draft });
+        writeNdjson(res, "done", { answer });
+        if (!res.writableEnded && !res.destroyed) res.end();
+    } catch (err) {
+        const aborted = controller.signal.aborted || err.name === "AbortError";
+        if (aborted && res.destroyed) return;
+
+        const status = err.status && Number.isInteger(err.status) ? err.status : (aborted ? 499 : 500);
+        const messageText = aborted ? "LLM stream stopped" : (status === 503 ? err.message : "Pack Maker request failed");
+        if (!aborted) console.error("Pack Maker stream failed:", err.message);
+
+        finished = true;
+        writeNdjson(res, "error", { error: messageText });
+        if (!res.writableEnded && !res.destroyed) res.end();
+    } finally {
+        clearTimeout(timeout);
+    }
+});
+
+app.get("/api/packs", authUser, rateLimit("packs-list", 80, 60_000, req => req.user.id), async (req, res) => {
+    const scope = String(req.query.scope || "mine").toLowerCase();
+    if (scope !== "mine" && scope !== "public") {
+        return res.status(400).json({ error: "Invalid pack scope" });
+    }
+
+    try {
+        await ensureCustomPackTables();
+        const params = [];
+        let where;
+        if (scope === "mine") {
+            where = "p.owner_id = ?";
+            params.push(req.user.id);
+        } else {
+            where = "p.status = 'approved'";
+        }
+
+        const [rows] = await db.query(`
+            SELECT p.*, u.nickname AS owner_nickname,
+                (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id) AS item_count
+            FROM custom_packs p
+            JOIN users u ON u.id = p.owner_id
+            WHERE ${where}
+            ORDER BY p.updated_at DESC
+            LIMIT 50
+        `, params);
+
+        res.json({ packs: rows.map(row => serializePackRow(row)) });
+    } catch (err) {
+        console.error("Pack list failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+app.get("/api/packs/:id", authUser, rateLimit("packs-detail", 120, 60_000, req => req.user.id), async (req, res) => {
+    let id;
+    try {
+        id = packId(req.params.id);
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    try {
+        await ensureCustomPackTables();
+        const row = await fetchPackRow(id);
+        if (!row || !packRowVisibleToUser(row, req.user)) {
+            return res.status(404).json({ error: "Pack not found" });
+        }
+        const items = await fetchPackItems(id);
+        res.json({ pack: serializePackRow(row, items) });
+    } catch (err) {
+        console.error("Pack detail failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.user.id), async (req, res) => {
+    let payload;
+    try {
+        payload = sanitizePackPayload(req.body, { strict: true });
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    const status = payload.submitForReview ? "pending" : "draft";
+    const connection = await db.getConnection();
+
+    try {
+        await ensureCustomPackTables();
+        await connection.beginTransaction();
+
+        let id = payload.id;
+        if (id) {
+            const [rows] = await connection.query("SELECT owner_id, status FROM custom_packs WHERE id = ? LIMIT 1", [id]);
+            const row = rows[0];
+            if (!row || row.owner_id !== req.user.id) {
+                await connection.rollback();
+                return res.status(404).json({ error: "Pack not found" });
+            }
+            if (row.status === "approved" && status !== "pending") {
+                await connection.rollback();
+                return res.status(400).json({ error: "Approved packs must be resubmitted for review after edits" });
+            }
+            await connection.query(
+                "UPDATE custom_packs SET title = ?, description = ?, status = ?, review_reason = '' WHERE id = ?",
+                [payload.title, payload.description, status, id]
+            );
+        } else {
+            const [result] = await connection.query(
+                "INSERT INTO custom_packs (owner_id, title, description, status) VALUES (?, ?, ?, ?)",
+                [req.user.id, payload.title, payload.description, status]
+            );
+            id = result.insertId;
+        }
+
+        await savePackItems(connection, id, payload.items);
+        await connection.commit();
+
+        const row = await fetchPackRow(id);
+        const items = await fetchPackItems(id);
+        res.json({ ok: true, pack: serializePackRow(row, items) });
+    } catch (err) {
+        await connection.rollback();
+        console.error("Pack save failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    } finally {
+        connection.release();
+    }
+});
+
+app.post("/api/packs/:id/review", authUser, rateLimit("packs-review", 20, 60_000, req => req.user.id), async (req, res) => {
+    if (!isPackAdmin(req.user)) return res.status(403).json({ error: "Pack admin required" });
+
+    let id;
+    try {
+        id = packId(req.params.id);
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    const action = String(req.body?.action || "").toLowerCase();
+    if (action !== "approve" && action !== "reject") return res.status(400).json({ error: "Invalid review action" });
+    const status = action === "approve" ? "approved" : "rejected";
+    const reason = sanitizePackText(req.body?.reason, 240);
+
+    try {
+        await ensureCustomPackTables();
+        const [result] = await db.query(
+            "UPDATE custom_packs SET status = ?, review_reason = ? WHERE id = ?",
+            [status, reason, id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ error: "Pack not found" });
+        const row = await fetchPackRow(id);
+        const items = await fetchPackItems(id);
+        res.json({ ok: true, pack: serializePackRow(row, items) });
+    } catch (err) {
+        console.error("Pack review failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+app.post("/api/packs/:id/submit-score", authUser, rateLimit("pack-score", 60, 60_000, req => req.user.id), async (req, res) => {
+    let id;
+    try {
+        id = packId(req.params.id);
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    const safeScore = boundedNumber(req.body?.score, 0, MAX_SUBMITTED_SCORE);
+    const safeWpm = boundedNumber(req.body?.wpm ?? 0, 0, 1000);
+    const safeAccuracy = boundedNumber(req.body?.accuracy ?? 0, 0, 100);
+    const safeDifficulty = normalizeCategory(req.body?.difficulty, DIFFICULTIES);
+    if (safeScore === null || safeWpm === null || safeAccuracy === null || !safeDifficulty) {
+        return res.status(400).json({ error: "Missing fields" });
+    }
+
+    try {
+        await ensureCustomPackTables();
+        const row = await fetchPackRow(id);
+        if (!row || !packRowVisibleToUser(row, req.user)) return res.status(404).json({ error: "Pack not found" });
+
+        await db.query(
+            "INSERT INTO custom_pack_scores (pack_id, user_id, score, wpm, accuracy, difficulty) VALUES (?, ?, ?, ?, ?, ?)",
+            [id, req.user.id, safeScore, safeWpm, safeAccuracy, safeDifficulty]
+        );
+        const top10 = await getCustomPackLeaderboard(id, safeDifficulty);
+        res.json({ ok: true, top10 });
+    } catch (err) {
+        console.error("Custom pack score failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+app.get("/api/packs/:id/leaderboard", authUser, rateLimit("pack-leaderboard", 120, 60_000, req => req.user.id), async (req, res) => {
+    let id;
+    try {
+        id = packId(req.params.id);
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    const difficulty = normalizeCategory(req.query.difficulty, DIFFICULTIES);
+    if (difficulty === false) return res.status(400).json({ error: "Invalid leaderboard filter" });
+
+    try {
+        await ensureCustomPackTables();
+        const row = await fetchPackRow(id);
+        if (!row || !packRowVisibleToUser(row, req.user)) return res.status(404).json({ error: "Pack not found" });
+        const top10 = await getCustomPackLeaderboard(id, difficulty);
+        res.json({ top10 });
+    } catch (err) {
+        console.error("Custom pack leaderboard failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
 // 1. 회원가입
 app.post("/register", rateLimit("register", 12), async (req, res) => {
     const { nickname, password } = req.body;
@@ -813,6 +1442,25 @@ async function getLeaderboard(difficulty, pack) {
 
     query += " ORDER BY l.score DESC LIMIT 10";
 
+    const [rows] = await db.query(query, params);
+    return rows;
+}
+
+async function getCustomPackLeaderboard(packIdValue, difficulty) {
+    let query = `
+        SELECT s.id, u.nickname, s.score, s.wpm, s.accuracy, s.created_at, s.difficulty, s.pack_id
+        FROM custom_pack_scores s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.pack_id = ?
+    `;
+    const params = [packIdValue];
+
+    if (difficulty) {
+        query += " AND s.difficulty = ?";
+        params.push(difficulty);
+    }
+
+    query += " ORDER BY s.score DESC LIMIT 10";
     const [rows] = await db.query(query, params);
     return rows;
 }

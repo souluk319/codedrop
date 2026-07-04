@@ -1526,6 +1526,240 @@
             border-radius: 0 0 12px 12px;
         }
 
+        /* --- Pack Maker --- */
+        .pack-maker-entry {
+            width: 100%;
+            margin-top: 0;
+            border-color: var(--secondary-neon);
+            color: var(--secondary-neon);
+        }
+
+        .pack-maker-entry:hover {
+            background: var(--secondary-neon);
+            color: #050505;
+            box-shadow: 0 0 16px var(--secondary-neon);
+        }
+
+        #pack-maker-screen {
+            padding: clamp(20px, 3vw, 42px);
+            gap: 18px;
+        }
+
+        .pack-maker-shell {
+            width: min(1320px, 94vw);
+            height: min(780px, calc(100dvh - 84px));
+            display: grid;
+            grid-template-columns: minmax(330px, 0.9fr) minmax(520px, 1.35fr);
+            gap: 18px;
+        }
+
+        .pack-maker-panel {
+            min-height: 0;
+            border: 1px solid rgba(188, 19, 254, 0.42);
+            border-radius: 8px;
+            background: rgba(5, 5, 10, 0.88);
+            box-shadow: 0 0 24px rgba(188, 19, 254, 0.16), inset 0 0 28px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .pack-maker-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            width: min(1320px, 94vw);
+        }
+
+        .pack-maker-title {
+            font-family: var(--font-display);
+            color: var(--secondary-neon);
+            text-shadow: 0 0 14px var(--secondary-neon);
+            letter-spacing: 3px;
+            font-size: clamp(1.4rem, 3vw, 2.4rem);
+        }
+
+        .pack-maker-subtitle,
+        #pack-maker-status {
+            color: #aaa;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            margin-top: 6px;
+        }
+
+        #pack-maker-status.danger {
+            color: var(--danger-color);
+            text-shadow: 0 0 8px var(--danger-color);
+        }
+
+        .pack-maker-chat-log {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .pack-maker-msg {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .pack-maker-msg.user {
+            border-color: rgba(0, 243, 255, 0.35);
+        }
+
+        .pack-maker-msg.assistant {
+            border-color: rgba(188, 19, 254, 0.35);
+        }
+
+        .pack-maker-msg.system {
+            border-color: rgba(255, 176, 0, 0.35);
+            color: #d8c48a;
+        }
+
+        .pack-maker-msg-label {
+            font-family: var(--font-display);
+            font-size: 0.68rem;
+            letter-spacing: 2px;
+            color: var(--primary-neon);
+            margin-bottom: 6px;
+        }
+
+        .pack-maker-msg-body {
+            user-select: text;
+            white-space: pre-wrap;
+            line-height: 1.55;
+            color: var(--text-color);
+            font-size: 0.88rem;
+        }
+
+        .pack-maker-chat-form {
+            display: grid;
+            grid-template-columns: 1fr 84px;
+            gap: 10px;
+            padding: 14px;
+            border-top: 1px solid rgba(188, 19, 254, 0.2);
+        }
+
+        .pack-maker-chat-form textarea {
+            min-height: 72px;
+            resize: none;
+        }
+
+        .pack-maker-tools,
+        .pack-maker-draft-head {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 14px;
+            border-bottom: 1px solid rgba(188, 19, 254, 0.2);
+        }
+
+        .pack-maker-tools select,
+        .pack-maker-tools input,
+        .pack-maker-tools textarea,
+        .pack-maker-draft-head input,
+        .pack-maker-draft-head textarea,
+        .pack-maker-chat-form textarea,
+        .pack-maker-table input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.72);
+            color: var(--text-color);
+            border: 1px solid rgba(188, 19, 254, 0.45);
+            border-radius: 4px;
+            padding: 9px 10px;
+            font-family: var(--font-code);
+        }
+
+        .pack-maker-draft-head {
+            display: grid;
+            grid-template-columns: 0.8fr 1.2fr;
+        }
+
+        .pack-maker-table-wrap {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding: 14px;
+        }
+
+        .pack-maker-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 820px;
+        }
+
+        .pack-maker-table th,
+        .pack-maker-table td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 8px;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        .pack-maker-table th {
+            color: var(--secondary-neon);
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+        }
+
+        .pack-maker-order {
+            color: #777;
+            width: 44px;
+        }
+
+        .pack-maker-source-cell {
+            display: grid;
+            gap: 6px;
+        }
+
+        .pack-maker-row-btn {
+            min-width: 54px;
+        }
+
+        .pack-maker-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px;
+            border-top: 1px solid rgba(188, 19, 254, 0.2);
+        }
+
+        .pack-maker-footer .btn-small {
+            min-width: 140px;
+        }
+
+        @media (max-width: 900px) {
+            #pack-maker-screen {
+                justify-content: flex-start;
+            }
+
+            .pack-maker-shell {
+                width: 94vw;
+                height: auto;
+                grid-template-columns: 1fr;
+            }
+
+            .pack-maker-panel {
+                min-height: 360px;
+            }
+
+            .pack-maker-footer {
+                flex-wrap: wrap;
+            }
+
+            .pack-maker-footer>div {
+                flex-wrap: wrap;
+            }
+        }
+
         /* --- Responsive Design --- */
         @media (max-width: 600px) {
             :root {
@@ -1594,6 +1828,16 @@
 
             #music-widget.track-open .music-equalizer {
                 display: none;
+            }
+
+            .pack-maker-head {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .pack-maker-draft-head,
+            .pack-maker-chat-form {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3823,6 +4067,7 @@
                             </select>
                         </div>
                         <button class="btn" id="start-btn">START CODEDROP</button>
+                        <button class="btn-small pack-maker-entry" id="pack-maker-btn" type="button">PACK MAKER</button>
                     </div>
 
                     <div class="ocp-menu hidden" id="ocp-menu">
@@ -3953,6 +4198,62 @@
                 <button class="btn-small" id="confirm-cancel" type="button">CANCEL</button>
                 <button class="btn-small btn-danger" id="confirm-ok" type="button">CONFIRM</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Pack Maker Screen -->
+    <div id="pack-maker-screen" class="overlay hidden">
+        <div class="pack-maker-head">
+            <div>
+                <div class="pack-maker-title">PACK MAKER</div>
+                <div class="pack-maker-subtitle">Search-grounded data packs for CODEDROP</div>
+                <div id="pack-maker-status">READY</div>
+            </div>
+            <button class="btn-small" id="pack-maker-close" type="button">HOME</button>
+        </div>
+
+        <div class="pack-maker-shell">
+            <section class="pack-maker-panel" aria-label="Pack maker chat">
+                <div class="pack-maker-tools">
+                    <select id="pack-maker-engine" aria-label="Pack maker engine">
+                        <option value="kugnus">KUGNUS SERVER</option>
+                        <option value="openai" selected>GPT 5.4 MINI</option>
+                    </select>
+                </div>
+                <div class="pack-maker-chat-log" id="pack-maker-chat-log"></div>
+                <form class="pack-maker-chat-form" id="pack-maker-chat-form">
+                    <textarea id="pack-maker-input" placeholder="예: 리눅스 네트워크 명령어 고유명사 50개 만들어줘"></textarea>
+                    <button class="btn-small" id="pack-maker-send" type="submit">ASK</button>
+                </form>
+            </section>
+
+            <section class="pack-maker-panel" aria-label="Pack draft editor">
+                <div class="pack-maker-draft-head">
+                    <input id="pack-maker-title" maxlength="60" placeholder="PACK TITLE">
+                    <textarea id="pack-maker-description" maxlength="240" placeholder="PACK DESCRIPTION"></textarea>
+                </div>
+                <div class="pack-maker-table-wrap">
+                    <table class="pack-maker-table" id="pack-maker-item-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>TERM</th>
+                                <th>한줄 설명</th>
+                                <th>SOURCE</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pack-maker-items-body"></tbody>
+                    </table>
+                </div>
+                <div class="pack-maker-footer">
+                    <button class="btn-small" id="pack-maker-add-item" type="button">ADD ITEM</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-small" id="pack-maker-save" type="button">SAVE MY PACK</button>
+                        <button class="btn-small" id="pack-maker-submit" type="button">SUBMIT PUBLIC REVIEW</button>
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
 
@@ -4348,6 +4649,7 @@
     <script src="js/lab_mode.js"></script>
     <script src="js/learn_mode.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/pack_maker.js"></script>
 
 
 

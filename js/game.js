@@ -408,18 +408,26 @@ function renderLeaderboardMessage(message, color = '#666') {
     els.controls.leaderboard.appendChild(empty);
 }
 
+function customPackIdFromValue(value) {
+    const match = String(value || '').match(/^PACK_(\d+)$/);
+    return match ? match[1] : null;
+}
+
 function leaderboardSelection() {
     if (isOcpEditionActive()) {
         const ocpDiff = document.getElementById('ocp-difficulty-select');
         return {
             diff: ((ocpDiff && ocpDiff.value) || 'NORMAL').toLowerCase(),
-            pack: 'oc_core'
+            pack: 'oc_core',
+            customPackId: null
         };
     }
 
+    const packValue = els.controls.packSelect.value;
     return {
         diff: els.controls.diffSelect.value.split(' ')[0].toLowerCase(),
-        pack: els.controls.packSelect.value.toLowerCase()
+        pack: packValue.toLowerCase(),
+        customPackId: customPackIdFromValue(packValue)
     };
 }
 
@@ -428,7 +436,19 @@ async function fetchLeaderboard() {
     if (els.screens.start.classList.contains('hidden')) return;
 
     try {
-        const { diff, pack } = leaderboardSelection();
+        const { diff, pack, customPackId } = leaderboardSelection();
+        if (customPackId) {
+            if (!state.userToken) {
+                renderLeaderboardMessage('LOGIN REQUIRED FOR CUSTOM PACK RANKING', 'var(--danger-color)');
+                return;
+            }
+            const res = await fetch(`${API_BASE}/api/packs/${customPackId}/leaderboard?difficulty=${diff}`, {
+                headers: { 'Authorization': `Bearer ${state.userToken}` }
+            });
+            const data = await res.json();
+            renderLeaderboard(data.top10);
+            return;
+        }
 
         const res = await fetch(`${API_BASE}/leaderboard?difficulty=${diff}&pack=${pack}`);
         const data = await res.json();
@@ -524,6 +544,12 @@ function spawnWord() {
 
     // Filter pool
     let pool = WORD_PACKS[state.pack];
+    if (!Array.isArray(pool) || pool.length === 0) {
+        console.warn(`Missing word pack: ${state.pack}. Falling back to PYTHON.`);
+        state.pack = 'PYTHON';
+        pool = WORD_PACKS.PYTHON;
+        if (els.controls.packSelect) els.controls.packSelect.value = 'PYTHON';
+    }
 
     // 1. Exclude currently active words (duplicates)
     const activeTexts = state.activeWords.map(w => w.text);
@@ -822,19 +848,32 @@ async function gameOver(victory = false) {
     if (state.userToken) {
         els.result.status.textContent = "UPLOADING DATA...";
         try {
-            const res = await fetch(`${API_BASE}/submit`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${state.userToken}`
-                },
-                body: JSON.stringify({
+            const customPackId = customPackIdFromValue(state.pack);
+            const endpoint = customPackId
+                ? `${API_BASE}/api/packs/${customPackId}/submit-score`
+                : `${API_BASE}/submit`;
+            const body = customPackId
+                ? {
+                    score: state.score,
+                    wpm: wpm,
+                    accuracy: accuracy,
+                    difficulty: state.difficulty.toLowerCase()
+                }
+                : {
                     score: state.score,
                     wpm: wpm,
                     accuracy: accuracy,
                     difficulty: state.difficulty.toLowerCase(),
                     pack: state.pack.toLowerCase()
-                })
+                };
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${state.userToken}`
+                },
+                body: JSON.stringify(body)
             });
             const data = await res.json();
             if (data.ok) {
@@ -1587,10 +1626,12 @@ function init() {
             // Only if Start Screen is visible, User is Logged In, and Game is NOT playing
             const dashboard = document.getElementById('dashboard-screen');
             const commandDialog = document.getElementById('confirm-screen');
+            const packMaker = document.getElementById('pack-maker-screen');
             if (!els.screens.start.classList.contains('hidden') &&
                 els.auth.loggedInView.classList.contains('active') &&
                 (!dashboard || dashboard.classList.contains('hidden')) &&
                 (!commandDialog || commandDialog.classList.contains('hidden')) &&
+                (!packMaker || packMaker.classList.contains('hidden')) &&
                 !state.isPlaying) {
                 if (isOcpEditionActive()) {
                     handleStart();
@@ -1792,6 +1833,7 @@ function loginSuccess(id, nickname, token = null) {
     state.nickname = nickname;
     localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname, token }));
     showLoggedInView();
+    window.dispatchEvent(new CustomEvent('codedrop:auth', { detail: { id, nickname, token } }));
 }
 
 function handleLogout() {
@@ -1808,6 +1850,7 @@ function handleLogout() {
     els.auth.inputs.regPassConfirm.value = '';
 
     showAuthView();
+    window.dispatchEvent(new CustomEvent('codedrop:auth', { detail: null }));
 }
 
 async function handleWithdraw() {
