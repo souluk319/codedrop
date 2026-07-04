@@ -8,7 +8,10 @@
     "start": "node server.js",
     "test": "npm run verify",
     "verify": "node scripts/verify_all.mjs",
-    "verify:5x": "node scripts/verify_5x.mjs"
+    "verify:5x": "node scripts/verify_5x.mjs",
+    "db:local:up": "docker compose -f docker-compose.local.yml up -d",
+    "db:local:down": "docker compose -f docker-compose.local.yml down",
+    "db:local:reset": "docker compose -f docker-compose.local.yml down -v && docker compose -f docker-compose.local.yml up -d"
   },
   "keywords": [],
   "author": "",

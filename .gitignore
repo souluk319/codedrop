@@ -1,5 +1,6 @@
 # 1. 보안 - 비밀번호가 든 파일 (가장 중요)
 .env
+.env.local
 
 # 2. 용량 - 라이브러리 폴더 (npm install로 재생성 가능하므로 제외)
 node_modules/

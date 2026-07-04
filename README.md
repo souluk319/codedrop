@@ -68,6 +68,30 @@ Codedrop is a web-based typing practice game where you score points by quickly t
    ```
    Access the game at `http://localhost:3001`.
 
+### Local Docker DB QA
+
+Pack Maker should be verified against a real local database before deploy because it needs login tokens, saved packs, custom pack loading, and pack-specific leaderboards.
+
+1. Copy the local DB env template:
+   ```bash
+   cp .env.local.example .env.local
+   ```
+2. Start MySQL locally:
+   ```bash
+   npm run db:local:up
+   ```
+3. Start the app:
+   ```bash
+   npm start
+   ```
+4. Check readiness:
+   ```bash
+   curl http://localhost:3001/ready
+   ```
+   Expected: `{"server":"ok","db":"ok"}`
+
+Use `npm run db:local:reset` when you need a clean database.
+
 ---
 
 ## 🇰🇷 한국어 설명 (Korean Description)
@@ -125,6 +149,19 @@ Codedrop은 하늘에서 떨어지는 코딩 용어들을 빠르게 입력하여
    npm start
    ```
    브라우저에서 `http://localhost:3001`로 접속하여 게임을 실행합니다.
+
+### 로컬 Docker DB QA
+
+Pack Maker는 로그인 토큰, 팩 저장, 커스텀 팩 로드, 팩별 랭킹까지 확인해야 하므로 배포 전 로컬 Docker DB로 검증합니다.
+
+```bash
+cp .env.local.example .env.local
+npm run db:local:up
+npm start
+curl http://localhost:3001/ready
+```
+
+정상 상태는 `{"server":"ok","db":"ok"}`입니다. 깨끗한 DB가 필요하면 `npm run db:local:reset`을 사용합니다.
 
 ---
 

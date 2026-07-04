@@ -8,6 +8,9 @@ const server = read('server.js');
 const dashboard = read('js/dashboard.js');
 const stats = read('js/study_stats.js');
 const learn = read('js/learn_mode.js');
+const dockerCompose = read('docker-compose.local.yml');
+const localSchema = read('db/init/001_schema.sql');
+const localEnvExample = read('.env.local.example');
 
 function read(file) {
     return fs.readFileSync(path.join(root, file), 'utf8');
@@ -395,6 +398,16 @@ assert(server.includes('app.post("/api/packs", authUser'), 'custom pack save end
 assert(server.includes('app.get("/api/packs?') === false, 'custom pack list should not be hardcoded as a static route');
 assert(server.includes('PACK_ADMIN_NICKNAMES'), 'pack review should be guarded by admin nicknames');
 assert(server.includes('custom_pack_scores'), 'custom pack scores should be stored separately from official leaderboard');
+assert(server.includes('function dbSslConfig()'), 'server should allow local Docker DB SSL configuration');
+assert(server.includes('process.env.DB_SSL'), 'server DB SSL should be configurable for local Docker MySQL');
+assert(dockerCompose.includes('image: mysql:8.4'), 'local Docker DB should use a pinned MySQL image');
+assert(dockerCompose.includes('3307:3306'), 'local Docker DB should expose MySQL on host port 3307');
+assert(dockerCompose.includes('./db/init:/docker-entrypoint-initdb.d:ro'), 'local Docker DB should mount schema init scripts');
+assert(localSchema.includes('CREATE TABLE IF NOT EXISTS users'), 'local Docker schema should initialize users table');
+assert(localSchema.includes('CREATE TABLE IF NOT EXISTS custom_packs'), 'local Docker schema should initialize custom pack tables');
+assert(localSchema.includes('CREATE TABLE IF NOT EXISTS custom_pack_scores'), 'local Docker schema should initialize custom pack score tables');
+assert(localEnvExample.includes('DB_SSL=false'), 'local env example should disable TLS for local Docker MySQL');
+assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=openai'), 'local env example should keep QA on GPT 5.4 MINI by default');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
 assert(index.includes('<option value="openai" selected>GPT 5.4 MINI</option>'), 'pack maker should default to GPT 5.4 MINI while home server is unavailable');

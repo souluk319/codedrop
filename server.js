@@ -61,6 +61,15 @@ app.use("/js", express.static(path.join(__dirname, "js")));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use("/sound", express.static(path.join(__dirname, "sound")));
 
+function dbSslConfig() {
+    const value = String(process.env.DB_SSL || "").trim().toLowerCase();
+    if (["0", "false", "off", "no"].includes(value)) return undefined;
+    return {
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: true
+    };
+}
+
 // 🔹 MySQL 연결 설정
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -68,14 +77,7 @@ const db = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || "codedrop_db",
-    // waitForConnections: true,
-    // connectionLimit: 10,
-    // [변경점 3] SSL 옵션 추가 (필수)
-    // 설명: 클라우드 DB는 해킹 방지를 위해 이 옵션이 없으면 접속을 튕겨냅니다.
-    ssl: {
-        minVersion: 'TLSv1.2',
-        rejectUnauthorized: true
-    },
+    ssl: dbSslConfig(),
     waitForConnections: true,
     connectionLimit: 10,
 });

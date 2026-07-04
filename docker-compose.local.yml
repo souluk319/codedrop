@@ -1,0 +1,23 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: codedrop-local-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: codedrop_root
+      MYSQL_DATABASE: codedrop_db
+      MYSQL_USER: codedrop
+      MYSQL_PASSWORD: codedrop_pw
+    ports:
+      - "3307:3306"
+    volumes:
+      - codedrop_mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -ucodedrop -pcodedrop_pw --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  codedrop_mysql_data:
