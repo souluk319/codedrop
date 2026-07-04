@@ -44,10 +44,13 @@ const child = spawn(process.execPath, ['server.js'], {
         ...process.env,
         PORT: String(PORT),
         ALLOWED_ORIGINS: `${base},http://localhost:${PORT}`,
+        KUGNUS_GATEWAY_BASE_URL: 'http://127.0.0.1:9/v1',
+        KUGNUS_GATEWAY_API_KEY: 'smoke-test-key',
+        KUGNUS_MODEL: 'smoke-test-model',
         LLM_ENDPOINT: '',
-        LLM_BASE_URL: 'http://127.0.0.1:9',
+        LLM_BASE_URL: '',
         LLM_PROVIDER: 'openai',
-        LLM_MODEL: 'smoke-test-model',
+        LLM_MODEL: '',
         LLM_TIMEOUT_MS: '1000'
     },
     stdio: ['ignore', 'pipe', 'pipe']
@@ -62,6 +65,11 @@ try {
 
     const health = await request('/health');
     assert(health.status === 200 && health.text.includes('"server":"ok"'), '/health should be live');
+
+    const kugnusHealth = await request('/api/llm/kugnus/health');
+    assert(kugnusHealth.status === 200, '/api/llm/kugnus/health should return stable JSON even when KUGNUS is offline');
+    assert(kugnusHealth.text.includes('"engine":"kugnus"'), '/api/llm/kugnus/health should identify the KUGNUS engine');
+    assert(kugnusHealth.text.includes('"ok":false'), '/api/llm/kugnus/health should report offline KUGNUS as ok:false in smoke');
 
     const root = await request('/');
     assert(root.status === 200 && root.text.includes('CodeDrop: Neon Cyberpunk'), '/ should serve the app shell');

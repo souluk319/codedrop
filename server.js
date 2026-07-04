@@ -85,6 +85,7 @@ const db = mysql.createPool({
 const sessions = new Map();
 const rateBuckets = new Map();
 const SESSION_TTL_MS = 1000 * 60 * 60 * 12;
+const SESSION_SECRET = (process.env.SESSION_SECRET || "codedrop-local-dev-session-secret").trim();
 const DIFFICULTIES = new Set(["easy", "normal", "developer"]);
 const PACKS = new Set(["python", "js", "http", "cli", "linux", "oc_core", "vocab", "mix"]);
 const NICKNAME_RE = /^[A-Za-z0-9_-]{3,16}$/;
@@ -92,6 +93,8 @@ const MAX_SUBMITTED_SCORE = 25000;
 const MAX_CHAT_MESSAGE_LEN = 1200;
 const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
+const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 600_000, 900_000));
+const KUGNUS_HEALTH_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.KUGNUS_HEALTH_TIMEOUT_MS) || 12_000, 30_000));
 const CHAT_ENGINES = new Set(["kugnus", "openai"]);
 const PACK_STATUSES = new Set(["draft", "pending", "approved", "rejected"]);
 const MAX_PACK_TITLE_LEN = 60;
@@ -101,6 +104,9 @@ const MAX_PACK_ITEMS = 120;
 const MAX_PACK_TERM_LEN = 80;
 const MAX_PACK_ITEM_DESC_LEN = 180;
 const MAX_PACK_SOURCES = 3;
+const DEFAULT_PACK_TARGET_COUNT = 30;
+const PACK_REPAIR_ATTEMPTS = 2;
+const PACK_MAKER_BATCH_SIZE = 8;
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
         .split(",")
@@ -129,17 +135,52 @@ const DUCKDUCKGO_ENV_NAMES = [
     "DUCK_API_KEY"
 ];
 
-const OPENAI_KEY_ENV_NAMES = [
-    "OPENAI_API_KEY",
-    "OPENAI_KEY",
+const GPT_OPENAI_BASE_ENV_NAMES = [
+    "GPT_OPENAI_BASE_URL",
+    "GPT54_MINI_BASE_URL"
+];
+
+const GPT_OPENAI_KEY_ENV_NAMES = [
+    "GPT_OPENAI_API_KEY",
     "GPT54_MINI_API_KEY",
+    "GPT5_4_MINI_API_KEY",
     "LLM_OPENAI_API_KEY"
 ];
 
-const OPENAI_MODEL_ENV_NAMES = [
-    "OPENAI_MODEL",
+const GPT_OPENAI_MODEL_ENV_NAMES = [
+    "GPT_OPENAI_MODEL",
     "GPT54_MINI_MODEL",
     "GPT5_4_MINI_MODEL"
+];
+
+const GENERIC_OPENAI_KEY_ENV_NAMES = [
+    "OPENAI_API_KEY",
+    "OPENAI_KEY"
+];
+
+const KUGNUS_BASE_ENV_NAMES = [
+    "KUGNUS_GATEWAY_BASE_URL",
+    "KUGNUS_BASE_URL",
+    "KUGNUS_OPENAI_BASE_URL",
+    "KUGNUS_LLM_BASE_URL",
+    "LLM_ENDPOINT",
+    "LLM_BASE_URL"
+];
+
+const KUGNUS_KEY_ENV_NAMES = [
+    "KUGNUS_GATEWAY_API_KEY",
+    "KUGNUS_API_KEY",
+    "KUGNUS_OPENAI_API_KEY",
+    "KUGNUS_LLM_API_KEY",
+    "LLM_API_KEY",
+    "LOCAL_LLM_API_KEY"
+];
+
+const KUGNUS_MODEL_ENV_NAMES = [
+    "KUGNUS_MODEL",
+    "KUGNUS_GATEWAY_MODEL",
+    "KUGNUS_LLM_MODEL",
+    "LLM_MODEL"
 ];
 
 function normalizeOpenAiMiniModel(value) {
@@ -151,6 +192,10 @@ function normalizeOpenAiMiniModel(value) {
 
 function isAllowedOpenAiMiniModel(model) {
     return /(^|[-.])mini($|[-.])/.test(model);
+}
+
+function envFlag(value) {
+    return /^(1|true|yes|on)$/i.test(String(value || "").trim());
 }
 
 const LEARN_CHAT_SYSTEM_PROMPT = [
@@ -167,36 +212,74 @@ const PACK_MAKER_SYSTEM_PROMPT = [
     "사용자가 특정 도메인을 익히기 위해 단문 낙하 타자게임용 데이터팩을 만들고 있다.",
     "검색 결과를 근거로 고유명사, 명령어, 약어, 제품명, 핵심 용어를 골라라.",
     "너무 긴 문장보다 손에 익힐 수 있는 짧은 term을 우선한다.",
-    "항상 한국어로 간결하게 설명하고, 마지막에는 반드시 JSON draft를 포함한다.",
+    "응답은 불필요한 장문 설명 없이 JSON draft 중심으로 작성한다.",
+    "마지막에는 반드시 JSON draft 객체를 포함한다.",
     "JSON 형식은 {\"title\":\"...\",\"description\":\"...\",\"items\":[{\"term\":\"...\",\"desc\":\"...\",\"sources\":[{\"title\":\"...\",\"url\":\"https://...\",\"snippet\":\"...\"}]}]} 이다.",
-    "items는 가능한 20개 이상 제안하되, 중복 term은 넣지 않는다.",
+    "별도 목표 개수가 주어지면 items 배열은 반드시 그 개수와 정확히 일치해야 한다.",
+    "term 언어 지시가 있으면 모든 term은 그 언어를 따른다. desc는 한국어 한 줄 설명으로 쓴다.",
+    "중복 term은 절대 넣지 않는다.",
     "raw HTML은 절대 쓰지 않는다."
 ].join(" ");
 
 function createSession(user) {
-    const token = crypto.randomBytes(32).toString("hex");
+    const payload = {
+        userId: user.id,
+        nickname: user.nickname,
+        expiresAt: Date.now() + SESSION_TTL_MS,
+        nonce: crypto.randomBytes(8).toString("hex")
+    };
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    const signature = crypto.createHmac("sha256", SESSION_SECRET).update(encoded).digest("base64url");
+    const token = `v1.${encoded}.${signature}`;
     sessions.set(token, {
         userId: user.id,
         nickname: user.nickname,
-        expiresAt: Date.now() + SESSION_TTL_MS
+        expiresAt: payload.expiresAt
     });
     return token;
 }
 
+function readSignedSession(token) {
+    const parts = String(token || "").split(".");
+    if (parts.length !== 3 || parts[0] !== "v1") return null;
+    const [, encoded, signature] = parts;
+    const expected = crypto.createHmac("sha256", SESSION_SECRET).update(encoded).digest("base64url");
+    const expectedBuffer = Buffer.from(expected);
+    const actualBuffer = Buffer.from(signature);
+    if (expectedBuffer.length !== actualBuffer.length || !crypto.timingSafeEqual(expectedBuffer, actualBuffer)) return null;
+
+    try {
+        const payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+        if (!payload || payload.expiresAt < Date.now()) return null;
+        return {
+            userId: payload.userId,
+            nickname: payload.nickname,
+            expiresAt: payload.expiresAt
+        };
+    } catch (err) {
+        return null;
+    }
+}
+
 function authUser(req, res, next) {
     const header = req.get("authorization") || "";
-    const match = header.match(/^Bearer\s+([a-f0-9]{64})$/i);
+    const match = header.match(/^Bearer\s+(.+)$/i);
     if (!match) return res.status(401).json({ error: "Authentication required" });
 
-    const session = sessions.get(match[1]);
+    const token = match[1].trim();
+    const session = sessions.get(token) || readSignedSession(token);
     if (!session || session.expiresAt < Date.now()) {
-        if (session) sessions.delete(match[1]);
+        if (session) sessions.delete(token);
         return res.status(401).json({ error: "Session expired" });
     }
 
     req.user = { id: session.userId, nickname: session.nickname };
     next();
 }
+
+app.get("/api/session", authUser, rateLimit("session", 120, 60_000, req => req.user.id), (req, res) => {
+    res.json({ user_id: req.user.id, nickname: req.user.nickname });
+});
 
 function validNickname(nickname) {
     return typeof nickname === "string" && NICKNAME_RE.test(nickname);
@@ -271,7 +354,7 @@ function sanitizeChatHistory(history) {
 }
 
 function normalizeChatEngine(value) {
-    const engine = String(value || process.env.DEFAULT_CHAT_ENGINE || "openai").toLowerCase().replace(/[\s_]+/g, "-");
+    const engine = String(value || process.env.DEFAULT_CHAT_ENGINE || "kugnus").toLowerCase().replace(/[\s_]+/g, "-");
     if (engine === "openai" || engine === "gpt-5-4-mini" || engine === "gpt54-mini") return "openai";
     if (engine === "kugnus" || engine === "kugnus-ai" || engine === "local") return "kugnus";
     return CHAT_ENGINES.has(engine) ? engine : null;
@@ -297,11 +380,32 @@ function inferLlmProvider(baseUrl, explicitProvider) {
     return "openai";
 }
 
+function chatCompletionsUrl(baseUrl, provider) {
+    if (/\/(chat\/completions|api\/chat|api\/generate)$/i.test(baseUrl)) return baseUrl;
+    if (provider === "ollama") return `${baseUrl}/api/chat`;
+
+    const openAiBase = /\/v1$/i.test(baseUrl) ? baseUrl : `${baseUrl}/v1`;
+    return `${openAiBase}/chat/completions`;
+}
+
+function shouldUseOpenAiEnvForKugnus() {
+    const baseUrl = (process.env.OPENAI_BASE_URL || "").trim();
+    const model = (process.env.OPENAI_MODEL || "").trim();
+    if (envFlag(process.env.KUGNUS_USE_OPENAI_ENV)) return true;
+    if (baseUrl && !/api\.openai\.com/i.test(baseUrl)) return true;
+    if (model && !isAllowedOpenAiMiniModel(normalizeOpenAiMiniModel(model))) return true;
+    return false;
+}
+
 function buildLlmTarget(engine = "kugnus") {
     if (engine === "openai") {
-        const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").trim().replace(/\/+$/, "");
-        const model = normalizeOpenAiMiniModel(envFirst(OPENAI_MODEL_ENV_NAMES));
-        const apiKey = envFirst(OPENAI_KEY_ENV_NAMES);
+        const genericOpenAiBelongsToKugnus = shouldUseOpenAiEnvForKugnus();
+        const genericBase = genericOpenAiBelongsToKugnus ? "" : (process.env.OPENAI_BASE_URL || "");
+        const genericModel = genericOpenAiBelongsToKugnus ? "" : (process.env.OPENAI_MODEL || "");
+        const genericKey = genericOpenAiBelongsToKugnus ? "" : envFirst(GENERIC_OPENAI_KEY_ENV_NAMES);
+        const baseUrl = (envFirst(GPT_OPENAI_BASE_ENV_NAMES) || genericBase || "https://api.openai.com/v1").trim().replace(/\/+$/, "");
+        const model = normalizeOpenAiMiniModel(envFirst(GPT_OPENAI_MODEL_ENV_NAMES) || genericModel);
+        const apiKey = envFirst(GPT_OPENAI_KEY_ENV_NAMES) || genericKey;
 
         if (!apiKey) {
             const err = new Error("OpenAI API key is not configured");
@@ -326,26 +430,36 @@ function buildLlmTarget(engine = "kugnus") {
         };
     }
 
-    const baseUrl = (process.env.LLM_ENDPOINT || process.env.LLM_BASE_URL || "").trim().replace(/\/+$/, "");
-    const model = (process.env.LLM_MODEL || "").trim();
+    let baseUrl = envFirst(KUGNUS_BASE_ENV_NAMES);
+    let model = envFirst(KUGNUS_MODEL_ENV_NAMES);
+    let apiKey = envFirst(KUGNUS_KEY_ENV_NAMES);
+    let explicitProvider = process.env.KUGNUS_PROVIDER || process.env.LLM_PROVIDER || "";
+
+    if ((!baseUrl || !model) && shouldUseOpenAiEnvForKugnus()) {
+        baseUrl = baseUrl || process.env.OPENAI_BASE_URL || "";
+        model = model || process.env.OPENAI_MODEL || "";
+        apiKey = apiKey || process.env.OPENAI_API_KEY || "";
+        explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
+    }
+
+    baseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
+    model = String(model || "").trim();
+
     if (!baseUrl || !model) {
         const err = new Error("KUGNUS AI is not configured");
         err.status = 503;
         throw err;
     }
 
-    const provider = inferLlmProvider(baseUrl, process.env.LLM_PROVIDER || "");
-    const apiKey = (process.env.LLM_API_KEY || process.env.LOCAL_LLM_API_KEY || "").trim();
-    if (/\/(chat\/completions|api\/chat|api\/generate)$/i.test(baseUrl)) {
-        return { engine: "kugnus", label: "KUGNUS AI", provider, url: baseUrl, model, apiKey };
-    }
-
-    if (provider === "ollama") {
-        return { engine: "kugnus", label: "KUGNUS AI", provider, url: `${baseUrl}/api/chat`, model, apiKey };
-    }
-
-    const openAiBase = /\/v1$/i.test(baseUrl) ? baseUrl : `${baseUrl}/v1`;
-    return { engine: "kugnus", label: "KUGNUS AI", provider, url: `${openAiBase}/chat/completions`, model, apiKey };
+    const provider = inferLlmProvider(baseUrl, explicitProvider);
+    return {
+        engine: "kugnus",
+        label: "KUGNUS SERVER",
+        provider,
+        url: chatCompletionsUrl(baseUrl, provider),
+        model,
+        apiKey
+    };
 }
 
 function duckDuckGoConfig() {
@@ -397,7 +511,7 @@ function sanitizePackSource(source) {
     };
 }
 
-function sanitizePackItems(items, { strict = true, fallbackSources = [] } = {}) {
+function sanitizePackItems(items, { strict = true, requireSources = false, fallbackSources = [] } = {}) {
     if (!Array.isArray(items)) return [];
     const seen = new Set();
     const sanitized = [];
@@ -416,7 +530,7 @@ function sanitizePackItems(items, { strict = true, fallbackSources = [] } = {}) 
             ? item.sources.map(sanitizePackSource).filter(Boolean).slice(0, MAX_PACK_SOURCES)
             : [];
         if (sources.length === 0) sources = fallback;
-        if (strict && sources.length === 0) continue;
+        if (requireSources && sources.length === 0) continue;
 
         sanitized.push({ term, desc, sources });
         if (sanitized.length >= MAX_PACK_ITEMS) break;
@@ -428,7 +542,8 @@ function sanitizePackItems(items, { strict = true, fallbackSources = [] } = {}) 
 function sanitizePackPayload(body, { strict = true } = {}) {
     const title = sanitizePackText(body?.title, MAX_PACK_TITLE_LEN);
     const description = sanitizePackText(body?.description, MAX_PACK_DESC_LEN);
-    const items = sanitizePackItems(body?.items, { strict });
+    const submitForReview = body?.submitForReview === true;
+    const items = sanitizePackItems(body?.items, { strict, requireSources: submitForReview });
 
     if (strict) {
         if (title.length < 3) {
@@ -448,7 +563,7 @@ function sanitizePackPayload(body, { strict = true } = {}) {
         title,
         description,
         items,
-        submitForReview: body?.submitForReview === true
+        submitForReview
     };
 }
 
@@ -460,16 +575,404 @@ function normalizeDraftFromLlm(value, fallbackSources = []) {
     return { title, description, items };
 }
 
+function clampPackTargetCount(value) {
+    const count = Number(value);
+    if (!Number.isFinite(count)) return DEFAULT_PACK_TARGET_COUNT;
+    return Math.max(MIN_PACK_ITEMS, Math.min(Math.round(count), MAX_PACK_ITEMS));
+}
+
+function extractPackTitle(message) {
+    const text = sanitizePackText(message, MAX_CHAT_MESSAGE_LEN);
+    const explicitTitle = text.match(/(?:이름은|제목은|타이틀은)\s*([가-힣A-Za-z0-9 _-]{2,30}?팩)/i);
+    const candidates = [...text.matchAll(/([가-힣A-Za-z0-9_-]+(?:\s+[가-힣A-Za-z0-9_-]+){0,3}\s*팩)/g)];
+    const explicit = explicitTitle || candidates.at(-1);
+    if (!explicit) return "";
+
+    return sanitizePackText(explicit[1]
+        .replace(/\d{1,3}\s*(?:개|개만|단어|용어|terms?|items?|words?)/gi, "")
+        .replace(/^.*(?:뽑아서|뽑아|만들어|생성해서|제작해서|작성해서)\s*/i, "")
+        .replace(/^(?:만|만큼|정도)\s*/i, "")
+        .replace(/^(?:한글|한국어|영어|영문|english)\s*/i, "")
+        .replace(/^(?:단어|용어)\s*/i, "")
+        .replace(/\s{2,}/g, " ")
+        .trim(), MAX_PACK_TITLE_LEN);
+}
+
+function inferPackTermLanguage(message) {
+    const text = String(message || "").toLowerCase();
+    if (/(한글|한국어|한글로|한국어로|한국말)/i.test(message)) return "korean";
+    if (/(영어|영문|english|영어로)/i.test(message) || /\benglish\b/.test(text)) return "english";
+    return "auto";
+}
+
+function extractPackIntent(message) {
+    const text = sanitizePackText(message, MAX_CHAT_MESSAGE_LEN);
+    const countMatch =
+        text.match(/(\d{1,3})\s*(?:개|단어|용어|terms?|items?|words?)/i) ||
+        text.match(/(?:정확히|총|단어|용어|terms?|items?|words?)\s*(\d{1,3})/i);
+    const requestedCount = clampPackTargetCount(countMatch ? countMatch[1] : DEFAULT_PACK_TARGET_COUNT);
+    const termLanguage = inferPackTermLanguage(text);
+    const title = extractPackTitle(text);
+    const topic = sanitizePackText(text
+        .replace(/(?:팩\s*)?(?:초안|만들어줘|만들|생성|제작|작성|뽑아줘|뽑아서|부탁).*$/i, "")
+        .replace(/\d{1,3}\s*(?:개|단어|용어|terms?|items?|words?)/gi, "")
+        .replace(/\s+/g, " ")
+        .trim(), 160) || text;
+
+    return { requestedCount, termLanguage, title, topic };
+}
+
+function packLanguageLabel(language) {
+    if (language === "korean") return "KOREAN";
+    if (language === "english") return "ENGLISH";
+    return "DOMAIN";
+}
+
+function packLanguageInstruction(language) {
+    if (language === "korean") return "모든 term은 반드시 한글이 포함된 자동차 현장 용어로 작성한다. ABS 같은 약어도 단독 term으로 쓰지 말고 'ABS 센서'처럼 한글 부품명과 함께 쓴다.";
+    if (language === "english") return "모든 term은 영어 단어 또는 영어 약어로 작성한다. 한글 term은 넣지 않는다.";
+    return "term은 사용자가 요구한 도메인에서 실제로 외울 가치가 있는 짧은 명사/약어/명령어로 작성한다.";
+}
+
+function packIntentMessage(intent) {
+    return [
+        `목표 item 개수: 정확히 ${intent.requestedCount}개`,
+        `term 언어: ${packLanguageLabel(intent.termLanguage)}`,
+        `팩 제목 후보: ${intent.title || "-"}`,
+        `주제/상황: ${intent.topic || "-"}`,
+        packLanguageInstruction(intent.termLanguage),
+        "items 배열 길이가 목표 개수보다 적거나 많으면 실패다.",
+        "JSON 밖 설명은 생략하거나 한 문장만 쓴다.",
+        "마지막 JSON draft는 파싱 가능한 단일 객체여야 한다."
+    ].join("\n");
+}
+
+function packMakerTokenBudget(count) {
+    return Math.max(2200, Math.min(12000, 1200 + clampPackTargetCount(count) * 140));
+}
+
+function isLikelyLanguageMismatch(term, language) {
+    const value = String(term || "");
+    if (language === "korean") {
+        return !/[가-힣]/.test(value) && /[A-Za-z]{2,}/.test(value);
+    }
+    if (language === "english") {
+        return /[가-힣]/.test(value);
+    }
+    return false;
+}
+
+function draftLanguageMismatchCount(draft, intent) {
+    if (intent.termLanguage === "auto") return 0;
+    return draft.items.filter(item => isLikelyLanguageMismatch(item.term, intent.termLanguage)).length;
+}
+
+function fallbackDescriptionForIntent(intent, title) {
+    const count = clampPackTargetCount(intent.requestedCount);
+    if (intent.termLanguage === "korean") return `${title} - ${count}개 한글 도메인 용어`;
+    if (intent.termLanguage === "english") return `${title} - ${count} English domain terms`;
+    return `${title} - ${count} domain terms`;
+}
+
+function cleanDescriptionForIntent(description, intent, title) {
+    const clean = sanitizePackText(description, MAX_PACK_DESC_LEN);
+    if (!clean) return fallbackDescriptionForIntent(intent, title);
+    if (/\bdata pack\b/i.test(clean) || /단어\s*만/.test(clean)) {
+        return fallbackDescriptionForIntent(intent, title);
+    }
+    return clean;
+}
+
+function normalizeDraftForIntent(value, intent, fallbackSources = []) {
+    const draft = normalizeDraftFromLlm(value, fallbackSources);
+    const title = intent.title || draft.title;
+    const safeTitle = sanitizePackText(title, MAX_PACK_TITLE_LEN) || "Generated Data Pack";
+    return {
+        title: safeTitle,
+        description: cleanDescriptionForIntent(draft.description, intent, safeTitle),
+        items: draft.items.slice(0, intent.requestedCount)
+    };
+}
+
+function mergeDraftsForIntent(baseDraft, candidateDraft, intent) {
+    const merged = {
+        title: intent.title || candidateDraft.title || baseDraft.title,
+        description: candidateDraft.description || baseDraft.description,
+        items: []
+    };
+    const seen = new Set();
+
+    for (const item of [...baseDraft.items, ...candidateDraft.items]) {
+        const key = String(item.term || "").toLowerCase();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        merged.items.push(item);
+        if (merged.items.length >= intent.requestedCount) break;
+    }
+
+    return normalizeDraftForIntent(merged, intent);
+}
+
+function draftMeetsPackIntent(draft, intent) {
+    if (draft.items.length !== intent.requestedCount) return false;
+    const mismatchCount = draftLanguageMismatchCount(draft, intent);
+    if (intent.termLanguage === "korean") return mismatchCount <= Math.max(2, Math.floor(intent.requestedCount * 0.1));
+    if (intent.termLanguage === "english") return mismatchCount === 0;
+    return true;
+}
+
+function buildPackMakerRepairMessages(payload, draft, reason) {
+    return [
+        { role: "system", content: PACK_MAKER_SYSTEM_PROMPT },
+        { role: "system", content: `이번 요청 계약:\n${packIntentMessage(payload.intent)}` },
+        { role: "system", content: `검색 결과:\n${payload.sourceBundle}` },
+        { role: "system", content: `현재 draft JSON:\n${JSON.stringify(draft).slice(0, 12000)}` },
+        {
+            role: "user",
+            content: [
+                `보강 사유: ${reason}`,
+                `기존 유효 term은 최대한 유지하고 부족분을 추가해 전체 items를 정확히 ${payload.intent.requestedCount}개로 맞춰라.`,
+                "중복 term 없이, 사용자가 요구한 언어를 지켜라.",
+                "최종 응답은 파싱 가능한 JSON draft 객체 하나를 마지막에 포함해야 한다."
+            ].join("\n")
+        }
+    ];
+}
+
+function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
+    const excludedTerms = draft.items
+        .map(item => item.term)
+        .filter(Boolean)
+        .slice(-80);
+    const batchIntent = { ...payload.intent, requestedCount: batchCount };
+
+    return [
+        {
+            role: "system",
+            content: [
+                "너는 CodeDrop PACK MAKER의 용어 생성기다.",
+                "응답은 반드시 줄 목록만 출력한다. 설명, markdown, 코드펜스, JSON은 쓰지 않는다.",
+                "각 줄 형식은 정확히: 용어 | 한줄 설명",
+                "예: 브레이크 패드 | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.",
+                "raw HTML은 절대 쓰지 않는다."
+            ].join("\n")
+        },
+        { role: "system", content: `이번 batch 계약:\n${packIntentMessage(batchIntent)}` },
+        { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
+        { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
+        { role: "system", content: `이미 사용한 term 목록(중복 금지): ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}` },
+        { role: "system", content: `검색 결과:\n${payload.sourceBundle}` },
+        {
+            role: "user",
+            content: [
+                `batch ${batchNumber}: 아직 없는 새 item을 정확히 ${batchCount}개 생성해라.`,
+                `팩 title은 반드시 "${payload.intent.title || "Generated Data Pack"}" 로 둔다.`,
+                packLanguageInstruction(payload.intent.termLanguage),
+                "term은 짧은 명사/부품명/현장 용어만 쓴다.",
+                "중복 없이, 각 줄을 '용어 | 한줄 설명' 형식으로만 답한다."
+            ].join("\n")
+        }
+    ];
+}
+
+function draftFromPackMakerLines(answer, intent, count, fallbackSources = []) {
+    const items = [];
+    const seen = new Set();
+    const lines = String(answer || "")
+        .replace(/```[\s\S]*?```/g, "")
+        .split(/\n+/)
+        .map(line => line.trim())
+        .filter(Boolean);
+
+    for (const rawLine of lines) {
+        const line = rawLine
+            .replace(/^\s*(?:[-*]|\d+[.)])\s*/, "")
+            .replace(/^["'`]+|["'`]+$/g, "")
+            .trim();
+        let parts = line.split("|");
+        if (parts.length < 2) parts = line.split(/\s+-\s+/);
+        if (parts.length < 2) parts = line.split(/\s*:\s+/);
+
+        const term = sanitizePackText(parts.shift(), MAX_PACK_TERM_LEN);
+        const desc = sanitizePackText(parts.join(" ").trim(), MAX_PACK_ITEM_DESC_LEN) || `${term} 관련 자동차 정비 용어입니다.`;
+        if (!term || !desc) continue;
+        if (intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
+        if (intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
+
+        const key = term.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({ term, desc, sources: fallbackSources });
+        if (items.length >= count) break;
+    }
+
+    return normalizeDraftForIntent({
+        title: intent.title,
+        description: `${intent.topic || intent.title} data pack`,
+        items
+    }, { ...intent, requestedCount: count }, fallbackSources);
+}
+
+async function generatePackMakerBatchDraft(target, payload, draft, searchResults, batchCount, batchNumber, signal, onDelta) {
+    const batchMessages = buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber);
+    const answer = await callPackMakerLlmOnce(
+        target,
+        batchMessages,
+        signal,
+        {
+            maxTokens: packMakerTokenBudget(batchCount)
+        }
+    );
+    if (answer) onDelta(`\n${answer}\n`);
+    const parsed = extractDraftJson(answer);
+    const parsedDraft = normalizeDraftForIntent(parsed || {}, { ...payload.intent, requestedCount: batchCount }, searchResults);
+    const lineDraft = draftFromPackMakerLines(answer, payload.intent, batchCount, searchResults);
+    const bestDraft = lineDraft.items.length >= parsedDraft.items.length ? lineDraft : parsedDraft;
+    return {
+        answer,
+        draft: bestDraft
+    };
+}
+
+async function generatePackMakerDraftInBatches(target, payload, searchResults, signal, onDelta, onStatus) {
+    let draft = normalizeDraftForIntent({
+        title: payload.intent.title,
+        description: `${payload.intent.topic || payload.intent.title} data pack`,
+        items: []
+    }, payload.intent, searchResults);
+    let answer = "";
+    const maxBatches = Math.max(
+        Math.ceil(payload.intent.requestedCount / Math.max(1, Math.floor(PACK_MAKER_BATCH_SIZE / 2))),
+        payload.intent.requestedCount
+    );
+
+    for (let batchNumber = 1; batchNumber <= maxBatches && draft.items.length < payload.intent.requestedCount; batchNumber += 1) {
+        const remaining = payload.intent.requestedCount - draft.items.length;
+        let batchCount = Math.min(PACK_MAKER_BATCH_SIZE, remaining);
+        onStatus(`${draft.items.length}/${payload.intent.requestedCount} GENERATING`);
+
+        let result = null;
+        let lastError = null;
+        for (let attempt = 1; attempt <= 3 && !result; attempt += 1) {
+            try {
+                result = await generatePackMakerBatchDraft(
+                    target,
+                    payload,
+                    draft,
+                    searchResults,
+                    batchCount,
+                    batchNumber,
+                    signal,
+                    text => onDelta(text)
+                );
+            } catch (err) {
+                if (signal.aborted || err.name === "AbortError") throw err;
+                lastError = err;
+                batchCount = Math.max(4, Math.ceil(batchCount / 2));
+                onStatus(`${draft.items.length}/${payload.intent.requestedCount} RETRYING`);
+            }
+        }
+
+        if (!result) {
+            onDelta(`\n[PACK MAKER] batch ${batchNumber} failed: ${lastError?.message || "unknown error"}\n`);
+            continue;
+        }
+
+        answer += `\n${result.answer || ""}`;
+        const before = draft.items.length;
+        draft = mergeDraftsForIntent(draft, result.draft, payload.intent);
+
+        if (draft.items.length === before) {
+            onStatus(`${draft.items.length}/${payload.intent.requestedCount} REPAIRING`);
+        }
+    }
+
+    return { draft, answer };
+}
+
+function coerceDraftJson(value) {
+    if (!value || typeof value !== "object") return null;
+    if (Array.isArray(value.items)) return value;
+    if (value.draft && typeof value.draft === "object" && Array.isArray(value.draft.items)) return value.draft;
+    if (value.pack && typeof value.pack === "object" && Array.isArray(value.pack.items)) return value.pack;
+    if (Array.isArray(value)) return { title: "Generated Data Pack", description: "Pack Maker draft", items: value };
+    return null;
+}
+
+function parseDraftCandidate(candidate) {
+    const text = String(candidate || "").trim();
+    if (!text) return null;
+    try {
+        return coerceDraftJson(JSON.parse(text));
+    } catch (err) {
+        const cleaned = text
+            .replace(/,\s*([}\]])/g, "$1")
+            .replace(/^\uFEFF/, "");
+        try {
+            return coerceDraftJson(JSON.parse(cleaned));
+        } catch (e) {
+            return null;
+        }
+    }
+}
+
+function balancedJsonCandidates(text) {
+    const candidates = [];
+    let depth = 0;
+    let start = -1;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+        const char = text[index];
+
+        if (inString) {
+            if (escaped) {
+                escaped = false;
+            } else if (char === "\\") {
+                escaped = true;
+            } else if (char === "\"") {
+                inString = false;
+            }
+            continue;
+        }
+
+        if (char === "\"") {
+            inString = true;
+            continue;
+        }
+
+        if (char === "{") {
+            if (depth === 0) start = index;
+            depth += 1;
+        } else if (char === "}" && depth > 0) {
+            depth -= 1;
+            if (depth === 0 && start !== -1) {
+                candidates.push(text.slice(start, index + 1));
+                start = -1;
+            }
+        }
+    }
+
+    return candidates;
+}
+
 function extractDraftJson(answer) {
     const text = String(answer || "");
-    const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    const candidate = fence ? fence[1] : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-    if (!candidate || !candidate.trim().startsWith("{")) return null;
-    try {
-        return JSON.parse(candidate);
-    } catch (err) {
-        return null;
+    const candidates = [];
+    for (const match of text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)) {
+        candidates.push(match[1]);
     }
+    candidates.push(...balancedJsonCandidates(text));
+
+    let best = null;
+    for (const candidate of candidates) {
+        const parsed = parseDraftCandidate(candidate);
+        if (!parsed) continue;
+        if (!best || (parsed.items || []).length > (best.items || []).length) best = parsed;
+    }
+
+    return best;
 }
 
 async function ensureCustomPackTables() {
@@ -593,6 +1096,79 @@ async function savePackItems(connection, packIdValue, items) {
     }
 }
 
+function decodeHtmlEntities(value) {
+    return String(value || "")
+        .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+        .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
+        .replace(/&amp;/g, "&")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, " ")
+        .replace(/&nbsp;/g, " ");
+}
+
+function stripHtml(value) {
+    return sanitizePackText(
+        decodeHtmlEntities(String(value || "").replace(/<[^>]+>/g, " ")),
+        280
+    );
+}
+
+function normalizeDuckDuckGoHref(href) {
+    const decoded = decodeHtmlEntities(href);
+    try {
+        const url = new URL(decoded, "https://duckduckgo.com");
+        const uddg = url.searchParams.get("uddg");
+        if (uddg) return decodeURIComponent(uddg);
+        return url.toString();
+    } catch (err) {
+        return "";
+    }
+}
+
+async function duckDuckGoHtmlSearch(query) {
+    const url = new URL("https://duckduckgo.com/html/");
+    url.searchParams.set("q", query);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+        const res = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 CodeDrop Pack Maker",
+                "Accept": "text/html"
+            },
+            signal: controller.signal
+        });
+        if (!res.ok) throw new Error(`DuckDuckGo HTML request failed (${res.status})`);
+        const html = await res.text();
+        const blocks = html.match(/<div class="result[\s\S]*?<\/div>\s*<\/div>/g) || [];
+        const results = [];
+
+        for (const block of blocks) {
+            const linkMatch = block.match(/<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
+            if (!linkMatch) continue;
+            const snippetMatch = block.match(/<a[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/a>/)
+                || block.match(/<div[^>]+class="result__snippet"[^>]*>([\s\S]*?)<\/div>/);
+            const sourceUrl = sanitizeSourceUrl(normalizeDuckDuckGoHref(linkMatch[1]));
+            const title = stripHtml(linkMatch[2]).slice(0, 120);
+            const snippet = stripHtml(snippetMatch ? snippetMatch[1] : title).slice(0, 260);
+            if (!sourceUrl || !title || !snippet) continue;
+            if (results.some(item => item.url === sourceUrl)) continue;
+            results.push({ title, url: sourceUrl, snippet });
+            if (results.length >= 8) break;
+        }
+
+        return results;
+    } catch (err) {
+        console.warn("DuckDuckGo HTML search failed:", err.message);
+        return [];
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 async function duckDuckGoSearch(query) {
     const cleanQuery = sanitizeChatText(query, 180);
     if (!cleanQuery) return [];
@@ -636,10 +1212,11 @@ async function duckDuckGoSearch(query) {
             });
         };
         walk(data.RelatedTopics);
-        return results.slice(0, 8);
+        if (results.length) return results.slice(0, 8);
+        return duckDuckGoHtmlSearch(cleanQuery);
     } catch (err) {
         console.warn("DuckDuckGo search failed:", err.message);
-        return [];
+        return duckDuckGoHtmlSearch(cleanQuery);
     } finally {
         clearTimeout(timeout);
     }
@@ -658,7 +1235,11 @@ function llmPayload(target, messages, stream = false, options = {}) {
             model: target.model,
             messages,
             stream,
-            options: { temperature: 0.2 }
+            ...(options.format ? { format: options.format } : {}),
+            options: {
+                temperature: 0.2,
+                num_predict: maxTokens
+            }
         };
     }
 
@@ -678,6 +1259,18 @@ function llmPayload(target, messages, stream = false, options = {}) {
         max_tokens: maxTokens,
         stream
     };
+}
+
+function ollamaBaseUrl(target) {
+    const url = new URL(target.url);
+    if (/\/api\/(chat|generate)$/i.test(url.pathname)) {
+        url.pathname = url.pathname.replace(/\/api\/(chat|generate)$/i, "");
+    } else if (/\/v1\/chat\/completions$/i.test(url.pathname)) {
+        url.pathname = url.pathname.replace(/\/v1\/chat\/completions$/i, "");
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
 }
 
 function extractLlmAnswer(provider, data) {
@@ -749,7 +1342,7 @@ function buildLearnMessages(body) {
     };
 }
 
-function buildPackMakerMessages(body, searchResults) {
+function buildPackMakerMessages(body, searchResults, providedIntent = null) {
     const message = sanitizeChatText(body?.message);
     if (!message) {
         const err = new Error("Message required");
@@ -765,6 +1358,7 @@ function buildPackMakerMessages(body, searchResults) {
     }
 
     const history = sanitizeChatHistory(body?.history);
+    const intent = providedIntent || extractPackIntent(message);
     const draft = normalizeDraftFromLlm(body?.draft || {}, searchResults);
     const sourceBundle = searchResults.length
         ? searchResults.map((item, index) => `${index + 1}. ${item.title}\nURL: ${item.url}\n요약: ${item.snippet}`).join("\n\n")
@@ -777,8 +1371,12 @@ function buildPackMakerMessages(body, searchResults) {
     return {
         engine,
         message,
+        intent,
+        sourceBundle,
+        maxTokens: packMakerTokenBudget(intent.requestedCount),
         messages: [
             { role: "system", content: PACK_MAKER_SYSTEM_PROMPT },
+            { role: "system", content: `이번 요청 계약:\n${packIntentMessage(intent)}` },
             { role: "system", content: `검색 결과:\n${sourceBundle}` },
             { role: "system", content: `현재 draft:\n${currentDraft}` },
             ...history,
@@ -885,6 +1483,45 @@ async function readLearnLlmStream(target, messages, signal, onDelta, options = {
     return output.trim();
 }
 
+async function callPackMakerLlmOnce(target, messages, signal, options = {}) {
+    const response = await fetch(target.url, {
+        method: "POST",
+        headers: llmHeaders(target),
+        body: JSON.stringify(llmPayload(target, messages, false, options)),
+        signal
+    });
+
+    const text = await response.text().catch(() => "");
+    if (!response.ok) {
+        let message = `LLM request failed (${response.status})`;
+        try {
+            const data = JSON.parse(text);
+            message = data.error?.message || data.error || message;
+        } catch (e) {
+            if (text.trim()) message = text.trim().slice(0, 240);
+        }
+        const err = new Error(message);
+        err.status = response.status >= 500 ? 502 : response.status;
+        throw err;
+    }
+
+    let data = {};
+    try {
+        data = text ? JSON.parse(text) : {};
+    } catch (err) {
+        const parsed = extractDraftJson(text);
+        if (parsed) return JSON.stringify(parsed);
+        throw err;
+    }
+
+    const answer = extractLlmAnswer(target.provider, data).trim();
+    if (!answer) {
+        const parsed = coerceDraftJson(data);
+        if (parsed) return JSON.stringify(parsed);
+    }
+    return answer;
+}
+
 function writeNdjson(res, event, payload = {}) {
     if (res.writableEnded || res.destroyed) return;
     res.write(`${JSON.stringify({ event, ...payload })}\n`);
@@ -905,6 +1542,86 @@ app.get("/ready", async (req, res) => {
         res.json({ server: "ok", db: "ok" });
     } catch (err) {
         res.status(503).json({ server: "ok", db: "unavailable" });
+    }
+});
+
+app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async (req, res) => {
+    let target;
+    try {
+        target = buildLlmTarget("kugnus");
+    } catch (err) {
+        return res.json({
+            ok: false,
+            engine: "kugnus",
+            label: "KUGNUS SERVER",
+            reason: err.message
+        });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), KUGNUS_HEALTH_TIMEOUT_MS);
+
+    try {
+        if (target.provider === "ollama") {
+            const baseUrl = ollamaBaseUrl(target);
+            const response = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
+            const data = await response.json().catch(() => ({}));
+            const models = Array.isArray(data.models) ? data.models : [];
+            const hasModel = models.some(model => model.name === target.model || model.model === target.model);
+            return res.json({
+                ok: response.ok && hasModel,
+                engine: "kugnus",
+                label: "KUGNUS SERVER",
+                provider: target.provider,
+                model: target.model,
+                reason: response.ok && !hasModel ? `Model not found: ${target.model}` : ""
+            });
+        }
+
+        const response = await fetch(target.url, {
+            method: "POST",
+            headers: llmHeaders(target),
+            body: JSON.stringify(llmPayload(target, [
+                { role: "user", content: "Health check. Reply only OK." }
+            ], false, { maxTokens: 16 })),
+            signal: controller.signal
+        });
+
+        const text = await response.text().catch(() => "");
+        if (!response.ok) {
+            return res.json({
+                ok: false,
+                engine: "kugnus",
+                label: "KUGNUS SERVER",
+                reason: `KUGNUS request failed (${response.status})`
+            });
+        }
+
+        let data = {};
+        try {
+            data = text ? JSON.parse(text) : {};
+        } catch (err) {
+            data = {};
+        }
+
+        const answer = extractLlmAnswer(target.provider, data).trim();
+        res.json({
+            ok: Boolean(answer || text.trim()),
+            engine: "kugnus",
+            label: "KUGNUS SERVER",
+            provider: target.provider,
+            model: target.model,
+            reason: answer || text.trim() ? "" : "Empty KUGNUS response"
+        });
+    } catch (err) {
+        res.json({
+            ok: false,
+            engine: "kugnus",
+            label: "KUGNUS SERVER",
+            reason: err.name === "AbortError" ? "KUGNUS health timeout" : err.message
+        });
+    } finally {
+        clearTimeout(timeout);
     }
 });
 
@@ -1013,7 +1730,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), PACK_MAKER_TIMEOUT_MS);
     let finished = false;
 
     res.on("close", () => {
@@ -1035,28 +1752,45 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
     });
 
     try {
-        const searchResults = await duckDuckGoSearch(`${message} glossary key terms official docs`);
+        const intent = extractPackIntent(message);
+        writeNdjson(res, "status", {
+            text: `TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS`
+        });
+
+        const searchResults = await duckDuckGoSearch(`${intent.topic || message} glossary key terms official docs`);
         writeNdjson(res, "search", { results: searchResults });
-        const payload = buildPackMakerMessages(req.body, searchResults);
+        const payload = buildPackMakerMessages(req.body, searchResults, intent);
 
-        const answer = await readLearnLlmStream(target, payload.messages, controller.signal, text => {
-            writeNdjson(res, "delta", { text });
-        }, { maxTokens: 2200 });
+        const generated = await generatePackMakerDraftInBatches(
+            target,
+            payload,
+            searchResults,
+            controller.signal,
+            text => writeNdjson(res, "delta", { text }),
+            text => writeNdjson(res, "status", { text })
+        );
 
-        if (!answer) {
-            const err = new Error("Empty LLM response");
-            err.status = 502;
-            throw err;
+        const answer = generated.answer;
+        const draft = generated.draft;
+
+        if (!draftMeetsPackIntent(draft, payload.intent)) {
+            finished = true;
+            writeNdjson(res, "draft", { draft });
+            writeNdjson(res, "status", {
+                text: `DRAFT SHORT - ${draft.items.length}/${payload.intent.requestedCount}`,
+                danger: true
+            });
+            writeNdjson(res, "error", {
+                error: `DRAFT SHORT - ${draft.items.length}/${payload.intent.requestedCount}`
+            });
+            if (!res.writableEnded && !res.destroyed) res.end();
+            return;
         }
 
-        const parsed = extractDraftJson(answer);
-        const draft = normalizeDraftFromLlm(parsed || {
-            title: message.slice(0, MAX_PACK_TITLE_LEN),
-            description: "Pack Maker generated draft",
-            items: []
-        }, searchResults);
-
         finished = true;
+        writeNdjson(res, "status", {
+            text: `${draft.items.length}/${payload.intent.requestedCount} ITEMS READY`
+        });
         writeNdjson(res, "draft", { draft });
         writeNdjson(res, "done", { answer });
         if (!res.writableEnded && !res.destroyed) res.end();

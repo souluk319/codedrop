@@ -868,6 +868,21 @@
             box-shadow: 0 0 30px var(--primary-neon);
         }
 
+        .btn.btn-ghost {
+            margin-top: 8px;
+            padding: 12px 24px;
+            border-width: 1px;
+            color: rgba(255, 255, 255, 0.72);
+            box-shadow: none;
+            background: rgba(0, 243, 255, 0.04);
+        }
+
+        .btn.btn-ghost:hover {
+            color: #000;
+            background: var(--primary-neon);
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.45);
+        }
+
         .btn-small {
             background: rgba(0, 0, 0, 0.5);
             border: 1px solid var(--primary-neon);
@@ -1600,6 +1615,13 @@
             text-shadow: 0 0 8px var(--danger-color);
         }
 
+        .pack-maker-chat-wrap {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            display: flex;
+        }
+
         .pack-maker-chat-log {
             flex: 1;
             min-height: 0;
@@ -1625,6 +1647,18 @@
             border-color: rgba(188, 19, 254, 0.35);
         }
 
+        .pack-maker-msg.assistant.streaming {
+            box-shadow: 0 0 18px rgba(188, 19, 254, 0.14);
+        }
+
+        .pack-maker-msg.assistant.failed {
+            border-color: rgba(255, 48, 69, 0.5);
+        }
+
+        .pack-maker-msg.assistant.stopped {
+            opacity: 0.78;
+        }
+
         .pack-maker-msg.system {
             border-color: rgba(255, 176, 0, 0.35);
             color: #d8c48a;
@@ -1644,6 +1678,20 @@
             line-height: 1.55;
             color: var(--text-color);
             font-size: 0.88rem;
+        }
+
+        .pack-maker-msg.assistant .pack-maker-msg-body {
+            white-space: normal;
+        }
+
+        .pack-maker-msg.assistant .learn-chat-actions {
+            margin-top: 8px;
+        }
+
+        .pack-maker-msg.assistant .learn-chat-note {
+            margin: 8px 0 0;
+            color: #d8c48a;
+            font-size: 0.74rem;
         }
 
         .pack-maker-chat-form {
@@ -1903,23 +1951,27 @@
         }
 
         #readme-box {
-            width: 600px;
-            max-width: 400px;
+            width: min(560px, calc(100vw - 48px)) !important;
+            max-width: min(560px, calc(100vw - 48px)) !important;
             background: rgba(10, 10, 15, 0.95);
             border: 1px solid var(--primary-neon);
             border-radius: 16px;
-            padding: 40px;
+            padding: clamp(30px, 5vw, 44px) !important;
             box-shadow: 0 0 50px rgba(0, 243, 255, 0.2);
             position: relative;
             text-align: center;
+            max-height: min(92dvh, 860px);
+            overflow-y: auto;
         }
 
         #readme-box h2 {
             font-family: var(--font-display);
             color: #fff;
-            font-size: 2.5rem;
-            margin-bottom: 30px;
+            font-size: clamp(2.35rem, 7vw, 4rem) !important;
+            margin: 18px auto 30px !important;
             text-shadow: 0 0 10px var(--primary-neon);
+            line-height: 1.08;
+            white-space: nowrap;
         }
 
         #readme-box[data-manual-lang="en"] [data-i18n="ko"],
@@ -1928,8 +1980,10 @@
         }
 
         .readme-lang-toggle {
-            display: inline-flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 6px;
+            width: 260px;
             padding: 4px;
             margin: 0 auto 18px;
             border: 1px solid rgba(0, 243, 255, 0.45);
@@ -1939,7 +1993,7 @@
         }
 
         .readme-lang-toggle button {
-            min-width: 46px;
+            min-width: 0;
             padding: 6px 10px;
             border: 0;
             border-radius: 3px;
@@ -1949,6 +2003,7 @@
             font-size: 0.72rem;
             letter-spacing: 1px;
             cursor: pointer;
+            white-space: nowrap;
         }
 
         .readme-lang-toggle button.active {
@@ -1962,6 +2017,70 @@
             line-height: 1.6;
             margin-bottom: 20px;
             font-size: 1.1rem;
+        }
+
+        #readme-box[data-manual-lang="ko"] {
+            width: min(640px, calc(100vw - 48px)) !important;
+            max-width: min(640px, calc(100vw - 48px)) !important;
+            padding-left: clamp(34px, 6vw, 58px) !important;
+            padding-right: clamp(34px, 6vw, 58px) !important;
+        }
+
+        #readme-box[data-manual-lang="ko"] h2 {
+            font-size: clamp(2.25rem, 6.4vw, 3.8rem) !important;
+            letter-spacing: 0.02em !important;
+        }
+
+        #readme-box[data-manual-lang="ko"] p {
+            max-width: 540px;
+            margin-left: auto;
+            margin-right: auto;
+            font-size: clamp(1.05rem, 2.8vw, 1.34rem) !important;
+            line-height: 1.82 !important;
+            word-break: keep-all;
+            overflow-wrap: normal;
+            letter-spacing: 0.01em;
+        }
+
+        #readme-box[data-manual-lang="ko"] p strong {
+            display: inline-block;
+            margin-bottom: 6px;
+            font-size: 1.05em;
+            letter-spacing: 0.03em;
+        }
+
+        #readme-box[data-manual-lang="ko"] .contact-info {
+            margin-top: 34px !important;
+        }
+
+        #readme-box[data-manual-lang="ko"] .contact-links {
+            max-width: 540px;
+            margin: 0 auto;
+            row-gap: 14px !important;
+        }
+
+        @media (max-width: 560px) {
+            #readme-box,
+            #readme-box[data-manual-lang="ko"] {
+                width: calc(100vw - 28px) !important;
+                max-width: calc(100vw - 28px) !important;
+                padding: 28px 22px !important;
+            }
+
+            .readme-lang-toggle {
+                width: 220px;
+            }
+
+            #readme-box h2,
+            #readme-box[data-manual-lang="ko"] h2 {
+                white-space: normal;
+                font-size: clamp(2rem, 11vw, 3rem) !important;
+            }
+
+            #readme-box[data-manual-lang="ko"] p {
+                font-size: 1.05rem !important;
+                line-height: 1.75 !important;
+            }
         }
 
         #readme-box .contact-info {
@@ -2095,6 +2214,15 @@
             font-family: var(--font-code);
         }
 
+        .guest-note {
+            margin-top: -8px;
+            color: rgba(255, 255, 255, 0.48);
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+            line-height: 1.45;
+            text-align: center;
+        }
+
         .logged-in-view {
             display: none;
             flex-direction: column;
@@ -2175,6 +2303,605 @@
         .select-group select:hover {
             border-color: var(--primary-neon);
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+        }
+
+        .pack-native-select {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            padding: 0 !important;
+            border: 0 !important;
+        }
+
+        .pack-selector {
+            --pack-card-width: 146px;
+            --pack-card-height: 156px;
+            position: relative;
+            display: grid;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .pack-selector-trigger {
+            width: 100%;
+            min-height: 54px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 9px 14px;
+            font-family: var(--font-code);
+            color: #fff;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 5px),
+                linear-gradient(135deg, rgba(0, 243, 255, 0.12), rgba(0, 0, 0, 0.84) 58%, rgba(255, 48, 69, 0.12));
+            border: 1px solid rgba(0, 243, 255, 0.62);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: inset 0 0 18px rgba(0, 243, 255, 0.07), 0 0 14px rgba(0, 243, 255, 0.1);
+            transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .pack-selector-trigger:hover,
+        .pack-selector-trigger:focus-visible,
+        .pack-selector.open .pack-selector-trigger {
+            border-color: var(--primary-neon);
+            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.12), 0 0 20px rgba(0, 243, 255, 0.18);
+            transform: translateY(-1px);
+            outline: none;
+        }
+
+        .pack-trigger-kicker {
+            display: block;
+            color: var(--primary-neon);
+            font-size: 0.63rem;
+            letter-spacing: 2px;
+            margin-bottom: 2px;
+        }
+
+        #pack-current-title {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.96rem;
+            letter-spacing: 0.5px;
+        }
+
+        .pack-trigger-chip {
+            flex: 0 0 auto;
+            min-width: 54px;
+            text-align: center;
+            padding: 6px 8px;
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            color: var(--secondary-neon);
+            font-family: var(--font-display);
+            font-size: 0.68rem;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.42);
+        }
+
+        .pack-console {
+            position: relative;
+            min-height: calc(var(--pack-card-height) + 42px);
+            display: block;
+            padding: 14px 0;
+            border: 0;
+            border-radius: 0;
+            background:
+                radial-gradient(circle at calc(22px + (var(--pack-card-width) / 2)) 50%, rgba(0, 243, 255, 0.14), transparent 32%),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.08), transparent 52%);
+            box-shadow: none;
+            cursor: pointer;
+            overflow: visible;
+            color: #dffcff;
+        }
+
+        .pack-console::after {
+            content: none;
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 5px);
+            mix-blend-mode: screen;
+            opacity: 0.3;
+        }
+
+        .pack-console-deck {
+            position: relative;
+            min-height: calc(var(--pack-card-height) + 14px);
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            z-index: 1;
+        }
+
+        .pack-console-dock {
+            position: absolute;
+            left: 22px;
+            top: 10px;
+            width: var(--pack-card-width);
+            height: var(--pack-card-height);
+            border-radius: 14px 14px 5px 5px;
+            border: 0;
+            background:
+                linear-gradient(115deg, transparent 0 35%, rgba(0, 243, 255, 0.12) 35% 62%, transparent 62%),
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 5px),
+                linear-gradient(180deg, rgba(4, 12, 14, 0.96), rgba(1, 3, 4, 0.98));
+            box-shadow:
+                inset 0 0 22px rgba(0, 0, 0, 0.66),
+                0 0 20px rgba(0, 243, 255, 0.14);
+            overflow: hidden;
+            z-index: 2;
+        }
+
+        .pack-console-dock::before {
+            content: none;
+        }
+
+        .pack-console-dock::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            border-radius: inherit;
+            background:
+                linear-gradient(90deg, transparent 0 28%, rgba(0, 243, 255, 0.42) 28% 72%, transparent 72%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent);
+            filter: blur(0.5px);
+            mix-blend-mode: screen;
+        }
+
+        .pack-dock-label {
+            display: none;
+        }
+
+        .pack-console-status-art {
+            position: absolute;
+            left: calc(22px + var(--pack-card-width) + 46px);
+            right: 22px;
+            top: 70px;
+            min-height: 58px;
+            display: grid;
+            align-content: center;
+            padding: 10px 14px;
+            border-left: 3px solid rgba(0, 243, 255, 0.38);
+            color: #dffcff;
+            font-family: var(--font-display);
+            font-size: 0.86rem;
+            line-height: 1.25;
+            letter-spacing: 2px;
+            text-align: left;
+            opacity: 0;
+            transform: translateX(-8px);
+            text-shadow: 0 0 12px rgba(0, 243, 255, 0.82);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .pack-console.drag-ready,
+        .pack-console:focus-visible {
+            box-shadow: none;
+            outline: none;
+        }
+
+        .pack-console.pack-inserting .pack-console-dock {
+            animation: packDockFlash 0.72s ease;
+        }
+
+        .pack-console.pack-inserting .pack-dock-label {
+            opacity: 0;
+        }
+
+        .pack-console.pack-inserting .pack-console-dock::after {
+            animation: packDockAfterimage 0.72s ease;
+        }
+
+        .pack-console.pack-inserting .pack-console-status-art {
+            animation: packReadyArt 1.35s steps(2, end);
+        }
+
+        .pack-popover {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 190;
+            width: min(780px, calc(100vw - 32px));
+            height: min(660px, calc(100dvh - 80px));
+            max-height: min(660px, calc(100dvh - 80px));
+            display: grid;
+            grid-template-rows: auto 1fr;
+            border: 1px solid rgba(0, 243, 255, 0.72);
+            border-radius: 10px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 5px),
+                linear-gradient(180deg, rgba(1, 12, 16, 0.98), rgba(0, 0, 0, 0.98));
+            box-shadow: 0 0 28px rgba(0, 243, 255, 0.26), inset 0 0 24px rgba(0, 243, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .pack-popover-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.78rem;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.22);
+        }
+
+        .pack-popover-close {
+            border: 1px solid rgba(0, 243, 255, 0.45);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.55);
+            color: var(--primary-neon);
+            font-family: var(--font-code);
+            font-size: 0.68rem;
+            padding: 5px 8px;
+            cursor: pointer;
+        }
+
+        .pack-popover-body {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: 1fr auto;
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .pack-card-groups {
+            overflow: auto;
+            padding: 0 4px 2px 0;
+            display: grid;
+            gap: 16px;
+        }
+
+        .pack-popover-console {
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 243, 255, 0.18);
+        }
+
+        .pack-card-group {
+            display: grid;
+            align-content: start;
+            gap: 9px;
+        }
+
+        .pack-card-group-title {
+            color: #aaa;
+            font-family: var(--font-display);
+            font-size: 0.66rem;
+            line-height: 1.15;
+            letter-spacing: 2px;
+        }
+
+        .pack-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(var(--pack-card-width), var(--pack-card-width)));
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .pack-cartridge {
+            --pack-accent: var(--primary-neon);
+            --pack-shell: #f4c915;
+            --pack-shell-dark: #b98700;
+            --pack-label: #f5f0d7;
+            position: relative;
+            width: var(--pack-card-width);
+            height: var(--pack-card-height);
+            min-height: 0;
+            display: grid;
+            grid-template-rows: 20px 58px auto;
+            gap: 5px;
+            padding: 11px 11px 14px;
+            border: 1px solid color-mix(in srgb, var(--pack-shell), #fff 35%);
+            border-bottom-color: color-mix(in srgb, var(--pack-shell-dark), #000 12%);
+            border-radius: 14px 14px 5px 5px;
+            background:
+                linear-gradient(90deg, rgba(255, 255, 255, 0.24) 0 4%, transparent 4% 96%, rgba(0, 0, 0, 0.12) 96%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.52), transparent 14%),
+                linear-gradient(180deg, var(--pack-shell), color-mix(in srgb, var(--pack-shell), #fff 10%) 74%, var(--pack-shell-dark));
+            color: #151719;
+            font-family: var(--font-code);
+            cursor: pointer;
+            text-align: center;
+            box-shadow:
+                inset 0 3px 0 rgba(255, 255, 255, 0.72),
+                inset 0 -12px 18px rgba(0, 0, 0, 0.18),
+                0 0 16px color-mix(in srgb, var(--pack-accent), transparent 78%);
+            transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+            overflow: hidden;
+        }
+
+        .pack-cartridge::before {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 13px;
+            height: 12px;
+            border-radius: 1px 1px 4px 4px;
+            background: color-mix(in srgb, var(--pack-shell-dark), #fff 4%);
+            box-shadow: inset 0 4px 5px rgba(0, 0, 0, 0.16);
+        }
+
+        .pack-cartridge::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: -1px;
+            width: 70px;
+            height: 18px;
+            transform: translateX(-50%);
+            border-radius: 5px 5px 0 0;
+            background: color-mix(in srgb, var(--pack-shell-dark), #000 8%);
+            box-shadow: inset 0 5px 5px rgba(0, 0, 0, 0.22);
+        }
+
+        .pack-cartridge:hover,
+        .pack-cartridge:focus-visible,
+        .pack-cartridge.selected {
+            transform: translateY(-2px);
+            border-color: var(--pack-accent);
+            box-shadow:
+                inset 0 3px 0 rgba(255, 255, 255, 0.72),
+                inset 0 -12px 18px rgba(0, 0, 0, 0.18),
+                0 0 22px color-mix(in srgb, var(--pack-accent), transparent 48%);
+            outline: none;
+        }
+
+        .pack-cartridge.dragging {
+            opacity: 0.55;
+        }
+
+        .pack-card-chip {
+            position: relative;
+            z-index: 1;
+            justify-self: start;
+            align-self: end;
+            padding: 3px 7px;
+            border: 1px solid #111;
+            border-radius: 1px;
+            color: #f5f5ed;
+            font-family: var(--font-display);
+            font-size: 0.48rem;
+            letter-spacing: 1px;
+            background: #111;
+            box-shadow: 2px 0 0 color-mix(in srgb, var(--pack-accent), #fff 42%);
+        }
+
+        .pack-card-logo {
+            position: relative;
+            z-index: 1;
+            justify-self: center;
+            align-self: center;
+            width: 100%;
+            height: 58px;
+            display: grid;
+            place-items: center;
+            color: #111;
+            font-family: var(--font-display);
+            font-size: 0.78rem;
+            letter-spacing: 1px;
+            text-shadow: none;
+            border: 2px solid color-mix(in srgb, var(--pack-accent), #111 18%);
+            border-radius: 3px;
+            background:
+                linear-gradient(90deg, color-mix(in srgb, var(--pack-accent), #fff 40%) 0 36%, transparent 36%),
+                radial-gradient(circle at 76% 44%, color-mix(in srgb, var(--pack-accent), #fff 25%) 0 18%, transparent 19%),
+                linear-gradient(180deg, var(--pack-label), #e7dfbf);
+            box-shadow:
+                inset 0 0 0 3px rgba(255, 255, 255, 0.24),
+                inset 0 -6px 0 rgba(0, 0, 0, 0.08);
+        }
+
+        .pack-logo-python::before,
+        .pack-logo-python::after {
+            content: "";
+            position: absolute;
+            width: 35px;
+            height: 21px;
+            border-radius: 11px 11px 7px 7px;
+            box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.16);
+        }
+
+        .pack-logo-python::before {
+            left: calc(50% - 30px);
+            top: 14px;
+            background: #3676ab;
+        }
+
+        .pack-logo-python::after {
+            right: calc(50% - 30px);
+            bottom: 14px;
+            background: #ffd44a;
+            transform: rotate(180deg);
+        }
+
+        .pack-logo-python .logo-dot {
+            position: absolute;
+            z-index: 2;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 25px 20px 0 rgba(255, 255, 255, 0.9);
+            left: calc(50% - 20px);
+            top: 20px;
+        }
+
+        .pack-logo-js {
+            color: #1c1c1c;
+            font-size: 1.14rem;
+            place-items: end;
+            padding: 0 15px 8px 0;
+            background:
+                linear-gradient(90deg, #111 0 27%, transparent 27%),
+                linear-gradient(180deg, #fff7cf, #f6df61);
+        }
+
+        .pack-logo-http,
+        .pack-logo-linux,
+        .pack-logo-oc_core,
+        .pack-logo-vocab,
+        .pack-logo-mix,
+        .pack-logo-custom,
+        .pack-logo-cli {
+            color: color-mix(in srgb, var(--pack-accent), #111 18%);
+            font-size: 1rem;
+        }
+
+        .pack-logo-http { font-size: 0.78rem; }
+        .pack-logo-cli { font-size: 1rem; }
+        .pack-logo-linux { font-size: 0.68rem; }
+        .pack-logo-oc_core {
+            color: #e81f2d;
+            font-size: 0.9rem;
+        }
+        .pack-logo-vocab { color: #6f23ff; font-size: 0.88rem; }
+        .pack-logo-mix { color: #111; font-size: 0.7rem; }
+        .pack-logo-custom { color: #d81b8f; font-size: 0.66rem; }
+
+        .pack-logo-oc_core::before {
+            content: "";
+            position: absolute;
+            width: 42px;
+            height: 15px;
+            top: 15px;
+            border-radius: 50% 50% 46% 46%;
+            background: #e81f2d;
+            transform: rotate(-8deg);
+            left: calc(50% - 21px);
+        }
+
+        .pack-logo-oc_core::after {
+            content: "";
+            position: absolute;
+            width: 37px;
+            height: 7px;
+            top: 32px;
+            border-radius: 999px;
+            background: #111;
+            left: calc(50% - 18px);
+        }
+
+        .pack-card-title {
+            position: relative;
+            z-index: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: 800;
+            font-size: 0.7rem;
+            line-height: 1.1;
+            color: #111;
+        }
+
+        .pack-style-python { --pack-accent: #3676ab; --pack-shell: #f5c21a; --pack-shell-dark: #b77800; }
+        .pack-style-js { --pack-accent: #1c1c1c; --pack-shell: #ffdc27; --pack-shell-dark: #c88c00; }
+        .pack-style-http { --pack-accent: #0ea66a; --pack-shell: #38d58c; --pack-shell-dark: #138551; }
+        .pack-style-cli { --pack-accent: #32383a; --pack-shell: #d8ddd9; --pack-shell-dark: #8b9290; }
+        .pack-style-linux { --pack-accent: #ec8127; --pack-shell: #f3a23c; --pack-shell-dark: #a95316; }
+        .pack-style-oc_core { --pack-accent: #ff3045; --pack-shell: #ff3045; --pack-shell-dark: #961624; }
+        .pack-style-vocab { --pack-accent: #7e39ff; --pack-shell: #bb87ff; --pack-shell-dark: #6431b6; }
+        .pack-style-mix { --pack-accent: #101214; --pack-shell: #f0f0e8; --pack-shell-dark: #8d918c; }
+        .pack-style-custom { --pack-accent: #ff5cc8; --pack-shell: #ff86d9; --pack-shell-dark: #ac2f80; }
+
+        .pack-cartridge-ghost {
+            position: fixed;
+            z-index: 300;
+            width: var(--pack-card-width);
+            height: var(--pack-card-height);
+            min-height: 0;
+            pointer-events: none;
+            transform-origin: center bottom;
+            transition: transform 0.32s cubic-bezier(0.2, 0.9, 0.14, 1), opacity 0.32s, filter 0.32s;
+            filter: drop-shadow(0 0 18px rgba(0, 243, 255, 0.28));
+        }
+
+        @keyframes packDockFlash {
+            0%, 100% { box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.66), 0 0 20px rgba(0, 243, 255, 0.14); }
+            35% { box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.66), 0 0 34px rgba(0, 243, 255, 0.78); }
+            58% { filter: brightness(1.35); }
+        }
+
+        @keyframes packDockAfterimage {
+            0% { opacity: 0; transform: translateX(-20px) skewX(-10deg); }
+            28% { opacity: 0.88; transform: translateX(0) skewX(0); }
+            72% { opacity: 0.22; transform: translateX(14px) skewX(8deg); }
+            100% { opacity: 0; transform: translateX(22px) skewX(12deg); }
+        }
+
+        @keyframes packReadyArt {
+            0% { opacity: 0; transform: translateX(-10px); filter: blur(2px); }
+            18% { opacity: 1; transform: translateX(0); filter: blur(0); }
+            78% { opacity: 1; transform: translateX(0); filter: blur(0); }
+            100% { opacity: 0; transform: translateX(8px); filter: blur(2px); }
+        }
+
+        @media (max-width: 900px) {
+            .pack-popover {
+                position: fixed;
+                left: 50%;
+                top: 50%;
+                right: auto;
+                bottom: auto;
+                transform: translate(-50%, -50%);
+                width: calc(100vw - 24px);
+                height: min(660px, calc(100dvh - 88px));
+                max-height: min(660px, calc(100dvh - 88px));
+            }
+
+            .pack-console {
+                min-height: 196px;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .pack-card-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .pack-popover {
+                height: calc(100dvh - 88px);
+                max-height: calc(100dvh - 88px);
+            }
+
+            .pack-card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pack-console {
+                min-height: 278px;
+            }
+
+            .pack-console-dock {
+                left: 50%;
+                top: 14px;
+                transform: translateX(-50%);
+            }
+
+            .pack-console-status-art {
+                left: 18px;
+                right: 18px;
+                top: 184px;
+                min-height: 52px;
+                text-align: center;
+                border-left: 0;
+                border-top: 2px solid rgba(0, 243, 255, 0.28);
+            }
         }
 
         #start-btn {
@@ -2539,6 +3266,10 @@
             justify-content: flex-start;
             text-align: left;
             overflow: hidden;
+        }
+
+        #confirm-screen {
+            z-index: 260;
         }
 
         .confirm-card h2 {
@@ -4036,6 +4767,8 @@
                         <input type="password" id="login-pass" placeholder="PASSWORD">
                         <div class="auth-error" id="login-error"></div>
                         <button class="btn" id="btn-login" style="margin-top: 10px;">LOGIN</button>
+                        <button class="btn btn-ghost" id="btn-guest" type="button">GUEST LOGIN</button>
+                        <div class="guest-note">비회원은 공식 팩 플레이만 가능 · Pack Maker 생성/저장, 랭킹, 공개 심사는 로그인 필요</div>
                     </div>
 
                     <!-- Register Form -->
@@ -4066,17 +4799,50 @@
                             </select>
                         </div>
                         <div class="select-group" id="drop-pack-group">
-                            <label>Data Pack</label>
-                            <select id="pack-select">
-                                <option value="PYTHON">Python Module</option>
-                                <option value="JS">JavaScript Runtime</option>
-                                <option value="HTTP">Network Protocols</option>
-                                <option value="CLI">Terminal Commands</option>
-                                <option value="LINUX">Linux Ops (EX280 워밍업)</option>
-                                <option value="OC_CORE">OpenShift CLI (EX280)</option>
-                                <option value="VOCAB">Dev Vocabulary</option>
-                                <option value="MIX">Full System Mix</option>
+                            <label>SELECT PACK</label>
+                            <select id="pack-select" class="pack-native-select" aria-hidden="true" tabindex="-1">
+                                <option value="PYTHON">Python</option>
+                                <option value="JS">JavaScript</option>
+                                <option value="HTTP">Network</option>
+                                <option value="CLI">Terminal</option>
+                                <option value="LINUX">Linux</option>
+                                <option value="OC_CORE">OpenShift</option>
+                                <option value="VOCAB">Vocabulary</option>
+                                <option value="MIX">Mix</option>
                             </select>
+                            <div class="pack-selector" id="pack-selector">
+                                <button class="pack-selector-trigger" id="pack-selector-trigger" type="button"
+                                    aria-haspopup="dialog" aria-expanded="false">
+                                    <span>
+                                        <span class="pack-trigger-kicker">SELECT PACK</span>
+                                        <strong id="pack-current-title">Python</strong>
+                                    </span>
+                                    <span class="pack-trigger-chip" id="pack-current-chip">PYTHON</span>
+                                </button>
+                                <div class="pack-popover hidden" id="pack-popover" role="dialog"
+                                    aria-label="Select CodeDrop data pack">
+                                    <div class="pack-popover-head">
+                                        <span>SELECT CARTRIDGE</span>
+                                        <button class="pack-popover-close" id="pack-popover-close"
+                                            type="button">CLOSE</button>
+                                    </div>
+                                    <div class="pack-popover-body">
+                                        <div class="pack-card-groups" id="pack-card-groups"></div>
+                                        <div class="pack-popover-console">
+                                            <div class="pack-console" id="pack-console" role="button" tabindex="0"
+                                                aria-label="선택한 팩을 장착하는 콘솔">
+                                                <div class="pack-console-deck">
+                                                    <div class="pack-console-dock" id="pack-console-dock" aria-hidden="true">
+                                                        <span class="pack-dock-label" id="pack-dock-label">NO PACK</span>
+                                                    </div>
+                                                    <div class="pack-console-status-art" id="pack-console-status-art"
+                                                        aria-live="polite"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <button class="btn" id="start-btn">START CODEDROP</button>
                         <button class="btn-small pack-maker-entry" id="pack-maker-btn" type="button">PACK MAKER</button>
@@ -4209,6 +4975,7 @@
             <div class="scenario-actions" style="justify-content: flex-end;">
                 <button class="btn-small" id="confirm-cancel" type="button">CANCEL</button>
                 <button class="btn-small btn-danger" id="confirm-ok" type="button">CONFIRM</button>
+                <button class="btn-small hidden" id="confirm-extra" type="button">REGISTER</button>
             </div>
         </div>
     </div>
@@ -4228,11 +4995,15 @@
             <section class="pack-maker-panel" aria-label="Pack maker chat">
                 <div class="pack-maker-tools">
                     <select id="pack-maker-engine" aria-label="Pack maker engine">
-                        <option value="kugnus">KUGNUS SERVER</option>
-                        <option value="openai" selected>GPT 5.4 MINI</option>
+                        <option value="kugnus" selected>KUGNUS SERVER</option>
+                        <option value="openai">GPT 5.4 MINI</option>
                     </select>
+                    <button class="btn-small" id="pack-maker-clear" type="button">CLR</button>
                 </div>
-                <div class="pack-maker-chat-log" id="pack-maker-chat-log"></div>
+                <div class="pack-maker-chat-wrap">
+                    <div class="pack-maker-chat-log" id="pack-maker-chat-log"></div>
+                    <button class="learn-chat-bottom hidden" id="pack-maker-chat-bottom" type="button">↓ NEW</button>
+                </div>
                 <form class="pack-maker-chat-form" id="pack-maker-chat-form">
                     <textarea id="pack-maker-input" placeholder="예: 리눅스 네트워크 명령어 고유명사 50개 만들어줘"></textarea>
                     <button class="btn-small" id="pack-maker-send" type="submit">ASK</button>
@@ -4411,26 +5182,26 @@
         <aside class="learn-chat-panel hidden" id="learn-chat-panel" aria-label="학습 질문 챗">
             <div class="learn-chat-head">
                 <div class="learn-chat-meta">
-                    <div class="learn-chat-title" id="learn-chat-title">ASK TO GPT 5.4 MINI</div>
+                    <div class="learn-chat-title" id="learn-chat-title">ASK TO KUGNUS SERVER</div>
                     <div class="learn-engine-select" id="learn-chat-engine-shell">
                         <button class="learn-engine-toggle" id="learn-chat-engine-toggle" type="button"
                             aria-haspopup="listbox" aria-expanded="false">
-                            <span id="learn-chat-engine-label">GPT 5.4 MINI</span>
+                            <span id="learn-chat-engine-label">KUGNUS SERVER</span>
                             <span class="learn-engine-chevron">⌄</span>
                         </button>
                         <div class="learn-engine-menu hidden" id="learn-chat-engine-menu" role="listbox"
                             aria-label="LLM 엔진 선택">
                             <button class="learn-engine-option" type="button" role="option" data-engine="kugnus"
-                                aria-selected="false">KUGNUS SERVER</button>
+                                aria-selected="true">KUGNUS SERVER</button>
                             <button class="learn-engine-option" type="button" role="option" data-engine="openai"
-                                aria-selected="true">GPT 5.4 MINI</button>
+                                aria-selected="false">GPT 5.4 MINI</button>
                         </div>
                     </div>
                     <select id="learn-chat-engine" aria-label="LLM 엔진 선택" tabindex="-1">
-                        <option value="kugnus">KUGNUS SERVER</option>
-                        <option value="openai" selected>GPT 5.4 MINI</option>
+                        <option value="kugnus" selected>KUGNUS SERVER</option>
+                        <option value="openai">GPT 5.4 MINI</option>
                     </select>
-                    <div class="learn-chat-status" id="learn-chat-status">GPT 5.4 MINI READY</div>
+                    <div class="learn-chat-status" id="learn-chat-status">KUGNUS SERVER READY</div>
                 </div>
                 <button class="btn-small" id="learn-chat-clear" type="button">CLR</button>
             </div>

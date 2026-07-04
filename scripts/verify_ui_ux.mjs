@@ -171,15 +171,25 @@ expectedOrder.forEach(src => {
     'learn-info-group',
     'exam-gate-note'
     ,
+    'pack-selector',
+    'pack-selector-trigger',
+    'pack-current-title',
+    'pack-current-chip',
+    'pack-console',
+    'pack-popover',
+    'pack-popover-close',
+    'pack-card-groups',
     'pack-maker-btn',
     'pack-maker-screen',
     'pack-maker-close',
     'pack-maker-status',
     'pack-maker-engine',
     'pack-maker-chat-log',
+    'pack-maker-chat-bottom',
     'pack-maker-chat-form',
     'pack-maker-input',
     'pack-maker-send',
+    'pack-maker-clear',
     'pack-maker-title',
     'pack-maker-description',
     'pack-maker-item-table',
@@ -270,14 +280,15 @@ assert(learn.includes("ui.hintBtn.classList.toggle('hidden', review || !hasStepH
 assert(learn.includes('session.stepHintOpen = !') || learn.includes('if (session.stepHintOpen)'), 'learn step hints should be closable after opening');
 assert(learn.includes('session.quizHintOpen = !') || learn.includes('if (session.quizHintOpen)'), 'learn quiz hints should be closable after opening');
 assert(learn.includes("ui.peekBtn.textContent = session.peeked ? '정답 닫기' : '정답 보기';"), 'learn answer peek should toggle open and closed');
-assert(index.includes('ASK TO GPT 5.4 MINI'), 'learn chat should default the assistant title to GPT 5.4 MINI during testing');
+assert(index.includes('ASK TO KUGNUS SERVER'), 'learn chat should default the assistant title to KUGNUS SERVER');
 assert(index.includes('data-engine="kugnus"') && index.includes('KUGNUS SERVER'), 'learn chat should expose KUGNUS SERVER as the local engine choice');
 assert(index.includes('data-engine="openai"') && index.includes('GPT 5.4 MINI'), 'learn chat should expose GPT 5.4 MINI as an engine choice');
-assert(index.includes('<option value="openai" selected>GPT 5.4 MINI</option>'), 'learn chat hidden select should default to GPT 5.4 MINI');
+assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'learn chat hidden select should default to KUGNUS SERVER');
 assert(learn.includes("fetch('/api/learn-chat/stream'"), 'learn chat should call the streaming server-side LLM proxy');
 assert(learn.includes("engine: ui.chatEngine.value"), 'learn chat should send the selected LLM engine');
-assert(learn.includes("const TEST_CHAT_ENGINE = TEST_ENGINE_LOCK_HOSTS.has(TEST_CHAT_HOSTNAME) ? 'openai' : null;"), 'localhost learn chat testing should be locked to GPT 5.4 MINI');
-assert(learn.includes("localStorage.setItem(CHAT_ENGINE_STORAGE_KEY, TEST_CHAT_ENGINE);"), 'localhost engine lock should overwrite stale KUGNUS localStorage');
+assert(!learn.includes('TEST_CHAT_ENGINE'), 'localhost GPT test lock should be removed');
+assert(learn.includes('offerKugnusFallbackIfNeeded()'), 'learn chat should offer KUGNUS-to-GPT fallback');
+assert(!learn.includes('sessionStorage'), 'learn chat fallback should not persist across page reloads');
 assert(learn.includes('function syncChatEngineUi()'), 'custom learn chat engine picker should sync with the hidden select value');
 assert(learn.includes('function toggleChatEngineMenu()'), 'custom learn chat engine picker should use a themed popover');
 assert(index.includes('.learn-engine-menu'), 'learn chat engine popover should be themeable instead of native browser blue');
@@ -297,16 +308,25 @@ assert(learn.includes('appendInline'), 'learn chat markdown renderer should buil
 assert(learn.includes('createAssistantActions'), 'assistant answers should expose copy/retry/regenerate actions');
 assert(learn.includes('persistChatHistory()'), 'learn chat should persist lesson history');
 assert(!/innerHTML\s*=\s*(markdown|answer|text|data\.answer)/.test(learn), 'markdown/chat answers must not be assigned through raw innerHTML');
-assert(server.includes('process.env.LLM_BASE_URL'), 'learn chat proxy should read LLM_BASE_URL from .env');
-assert(server.includes('process.env.LLM_MODEL'), 'learn chat proxy should read LLM_MODEL from .env');
-assert(server.includes('OPENAI_API_KEY'), 'learn chat proxy should read OPENAI_API_KEY for GPT 5.4 mini fallback');
-assert(server.includes('OPENAI_MODEL'), 'learn chat proxy should allow OPENAI_MODEL override');
+assert(server.includes('KUGNUS_GATEWAY_BASE_URL'), 'KUGNUS SERVER should prefer the public gateway base URL');
+assert(server.includes('KUGNUS_GATEWAY_API_KEY'), 'KUGNUS SERVER should read the public gateway API key');
+assert(server.includes('KUGNUS_MODEL'), 'KUGNUS SERVER should read the gateway model id');
+assert(server.includes('"LLM_BASE_URL"'), 'learn chat proxy should keep legacy LLM_BASE_URL compatibility');
+assert(server.includes('"LLM_MODEL"'), 'learn chat proxy should keep legacy LLM_MODEL compatibility');
+assert(server.includes('GPT_OPENAI_API_KEY'), 'learn chat proxy should support a GPT-specific mini fallback API key');
+assert(server.includes('GPT_OPENAI_MODEL'), 'learn chat proxy should support a GPT-specific mini fallback model override');
+assert(server.includes('shouldUseOpenAiEnvForKugnus'), 'KUGNUS gateway should support OpenAI-compatible env aliases safely');
 assert(server.includes('normalizeOpenAiMiniModel'), 'OpenAI model ids should be normalized before use');
-assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "openai"'), 'server chat engine default should prefer GPT 5.4 MINI during testing');
+assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "kugnus"'), 'server chat engine default should prefer KUGNUS SERVER');
+assert(server.includes('app.get("/api/llm/kugnus/health"'), 'KUGNUS health endpoint is missing');
+assert(game.includes('startKugnusHealthCheck()'), 'app should start a background KUGNUS health check');
+assert(game.includes('maybeSwitchFromOfflineKugnus'), 'app should expose KUGNUS fallback confirmation helper');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'learn chat must refuse non-mini OpenAI models');
 assert(server.includes('DUCKDUCKGO_API_KEY'), 'future web search should support DUCKDUCKGO_API_KEY');
 assert(server.includes('DDG_API_KEY'), 'future web search should support DDG_API_KEY');
 assert(server.includes('duckDuckGoConfig()'), 'DuckDuckGo config helper is missing');
+assert(server.includes('duckDuckGoHtmlSearch'), 'Pack Maker search should fall back to DuckDuckGo HTML results when Instant Answer is empty');
+assert(server.includes('normalizeDuckDuckGoHref'), 'DuckDuckGo HTML result redirect URLs should be normalized before becoming sources');
 
 const dashboardCard = cssBlock('.dashboard-card');
 assert(dashboardCard.includes('max-height: calc(100dvh - 80px);'), 'dashboard card should be scrollable inside the viewport');
@@ -323,6 +343,8 @@ assert(!game.includes('alert('), 'native alert should be replaced with the in-ap
 assert(!game.includes('Loop:') && !game.includes('Spawning Word...'), 'DROP game loop should not keep noisy debug logging');
 assert(!game.includes('Game Controls Initialized') && !game.includes('Audio Initialized & BGM Started'), 'game startup should not emit debug-only console logs');
 assert(game.includes('showCommandDialog({'), 'themed command dialog route is missing');
+const confirmScreen = cssBlock('#confirm-screen');
+assert(confirmScreen.includes('z-index: 260;'), 'themed confirm dialog should sit above every app overlay');
 assert(game.includes('setGameChrome(true)'), 'game HUD/input should only activate during actual gameplay');
 assert(game.includes('MutationObserver(syncOverlayChrome)'), 'overlay chrome observer is missing');
 assert(!game.includes("    'start-screen',\n    'result-screen'"), 'start screen should keep the bottom music/readme toggles visible');
@@ -333,6 +355,51 @@ const inputHidden = cssBlock('body:not(.game-active) #input-area');
 assert(inputHidden.includes('pointer-events: none;'), 'inactive command input should not intercept input');
 assert(!index.includes('body.overlay-chrome-hidden #music-widget'), 'music widget should stay visible on every app screen');
 assert(!index.includes('body.overlay-chrome-hidden #readme-widget'), 'readme widget should stay visible on every app screen');
+assert(index.includes('<label>SELECT PACK</label>'), 'DROP pack selector label should be SELECT PACK');
+assert(!index.includes('<label>Data Pack</label>'), 'old Data Pack label should not return');
+assert(index.includes('class="pack-native-select"'), 'native pack select should stay in the DOM as the hidden state source');
+assert(index.includes('class="pack-selector"'), 'custom pack selector shell is missing');
+assert(index.includes('class="pack-console"'), 'retro console dropzone is missing');
+assert(index.includes('class="pack-popover hidden"'), 'pack cartridge popover is missing');
+assert(index.includes('class="pack-popover-body"'), 'pack selector popover should own the cartridge shelf body');
+assert(index.includes('class="pack-popover-console"'), 'console dropzone should live inside the popover');
+assert(index.indexOf('id="pack-console"') > index.indexOf('id="pack-popover"'), 'console dropzone should not consume main menu height');
+assert(index.includes('.pack-cartridge'), 'CSS cartridge card styling is missing');
+assert(index.includes('.pack-console-deck'), 'retro console should render a visible game deck');
+assert(index.includes('id="pack-console-dock"'), 'pack console should include a handheld-style dock display');
+assert(index.includes('id="pack-console-status-art"'), 'pack console should include READY text art feedback');
+[
+    'pack-console-sfc-dot',
+    'pack-console-slot',
+    'pack-console-buttons',
+    'pack-console-face',
+    'pack-console-port',
+    'pack-console-led',
+    'pack-console-brand'
+].forEach(stale => {
+    assert(!index.includes(stale), `stale console skin should be removed: ${stale}`);
+});
+assert(index.includes('.pack-logo-python'), 'Python pack should have a cartridge logo mark');
+assert(game.includes('function createPackLogo(meta)'), 'pack cards should render logo marks');
+assert(game.includes("card.dataset.packCard = 'true';"), 'pack cards should expose a stable card-only selector');
+assert(game.includes('function playPackLatchSound()'), 'pack insertion should have a click/latch sound cue');
+assert(game.includes('packReadyText(meta)'), 'pack insertion should show READY text art');
+assert(game.includes('function animatePackEquip(meta, sourceEl)'), 'pack equip animation should target the handheld dock');
+assert(!game.includes('animatePackInsert'), 'old slot insertion animation name should not remain');
+assert(index.includes('@keyframes packDockAfterimage'), 'pack dock afterimage animation is missing');
+const packPopover = cssBlock('.pack-popover', block => block.includes('width: min(780px, calc(100vw - 32px));'));
+assert(packPopover.includes('position: fixed;'), 'desktop pack popover should overlay the menu instead of stretching it');
+assert(packPopover.includes('left: 50%;'), 'desktop pack popover should center horizontally');
+assert(packPopover.includes('transform: translate(-50%, -50%);'), 'desktop pack popover should center in the viewport');
+assert(packPopover.includes('height: min(660px, calc(100dvh - 80px));'), 'pack popover should keep a stable scrollable height');
+assert(game.includes('function initPackSelector()'), 'pack selector interaction initializer is missing');
+assert(game.includes('select.dispatchEvent(new Event(\'change\', { bubbles: true }))'), 'pack selector should drive the native select change event');
+assert(game.includes('async function selectPackFromUi'), 'custom pack selection should be able to wait for pack detail loading');
+assert(game.includes("await window.PackMaker.loadPackDetail(customPackId);"), 'custom pack selection should load detail data before gameplay');
+assert(game.includes('async function ensureSelectedPackReady(pack)'), 'DROP start should guard custom packs before game launch');
+assert(game.includes('if (!await ensureSelectedPackReady(pack)) return;'), 'DROP start should not launch with an unloaded custom pack');
+assert(game.includes('event.dataTransfer.setData'), 'pack selector should support drag-to-console');
+assert(game.includes('window.CodeDropPackSelector'), 'custom packs should be able to refresh the visual pack selector');
 assert(index.includes('#music-widget.widget-overlap'), 'music widget should only fade when it overlaps falling words');
 assert(index.includes('#readme-widget.widget-overlap'), 'readme widget should only fade when it overlaps falling words');
 assert(index.includes('--corner-widget-size: 60px;'), 'bottom corner widgets should share one size token');
@@ -394,6 +461,14 @@ assert(game.includes('function openMusicWidget'), 'music widget should open thro
 assert(game.includes("els.musicWidget.classList.add('island-open')"), 'music widget default UI should open as a dynamic island');
 
 assert(server.includes('app.post("/api/pack-maker/chat/stream", authUser'), 'pack maker stream endpoint should require auth');
+assert(server.includes('function extractPackIntent'), 'pack maker should parse realistic natural-language pack requests');
+assert(server.includes('requestedCount'), 'pack maker should track the requested item count');
+assert(server.includes('packMakerTokenBudget'), 'pack maker should scale LLM token budget from target item count');
+assert(server.includes('PACK_REPAIR_ATTEMPTS'), 'pack maker should retry/repair drafts that are short');
+assert(server.includes('draftMeetsPackIntent'), 'pack maker should verify draft count/language before success');
+assert(server.includes('DRAFT SHORT'), 'pack maker should fail visibly when the target draft is still short');
+assert(server.includes('writeNdjson(res, "status"'), 'pack maker stream should send generation status events');
+assert(!server.includes('{ maxTokens: 2200 }'), 'pack maker should not use a fixed 2200-token budget for every pack');
 assert(server.includes('app.post("/api/packs", authUser'), 'custom pack save endpoint should require auth');
 assert(server.includes('app.get("/api/packs?') === false, 'custom pack list should not be hardcoded as a static route');
 assert(server.includes('PACK_ADMIN_NICKNAMES'), 'pack review should be guarded by admin nicknames');
@@ -407,12 +482,41 @@ assert(localSchema.includes('CREATE TABLE IF NOT EXISTS users'), 'local Docker s
 assert(localSchema.includes('CREATE TABLE IF NOT EXISTS custom_packs'), 'local Docker schema should initialize custom pack tables');
 assert(localSchema.includes('CREATE TABLE IF NOT EXISTS custom_pack_scores'), 'local Docker schema should initialize custom pack score tables');
 assert(localEnvExample.includes('DB_SSL=false'), 'local env example should disable TLS for local Docker MySQL');
-assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=openai'), 'local env example should keep QA on GPT 5.4 MINI by default');
+assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=kugnus'), 'local env example should default chat to KUGNUS SERVER');
+assert(localEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), 'local env example should document the KUGNUS gateway base URL');
+assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), 'local env example should document the KUGNUS gateway API key');
+assert(localEnvExample.includes('KUGNUS_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS chat model');
+assert(localEnvExample.includes('KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model');
+assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
-assert(index.includes('<option value="openai" selected>GPT 5.4 MINI</option>'), 'pack maker should default to GPT 5.4 MINI while home server is unavailable');
+assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
 const packMaker = read('js/pack_maker.js');
 assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client should call the stream endpoint');
+assert(packMaker.includes("codedrop_pack_maker_draft_v2"), 'pack maker should not restore stale pre-release draft storage');
+assert(packMaker.includes("const SCOPED_STORAGE_VERSION = 'v3';"), 'pack maker draft/chat storage should be versioned by auth scope');
+assert(packMaker.includes('function storageScope()'), 'pack maker should compute a user-scoped local storage key');
+assert(packMaker.includes('return state.userToken ? { Authorization'), 'pack maker should separate logged-in storage/API behavior from guest preview');
+assert(packMaker.includes('if (!key) {') && packMaker.includes('stateRef.chat = [];'), 'guest pack maker should not restore previous user chat history');
+assert(packMaker.includes('reloadScopedLocalState()'), 'pack maker should reload draft/chat when auth state changes');
+assert(packMaker.includes("evt.event === 'status'"), 'pack maker client should render server status events');
+assert(packMaker.includes('showRemoteLoginRequired'), 'pack maker should avoid stacking duplicate remote-login warnings');
+assert(packMaker.includes('async function ensureRemoteAuth()'), 'pack maker should validate remote auth before LLM or save calls');
+assert(packMaker.includes("fetch('/api/session'"), 'pack maker should check the current server session before ASK/SAVE');
+assert(packMaker.includes("err.code = 'AUTH_REQUIRED'"), 'pack maker should treat expired sessions as auth flow, not LLM failure');
+assert(packMaker.includes('discardAssistantMessage(pending);'), 'pack maker should not leave a fake assistant failure bubble on auth expiry');
+assert(packMaker.includes('if (!await ensureRemoteAuth())'), 'pack maker ASK/SAVE should stop before remote calls when auth is missing');
+assert(packMaker.includes('offerKugnusFallbackIfNeeded()'), 'pack maker should offer KUGNUS-to-GPT fallback');
+assert(packMaker.includes('const CHAT_STORAGE_KEY'), 'pack maker chat should persist conversation history');
+assert(packMaker.includes('renderMarkdownInto'), 'pack maker chat should render markdown through the safe renderer');
+assert(packMaker.includes('learn-chat-copy-code'), 'pack maker markdown code blocks should expose copy controls');
+assert(packMaker.includes('createAssistantActions'), 'pack maker assistant messages should expose copy/retry/regenerate actions');
+assert(packMaker.includes('new AbortController()'), 'pack maker chat should use AbortController for STOP');
+assert(packMaker.includes('stopAssistantMessage'), 'pack maker chat should visibly mark stopped streams');
+assert(packMaker.includes('handleChatScroll'), 'pack maker chat should let users scroll during streaming');
+assert(packMaker.includes('pack-maker-chat-bottom'), 'pack maker chat should wire the scroll-to-latest button');
+assert(packMaker.includes('clearChatHistory'), 'pack maker chat should support CLR history reset');
+assert(!packMaker.includes('sessionStorage'), 'pack maker fallback should not persist across page reloads');
 assert(packMaker.includes('SAVE MY PACK') || index.includes('SAVE MY PACK'), 'pack maker save action should be visible');
 assert(!packMaker.includes('innerHTML'), 'pack maker client should avoid raw innerHTML rendering');
 assert(packMaker.includes('function renderDraft(options = {})'), 'pack maker draft renderer should support preserving an existing status');
@@ -431,6 +535,14 @@ assert(index.includes('data-readme-lang="ko"'), 'system manual Korean toggle is 
 assert(index.includes('시스템 매뉴얼'), 'system manual should include Korean copy');
 assert(index.includes('https://www.kugnus.com'), 'system manual contact should include www.kugnus.com');
 assert(index.includes('mailto:kugnus@cywell.co.kr'), 'system manual email should link to kugnus@cywell.co.kr');
+const readmeBox = cssBlock('#readme-box', block => block.includes('width: min(560px'));
+assert(readmeBox.includes('max-height: min(92dvh, 860px);'), 'README modal should stay inside the viewport');
+const readmeKoBox = cssBlock('#readme-box[data-manual-lang="ko"]');
+assert(readmeKoBox.includes('width: min(640px, calc(100vw - 48px)) !important;'), 'Korean README should use a wider stable layout');
+const readmeKoParagraph = cssBlock('#readme-box[data-manual-lang="ko"] p');
+assert(readmeKoParagraph.includes('word-break: keep-all;'), 'Korean README copy should not break awkwardly by syllable');
+const readmeToggle = cssBlock('.readme-lang-toggle');
+assert(readmeToggle.includes('grid-template-columns: 1fr 1fr;') && readmeToggle.includes('width: 260px;'), 'README language toggle should keep a stable two-column width');
 assert(game.includes("const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language'"), 'README language toggle should persist its selection');
 assert(game.includes('function setReadmeLanguage'), 'README language setter is missing');
 assert(game.includes('function initReadmeLanguage'), 'README language initializer is missing');
@@ -458,7 +570,8 @@ assert(learn.includes('resetProgress'), 'LearnMode reset hook is missing');
 assert(game.includes("const LOCAL_AUTH_KEY = 'codedrop_local_auth_users';"), 'local dev auth key is missing');
 assert(game.includes("users.test = { id: 'local-test', nickname: 'test', password: 'test' };"), 'local test/test auth seed is missing');
 assert(game.includes('tryLocalDevLogin(nickname, password)'), 'login flow does not call local dev fallback');
-assert(game.includes('if (isLocalDevAuthEnabled() && tryLocalDevLogin(nickname, password)) return;'), 'local test/test login should work before remote API rejection');
+assert(game.includes('async function provisionLocalDevServerSession'), 'local test/test should try to obtain a real server token for Pack Maker');
+assert(game.includes('await provisionLocalDevServerSession(nickname, password)'), 'login flow should use local credentials to provision a server session before falling back');
 assert(game.includes("els.controls.packSelect.value = 'OC_CORE';"), 'OCP CLI Drop must force the OC_CORE pack');
 assert(game.includes('ScenarioMode.startExam()'), 'EXAM mode route is missing');
 assert(game.includes('LabMode.start(labSelect.value)'), 'LAB mode route is missing');
@@ -471,6 +584,12 @@ assert(server.includes('const MAX_SUBMITTED_SCORE = 25000;'), 'server should rej
 assert(server.includes('function rateLimit('), 'auth and score endpoints should have basic rate limiting');
 assert(server.includes('process.env.REQUEST_LOGS === "1"'), 'request logging should be opt-in for quieter local/dev runs');
 assert(!server.includes('Serving index.html from:'), 'root route should not log a debug-only file path on every load');
+assert(localEnvExample.includes('SESSION_SECRET='), '.env.local.example should document SESSION_SECRET for stable sessions');
+assert(localEnvExample.includes('ALLOWED_ORIGINS='), '.env.local.example should document ALLOWED_ORIGINS for release preflight');
+assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example should document pack admin configuration');
+assert(localEnvExample.includes('LLM_BASE_URL='), '.env.local.example should expose dev-only direct KUGNUS routing');
+assert(/(^|\n)KUGNUS_GATEWAY_BASE_URL=\s*(\n|$)/.test(localEnvExample), '.env.local.example should not activate a fake KUGNUS gateway URL by default');
+assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document the public KUGNUS gateway key');
 
 console.log(JSON.stringify({
     ui: 'ok',

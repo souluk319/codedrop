@@ -304,10 +304,7 @@ const LearnMode = (() => {
 
         ui.chatForm.addEventListener('submit', sendChat);
         ui.chatEngine.addEventListener('change', () => {
-            if (TEST_CHAT_ENGINE && ui.chatEngine.value !== TEST_CHAT_ENGINE) {
-                ui.chatEngine.value = TEST_CHAT_ENGINE;
-            }
-            localStorage.setItem(CHAT_ENGINE_STORAGE_KEY, ui.chatEngine.value);
+            chatEngineOverride = ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus';
             syncChatEngineUi();
             ui.chatStatus.textContent = `${chatEngineLabel()} READY`;
         });
@@ -365,15 +362,10 @@ const LearnMode = (() => {
     // ---------- LLM 질문 패널 ----------
 
     const CHAT_HISTORY_LIMIT = 16;
-    const CHAT_ENGINE_STORAGE_KEY = 'codedrop_learn_chat_engine';
-    const TEST_ENGINE_LOCK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
-    const TEST_CHAT_HOSTNAME = globalThis.window && window.location ? window.location.hostname : '';
-    const TEST_CHAT_ENGINE = TEST_ENGINE_LOCK_HOSTS.has(TEST_CHAT_HOSTNAME) ? 'openai' : null;
+    let chatEngineOverride = null;
 
     function preferredChatEngine() {
-        if (TEST_CHAT_ENGINE) return TEST_CHAT_ENGINE;
-        const savedEngine = localStorage.getItem(CHAT_ENGINE_STORAGE_KEY);
-        return savedEngine === 'openai' || savedEngine === 'kugnus' ? savedEngine : 'openai';
+        return chatEngineOverride === 'openai' || chatEngineOverride === 'kugnus' ? chatEngineOverride : 'kugnus';
     }
 
     function chatEngineLabel() {
@@ -381,21 +373,20 @@ const LearnMode = (() => {
     }
 
     function chatTitleLabel() {
-        return ui.chatEngine && ui.chatEngine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS AI';
+        return ui.chatEngine && ui.chatEngine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
     }
 
     function syncChatEngineUi() {
         if (!ui.chatEngine) return;
-        const engine = TEST_CHAT_ENGINE || (ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus');
+        const engine = ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus';
         ui.chatEngine.value = engine;
-        if (TEST_CHAT_ENGINE) localStorage.setItem(CHAT_ENGINE_STORAGE_KEY, TEST_CHAT_ENGINE);
         if (ui.chatTitle) ui.chatTitle.textContent = `ASK TO ${chatTitleLabel()}`;
         if (ui.chatEngineLabel) ui.chatEngineLabel.textContent = chatEngineLabel();
         if (ui.chatEngineMenu) {
             ui.chatEngineMenu.querySelectorAll('[data-engine]').forEach(option => {
                 const selected = option.dataset.engine === engine;
                 option.setAttribute('aria-selected', selected ? 'true' : 'false');
-                option.toggleAttribute('disabled', Boolean(TEST_CHAT_ENGINE && option.dataset.engine !== TEST_CHAT_ENGINE));
+                option.toggleAttribute('disabled', false);
             });
         }
     }
@@ -422,18 +413,25 @@ const LearnMode = (() => {
 
     function setChatEngine(engine) {
         if (engine !== 'openai' && engine !== 'kugnus') return;
-        if (TEST_CHAT_ENGINE && engine !== TEST_CHAT_ENGINE) {
-            ui.chatEngine.value = TEST_CHAT_ENGINE;
-            syncChatEngineUi();
-            closeChatEngineMenu();
-            ui.chatStatus.textContent = `${chatEngineLabel()} TEST LOCK`;
-            ui.chatEngineToggle.focus();
-            return;
-        }
         ui.chatEngine.value = engine;
         ui.chatEngine.dispatchEvent(new Event('change'));
         closeChatEngineMenu();
         ui.chatEngineToggle.focus();
+    }
+
+    async function offerKugnusFallbackIfNeeded() {
+        if (!ui.chatEngine || ui.chatEngine.value !== 'kugnus') return false;
+        const helper = window.CodeDropLlmStatus;
+        if (!helper || typeof helper.maybeSwitchFromOfflineKugnus !== 'function') return false;
+
+        const shouldSwitch = await helper.maybeSwitchFromOfflineKugnus('learn');
+        if (!shouldSwitch) return false;
+
+        ui.chatEngine.value = 'openai';
+        chatEngineOverride = 'openai';
+        syncChatEngineUi();
+        ui.chatStatus.textContent = `${chatEngineLabel()} READY`;
+        return true;
     }
 
     function setChatBusy(busy) {
@@ -1042,6 +1040,7 @@ const LearnMode = (() => {
 
     async function sendChatText(message) {
         if (session.chatBusy) return;
+        await offerKugnusFallbackIfNeeded();
         const history = session.chat
             .filter(entry => entry.role === 'user' || entry.role === 'assistant')
             .slice(-8)
@@ -1123,13 +1122,15 @@ const LearnMode = (() => {
 
     function showChatPanel() {
         ui.chatEngine.value = preferredChatEngine();
-        localStorage.setItem(CHAT_ENGINE_STORAGE_KEY, ui.chatEngine.value);
         syncChatEngineUi();
         ui.screen.classList.add('learn-session-active');
         ui.chatPanel.classList.remove('hidden');
         updateChatContext();
         loadChatHistory();
         renderChatHistory();
+        offerKugnusFallbackIfNeeded().catch(err => {
+            console.warn('KUGNUS fallback check failed:', err.message);
+        });
     }
 
     function hideChatPanel() {

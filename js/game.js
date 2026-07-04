@@ -6,12 +6,185 @@
 // --- API Config ---
 const API_BASE = "";
 const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language';
+const APP_LANGUAGE_STORAGE_KEY = 'codedrop_language';
 const MUSIC_UI_STORAGE_KEY = 'codedrop_music_ui';
+const KUGNUS_HEALTH_TIMEOUT_MS = 12_000;
 const MUSIC_FALLBACK_TRACKS = [
     'KUGNUS X AI SET',
     'SoundCloud playlist queue',
     'Open SoundCloud view for full track list'
 ];
+
+const I18N_TEXT = {
+    en: {
+        'auth.login': 'LOGIN',
+        'auth.register': 'REGISTER',
+        'auth.nickname': 'NICKNAME',
+        'auth.password': 'PASSWORD',
+        'auth.registerNickname': 'NICKNAME (3-16 chars)',
+        'auth.registerPassword': 'PASSWORD (min 4 chars)',
+        'auth.confirmPassword': 'CONFIRM PASSWORD',
+        'auth.guest': 'GUEST LOGIN',
+        'auth.guestNote': 'Guest can play official packs. Pack Maker, saved packs, rankings, and public review require login.',
+        'auth.welcome': 'WELCOME, ',
+        'auth.logout': 'LOGOUT',
+        'auth.loginAction': 'LOGIN',
+        'auth.withdraw': 'WITHDRAW',
+        'menu.systemDifficulty': 'System Difficulty',
+        'menu.selectPack': 'SELECT PACK',
+        'menu.selectCartridge': 'SELECT CARTRIDGE',
+        'menu.close': 'CLOSE',
+        'menu.startCodedrop': 'START CODEDROP',
+        'menu.packMaker': 'PACK MAKER',
+        'menu.topAgents': 'TOP AGENTS',
+        'menu.connecting': 'CONNECTING TO SERVER...',
+        'difficulty.easy': 'EASY [SAFE_MODE]',
+        'difficulty.normal': 'NORMAL [STANDARD]',
+        'difficulty.developer': 'DEVELOPER [OVERCLOCK]',
+        'ocp.title': 'OCP EDITION',
+        'ocp.subtitle': 'EX280 hands-on study deck',
+        'ocp.learn': 'LEARN MODE',
+        'ocp.learnDesc': 'Start here if you are new — learn EX280 by typing',
+        'ocp.dropDesc': 'Falling typing drill for core oc commands',
+        'ocp.scenario': 'SCENARIO',
+        'ocp.scenarioDesc': '10 situational command questions',
+        'ocp.lab': 'MOCK LAB',
+        'ocp.labDesc': 'Hands-on procedure training',
+        'ocp.exam': 'EXAM',
+        'ocp.examDesc': '15 questions · 90 seconds',
+        'ocp.learnMode': 'Learn Mode',
+        'ocp.loadingCurriculum': 'Loading curriculum...',
+        'ocp.cliDropDifficulty': 'CLI Drop Difficulty',
+        'ocp.fixedPack': 'Fixed to the OpenShift CLI (EX280) pack.',
+        'ocp.scenarioCategory': 'Scenario Category',
+        'ocp.mockLab': 'Mock Lab',
+        'ocp.examMode': 'Exam Mode',
+        'ocp.examInfo': '15 questions across all areas · 90 seconds each · no hints · 70% passing line',
+        'ocp.start': 'START OCP',
+        'ocp.dashboard': 'Study Dashboard',
+        'result.finalScore': 'Final Score',
+        'result.maxCombo': 'Max Combo',
+        'result.accuracy': 'Accuracy',
+        'result.reboot': 'Reboot System',
+        'confirm.loginRequired': 'LOGIN REQUIRED',
+        'confirm.loginRequiredMessage': '{feature} requires server generation/storage permission. Guests can only play official packs.',
+        'confirm.stay': 'STAY',
+        'confirm.login': 'LOGIN',
+        'confirm.register': 'REGISTER',
+        'packMaker.title': 'PACK MAKER',
+        'packMaker.subtitle': 'Search-grounded data packs for CODEDROP',
+        'packMaker.home': 'HOME',
+        'packMaker.inputPlaceholder': 'e.g. Make 50 proper nouns for Linux network commands',
+        'packMaker.ask': 'ASK',
+        'packMaker.stop': 'STOP',
+        'packMaker.packTitle': 'PACK TITLE',
+        'packMaker.packDescription': 'PACK DESCRIPTION',
+        'packMaker.term': 'TERM',
+        'packMaker.desc': 'ONE-LINE DESC',
+        'packMaker.source': 'SOURCE',
+        'packMaker.addItem': 'ADD ITEM',
+        'packMaker.save': 'SAVE MY PACK',
+        'packMaker.submit': 'SUBMIT PUBLIC REVIEW',
+        'packMaker.guestPreview': 'GUEST PREVIEW MODE',
+        'packMaker.loginRequired': 'LOGIN REQUIRED',
+        'packMaker.loginNotice': 'Pack Maker generation/save is available after login. Guests can preview the screen and editor flow first.',
+        'packMaker.featureName': 'Pack Maker generation/save',
+        'packMaker.chatIntro': 'Tell Pack Maker the domain, language, item count, and pack name. It will draft a playable CODEDROP pack.',
+        'packMaker.searchResults': 'Using {count} search results as draft grounding.',
+        'leaderboard.noData': 'NO DATA FOUND. BE THE FIRST.',
+        'leaderboard.customLogin': 'LOGIN REQUIRED FOR CUSTOM PACK RANKING',
+        'leaderboard.connectionLost': 'CONNECTION LOST',
+        'score.offline': 'OFFLINE MODE. DATA NOT SAVED.',
+        'score.uploading': 'UPLOADING DATA...',
+        'score.uploadComplete': 'UPLOAD COMPLETE. CHECK RANKING.',
+        'score.uploadFailed': 'UPLOAD FAILED.',
+        'score.serverError': 'SERVER ERROR. DATA NOT SAVED.'
+    },
+    ko: {
+        'auth.login': '로그인',
+        'auth.register': '회원가입',
+        'auth.nickname': '닉네임',
+        'auth.password': '비밀번호',
+        'auth.registerNickname': '닉네임 (3-16자)',
+        'auth.registerPassword': '비밀번호 (최소 4자)',
+        'auth.confirmPassword': '비밀번호 확인',
+        'auth.guest': '비회원 로그인',
+        'auth.guestNote': '비회원은 공식 팩 플레이만 가능 · Pack Maker 생성/저장, 랭킹, 공개 심사는 로그인 필요',
+        'auth.welcome': '환영합니다, ',
+        'auth.logout': '로그아웃',
+        'auth.loginAction': '로그인',
+        'auth.withdraw': '회원탈퇴',
+        'menu.systemDifficulty': '시스템 난이도',
+        'menu.selectPack': '팩 선택',
+        'menu.selectCartridge': '카트리지 선택',
+        'menu.close': '닫기',
+        'menu.startCodedrop': 'START CODEDROP',
+        'menu.packMaker': 'PACK MAKER',
+        'menu.topAgents': '상위 요원',
+        'menu.connecting': '서버 연결 중...',
+        'difficulty.easy': '쉬움 [안전 모드]',
+        'difficulty.normal': '보통 [표준]',
+        'difficulty.developer': '개발자 [오버클럭]',
+        'ocp.title': 'OCP EDITION',
+        'ocp.subtitle': 'EX280 실전 학습 덱',
+        'ocp.learn': '학습 모드',
+        'ocp.learnDesc': '처음이라면 여기부터 — 따라치며 배우는 EX280',
+        'ocp.dropDesc': 'OC 핵심 명령 낙하 타자',
+        'ocp.scenario': '시나리오',
+        'ocp.scenarioDesc': '상황별 명령 10문제',
+        'ocp.lab': '모의 랩',
+        'ocp.labDesc': '실전 절차 훈련',
+        'ocp.exam': '시험 모드',
+        'ocp.examDesc': '15문제 · 90초',
+        'ocp.learnMode': '학습 모드',
+        'ocp.loadingCurriculum': '커리큘럼 로딩...',
+        'ocp.cliDropDifficulty': 'CLI 드롭 난이도',
+        'ocp.fixedPack': 'OpenShift CLI (EX280) 팩으로 고정됩니다.',
+        'ocp.scenarioCategory': '시나리오 카테고리',
+        'ocp.mockLab': '모의 랩',
+        'ocp.examMode': '시험 모드',
+        'ocp.examInfo': '전 영역 15문제 · 문제당 90초 · 힌트 없음 · 합격선 70%',
+        'ocp.start': 'START OCP',
+        'ocp.dashboard': '학습 대시보드',
+        'result.finalScore': '최종 점수',
+        'result.maxCombo': '최대 콤보',
+        'result.accuracy': '정확도',
+        'result.reboot': '시스템 재시작',
+        'confirm.loginRequired': '로그인 필요',
+        'confirm.loginRequiredMessage': '{feature} 기능은 서버 저장/생성 권한이 필요합니다. 비회원은 공식 팩 플레이만 가능합니다.',
+        'confirm.stay': '머무르기',
+        'confirm.login': '로그인',
+        'confirm.register': '회원가입',
+        'packMaker.title': 'PACK MAKER',
+        'packMaker.subtitle': '검색 기반 CODEDROP 데이터팩 제작',
+        'packMaker.home': '홈',
+        'packMaker.inputPlaceholder': '예: 리눅스 네트워크 명령어 고유명사 50개 만들어줘',
+        'packMaker.ask': '질문',
+        'packMaker.stop': '중지',
+        'packMaker.packTitle': '팩 제목',
+        'packMaker.packDescription': '팩 설명',
+        'packMaker.term': '용어',
+        'packMaker.desc': '한줄 설명',
+        'packMaker.source': '출처',
+        'packMaker.addItem': '항목 추가',
+        'packMaker.save': '내 팩 저장',
+        'packMaker.submit': '공개 심사 제출',
+        'packMaker.guestPreview': '비회원 미리보기 모드',
+        'packMaker.loginRequired': '로그인 필요',
+        'packMaker.loginNotice': 'Pack Maker 생성/저장은 로그인 후 사용할 수 있습니다. 비회원은 화면과 편집 흐름을 먼저 둘러볼 수 있습니다.',
+        'packMaker.featureName': '팩 메이커 생성/저장',
+        'packMaker.chatIntro': '도메인, 언어, 개수, 팩 이름을 자연어로 말하세요. 플레이 가능한 CODEDROP 팩 초안으로 정리합니다.',
+        'packMaker.searchResults': '검색 결과 {count}개를 draft 근거로 사용합니다.',
+        'leaderboard.noData': '기록이 없습니다. 첫 기록을 남겨보세요.',
+        'leaderboard.customLogin': '커스텀 팩 랭킹은 로그인 필요',
+        'leaderboard.connectionLost': '연결이 끊겼습니다',
+        'score.offline': '비회원 모드. 기록은 저장되지 않습니다.',
+        'score.uploading': '기록 업로드 중...',
+        'score.uploadComplete': '업로드 완료. 랭킹을 확인하세요.',
+        'score.uploadFailed': '업로드 실패.',
+        'score.serverError': '서버 오류. 기록이 저장되지 않았습니다.'
+    }
+};
 
 const DIFFICULTY = {
     EASY: { spawnRate: 2500, speedMin: 0.5, speedMax: 1.0, eventChance: 0 },
@@ -76,6 +249,17 @@ const els = {
     controls: {
         diffSelect: document.getElementById('difficulty-select'),
         packSelect: document.getElementById('pack-select'),
+        packSelector: document.getElementById('pack-selector'),
+        packTrigger: document.getElementById('pack-selector-trigger'),
+        packCurrentTitle: document.getElementById('pack-current-title'),
+        packCurrentChip: document.getElementById('pack-current-chip'),
+        packPopover: document.getElementById('pack-popover'),
+        packPopoverClose: document.getElementById('pack-popover-close'),
+        packCardGroups: document.getElementById('pack-card-groups'),
+        packConsole: document.getElementById('pack-console'),
+        packConsoleDock: document.getElementById('pack-console-dock'),
+        packDockLabel: document.getElementById('pack-dock-label'),
+        packConsoleStatusArt: document.getElementById('pack-console-status-art'),
         startBtn: document.getElementById('start-btn'),
         restartBtn: document.getElementById('restart-btn'),
         leaderboard: document.getElementById('leaderboard-list')
@@ -98,6 +282,7 @@ const els = {
         },
         btns: {
             login: document.getElementById('btn-login'),
+            guest: document.getElementById('btn-guest'),
             register: document.getElementById('btn-register'),
             logout: document.getElementById('btn-logout'),
             withdraw: document.getElementById('btn-withdraw')
@@ -118,7 +303,8 @@ const els = {
         input: document.getElementById('confirm-input'),
         error: document.getElementById('confirm-error'),
         cancel: document.getElementById('confirm-cancel'),
-        ok: document.getElementById('confirm-ok')
+        ok: document.getElementById('confirm-ok'),
+        extra: document.getElementById('confirm-extra')
     }
 };
 
@@ -140,6 +326,16 @@ let widgetOverlapCheckAt = 0;
 let soundCloudWidget = null;
 let soundCloudWidgetBound = false;
 let musicPlaying = false;
+let appInitialized = false;
+const llmStatus = {
+    checked: false,
+    checking: false,
+    ok: null,
+    reason: '',
+    promise: null,
+    promptedScopes: new Set(),
+    fallbackScopes: new Set()
+};
 
 function setGameChrome(active) {
     document.body.classList.toggle('game-active', Boolean(active));
@@ -212,6 +408,7 @@ function showCommandDialog({
     message,
     okText = 'CONFIRM',
     cancelText = 'CANCEL',
+    extraText = '',
     input = false,
     placeholder = 'PASSWORD',
     danger = false,
@@ -234,11 +431,18 @@ function showCommandDialog({
         c.ok.textContent = okText;
         c.cancel.textContent = cancelText || '';
         c.cancel.classList.toggle('hidden', !cancelText);
+        if (c.extra) {
+            c.extra.textContent = extraText || '';
+            c.extra.classList.toggle('hidden', !extraText);
+            c.extra.onclick = extraCommandDialog;
+        }
         c.input.value = '';
         c.input.placeholder = placeholder;
         c.input.classList.toggle('hidden', !input);
         c.error.textContent = '';
         c.screen.classList.toggle('danger', danger);
+        c.ok.onclick = acceptCommandDialog;
+        c.cancel.onclick = cancelCommandDialog;
         c.screen.classList.remove('hidden');
         syncOverlayChrome();
 
@@ -257,9 +461,117 @@ function closeCommandDialog(result) {
     els.confirm.screen.classList.add('hidden');
     els.confirm.input.value = '';
     els.confirm.error.textContent = '';
+    if (els.confirm.extra) {
+        els.confirm.extra.textContent = '';
+        els.confirm.extra.classList.add('hidden');
+    }
     syncOverlayChrome();
     session.resolve(result);
 }
+
+function publishLlmStatus() {
+    window.dispatchEvent(new CustomEvent('codedrop:llm-status', {
+        detail: {
+            checked: llmStatus.checked,
+            checking: llmStatus.checking,
+            ok: llmStatus.ok,
+            reason: llmStatus.reason
+        }
+    }));
+}
+
+function startKugnusHealthCheck(force = false) {
+    if (llmStatus.promise && !force) return llmStatus.promise;
+
+    llmStatus.checked = false;
+    llmStatus.checking = true;
+    llmStatus.ok = null;
+    llmStatus.reason = '';
+    publishLlmStatus();
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), KUGNUS_HEALTH_TIMEOUT_MS + 1000);
+
+    llmStatus.promise = fetch(`${API_BASE}/api/llm/kugnus/health`, {
+        signal: controller.signal,
+        cache: 'no-store'
+    })
+        .then(res => res.json().catch(() => ({ ok: false, reason: 'Invalid KUGNUS health response' })))
+        .then(data => {
+            llmStatus.checked = true;
+            llmStatus.checking = false;
+            llmStatus.ok = data.ok === true;
+            llmStatus.reason = data.reason || '';
+            return {
+                ok: llmStatus.ok,
+                reason: llmStatus.reason,
+                engine: 'kugnus',
+                label: 'KUGNUS SERVER'
+            };
+        })
+        .catch(err => {
+            llmStatus.checked = true;
+            llmStatus.checking = false;
+            llmStatus.ok = false;
+            llmStatus.reason = err.name === 'AbortError' ? 'KUGNUS health timeout' : err.message;
+            return {
+                ok: false,
+                reason: llmStatus.reason,
+                engine: 'kugnus',
+                label: 'KUGNUS SERVER'
+            };
+        })
+        .finally(() => {
+            window.clearTimeout(timeout);
+            publishLlmStatus();
+        });
+
+    return llmStatus.promise;
+}
+
+async function maybeSwitchFromOfflineKugnus(scope = 'chat') {
+    const status = await startKugnusHealthCheck(true);
+    if (status.ok !== false) {
+        llmStatus.fallbackScopes.delete(scope);
+        llmStatus.promptedScopes.delete(scope);
+        return false;
+    }
+    if (llmStatus.fallbackScopes.has(scope)) return true;
+    if (llmStatus.promptedScopes.has(scope)) return false;
+
+    llmStatus.promptedScopes.add(scope);
+    const result = await showCommandDialog({
+        title: 'KUGNUS SERVER OFFLINE',
+        message: 'KUGNUS SERVER 응답이 없습니다. GPT 5.4 MINI로 전환합니다.',
+        okText: 'SWITCH',
+        cancelText: 'STAY',
+        danger: true
+    });
+
+    if (!result.accepted) return false;
+
+    llmStatus.fallbackScopes.add(scope);
+    window.dispatchEvent(new CustomEvent('codedrop:llm-fallback', {
+        detail: { scope, engine: 'openai' }
+    }));
+    return true;
+}
+
+window.CodeDropLlmStatus = {
+    startKugnusHealthCheck,
+    maybeSwitchFromOfflineKugnus,
+    isFallbackScope(scope) {
+        return llmStatus.fallbackScopes.has(scope);
+    },
+    snapshot() {
+        return {
+            checked: llmStatus.checked,
+            checking: llmStatus.checking,
+            ok: llmStatus.ok,
+            reason: llmStatus.reason
+        };
+    }
+};
 
 function acceptCommandDialog() {
     if (!commandDialogSession) return;
@@ -273,11 +585,15 @@ function acceptCommandDialog() {
         return;
     }
 
-    closeCommandDialog({ accepted: true, value });
+    closeCommandDialog({ accepted: true, action: 'ok', value });
 }
 
 function cancelCommandDialog() {
-    closeCommandDialog({ accepted: false, value: '' });
+    closeCommandDialog({ accepted: false, action: 'cancel', value: '' });
+}
+
+function extraCommandDialog() {
+    closeCommandDialog({ accepted: true, action: 'extra', value: '' });
 }
 
 function initCommandDialog() {
@@ -287,6 +603,7 @@ function initCommandDialog() {
 
     c.ok.addEventListener('click', acceptCommandDialog);
     c.cancel.addEventListener('click', cancelCommandDialog);
+    if (c.extra) c.extra.addEventListener('click', extraCommandDialog);
     c.screen.addEventListener('click', (e) => {
         if (e.target === e.currentTarget) cancelCommandDialog();
     });
@@ -412,6 +729,502 @@ function customPackIdFromValue(value) {
     return match ? match[1] : null;
 }
 
+const PACK_META = {
+    PYTHON: { title: 'Python', chip: 'PYTHON', style: 'python' },
+    JS: { title: 'JavaScript', chip: 'JS', style: 'js' },
+    HTTP: { title: 'Network', chip: 'HTTP', style: 'http' },
+    CLI: { title: 'Terminal', chip: 'CLI', style: 'cli' },
+    LINUX: { title: 'Linux', chip: 'LINUX', style: 'linux' },
+    OC_CORE: { title: 'OpenShift', chip: 'OCP', style: 'oc_core' },
+    VOCAB: { title: 'Vocabulary', chip: 'WORDS', style: 'vocab' },
+    MIX: { title: 'Mix', chip: 'MIX', style: 'mix' }
+};
+
+function selectedPackOption() {
+    const select = els.controls.packSelect;
+    return select && select.options[select.selectedIndex] ? select.options[select.selectedIndex] : null;
+}
+
+function packMetaFromOption(option) {
+    if (!option) return PACK_META.PYTHON;
+    const value = option.value;
+    const official = PACK_META[value];
+    if (official) return { value, group: 'Official Packs', ...official };
+
+    const group = option.parentElement && option.parentElement.tagName === 'OPTGROUP'
+        ? option.parentElement.label
+        : 'Custom Packs';
+    const isPublic = /public/i.test(`${option.textContent} ${group}`);
+    return {
+        value,
+        title: option.textContent.replace(/\s+·\s+(PUBLIC|DRAFT|PENDING|APPROVED|REJECTED).*$/i, '').trim() || 'Custom Pack',
+        chip: isPublic ? 'PUBLIC' : 'CUSTOM',
+        style: 'custom',
+        group
+    };
+}
+
+function packMetaForValue(value) {
+    const select = els.controls.packSelect;
+    const option = select ? Array.from(select.options).find(opt => opt.value === value) : null;
+    return packMetaFromOption(option || selectedPackOption());
+}
+
+function packGroupsFromSelect() {
+    const select = els.controls.packSelect;
+    if (!select) return [];
+    const groups = [];
+    let official = { label: 'Official Packs', items: [] };
+
+    Array.from(select.children).forEach(child => {
+        if (child.tagName === 'OPTION') {
+            official.items.push(packMetaFromOption(child));
+            return;
+        }
+
+        if (child.tagName === 'OPTGROUP') {
+            if (official.items.length && !groups.includes(official)) groups.push(official);
+            const group = { label: child.label || 'Custom Packs', items: [] };
+            Array.from(child.children).forEach(option => group.items.push(packMetaFromOption(option)));
+            if (group.items.length) groups.push(group);
+        }
+    });
+
+    if (official.items.length && !groups.includes(official)) groups.unshift(official);
+    return groups.filter(group => group.items.length);
+}
+
+function closePackPopover() {
+    const controls = els.controls;
+    if (!controls.packSelector || !controls.packPopover || !controls.packTrigger) return;
+    controls.packSelector.classList.remove('open');
+    controls.packPopover.classList.add('hidden');
+    controls.packTrigger.setAttribute('aria-expanded', 'false');
+}
+
+function openPackPopover() {
+    const controls = els.controls;
+    if (!controls.packSelector || !controls.packPopover || !controls.packTrigger) return;
+    renderPackCards();
+    controls.packSelector.classList.add('open');
+    controls.packPopover.classList.remove('hidden');
+    controls.packTrigger.setAttribute('aria-expanded', 'true');
+}
+
+function togglePackPopover() {
+    if (!els.controls.packPopover) return;
+    if (els.controls.packPopover.classList.contains('hidden')) openPackPopover();
+    else closePackPopover();
+}
+
+function packLogoText(style) {
+    return ({
+        python: '',
+        js: 'JS',
+        http: 'WWW',
+        cli: '>_',
+        linux: 'LIN',
+        oc_core: 'OC',
+        vocab: 'Aa',
+        mix: 'MIX',
+        custom: 'PACK'
+    })[style] || 'PACK';
+}
+
+function createPackLogo(meta) {
+    const logo = document.createElement('span');
+    logo.className = `pack-card-logo pack-logo-${meta.style}`;
+    logo.setAttribute('aria-hidden', 'true');
+    logo.textContent = packLogoText(meta.style);
+    if (meta.style === 'python') {
+        logo.appendChild(Object.assign(document.createElement('span'), {
+            className: 'logo-dot'
+        }));
+    }
+    return logo;
+}
+
+function packReadyText(meta) {
+    return `${String(meta.title || 'DATA PACK').toUpperCase()} READY`;
+}
+
+function playPackLatchSound() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    try {
+        const ctx = new AudioContextClass();
+        const gain = ctx.createGain();
+        gain.connect(ctx.destination);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+
+        const tick = ctx.createOscillator();
+        tick.type = 'triangle';
+        tick.frequency.setValueAtTime(980, ctx.currentTime);
+        tick.frequency.exponentialRampToValueAtTime(360, ctx.currentTime + 0.035);
+        tick.connect(gain);
+        tick.start(ctx.currentTime);
+        tick.stop(ctx.currentTime + 0.045);
+
+        const latch = ctx.createOscillator();
+        latch.type = 'square';
+        latch.frequency.setValueAtTime(150, ctx.currentTime + 0.052);
+        latch.frequency.exponentialRampToValueAtTime(72, ctx.currentTime + 0.17);
+        latch.connect(gain);
+        latch.start(ctx.currentTime + 0.052);
+        latch.stop(ctx.currentTime + 0.18);
+
+        const body = ctx.createOscillator();
+        body.type = 'sine';
+        body.frequency.setValueAtTime(58, ctx.currentTime + 0.09);
+        body.frequency.exponentialRampToValueAtTime(42, ctx.currentTime + 0.2);
+        body.connect(gain);
+        body.start(ctx.currentTime + 0.09);
+        body.stop(ctx.currentTime + 0.21);
+
+        window.setTimeout(() => ctx.close(), 320);
+    } catch (error) {
+        // Audio is cosmetic; ignore blocked contexts or unsupported browsers.
+    }
+}
+
+function createPackCard(meta) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = `pack-cartridge pack-style-${meta.style}`;
+    card.dataset.packValue = meta.value;
+    card.dataset.packCard = 'true';
+    card.draggable = true;
+    card.setAttribute('aria-label', `${meta.title} pack`);
+    let pointerDrag = null;
+    let mouseDrag = null;
+    let suppressNextClick = false;
+
+    const finishManualDrag = (event, dragState) => {
+        card.classList.remove('dragging');
+        if (els.controls.packConsole) els.controls.packConsole.classList.remove('drag-ready');
+        if (!dragState || !dragState.moved) return false;
+
+        suppressNextClick = true;
+        window.setTimeout(() => {
+            suppressNextClick = false;
+        }, 250);
+
+        const dock = els.controls.packConsoleDock;
+        if (!dock) return false;
+        const rect = dock.getBoundingClientRect();
+        const insideDock = event.clientX >= rect.left
+            && event.clientX <= rect.right
+            && event.clientY >= rect.top
+            && event.clientY <= rect.bottom;
+        if (!insideDock) return false;
+
+        event.preventDefault();
+        event.stopPropagation();
+        selectPackFromUi(meta.value, card);
+        return true;
+    };
+
+    const clearMouseDrag = () => {
+        document.removeEventListener('mousemove', handleMouseMove, true);
+        document.removeEventListener('mouseup', handleMouseUp, true);
+        mouseDrag = null;
+    };
+
+    function handleMouseMove(event) {
+        if (!mouseDrag) return;
+        const moved = Math.hypot(event.clientX - mouseDrag.startX, event.clientY - mouseDrag.startY);
+        if (moved > 8) {
+            mouseDrag.moved = true;
+            card.classList.add('dragging');
+            if (els.controls.packConsole) els.controls.packConsole.classList.add('drag-ready');
+            event.preventDefault();
+        }
+    }
+
+    function handleMouseUp(event) {
+        if (!mouseDrag) return;
+        const drag = mouseDrag;
+        clearMouseDrag();
+        finishManualDrag(event, drag);
+    }
+
+    const chip = document.createElement('span');
+    chip.className = 'pack-card-chip';
+    chip.textContent = meta.chip;
+
+    const title = document.createElement('span');
+    title.className = 'pack-card-title';
+    title.textContent = meta.title;
+
+    card.append(chip, createPackLogo(meta), title);
+    card.addEventListener('click', event => {
+        if (suppressNextClick) {
+            suppressNextClick = false;
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
+        event.stopPropagation();
+        selectPackFromUi(meta.value, card);
+    });
+    card.addEventListener('pointerdown', event => {
+        if (event.button !== undefined && event.button !== 0) return;
+        pointerDrag = {
+            id: event.pointerId,
+            startX: event.clientX,
+            startY: event.clientY,
+            moved: false
+        };
+        if (card.setPointerCapture) {
+            try {
+                card.setPointerCapture(event.pointerId);
+            } catch (error) {
+                // Pointer capture is only a drag nicety; native drag still works without it.
+            }
+        }
+    });
+    card.addEventListener('mousedown', event => {
+        if (event.button !== 0) return;
+        mouseDrag = {
+            startX: event.clientX,
+            startY: event.clientY,
+            moved: false
+        };
+        document.addEventListener('mousemove', handleMouseMove, true);
+        document.addEventListener('mouseup', handleMouseUp, true);
+    });
+    card.addEventListener('pointermove', event => {
+        if (!pointerDrag || event.pointerId !== pointerDrag.id) return;
+        const moved = Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY);
+        if (moved > 8) {
+            pointerDrag.moved = true;
+            card.classList.add('dragging');
+            if (els.controls.packConsole) els.controls.packConsole.classList.add('drag-ready');
+        }
+    });
+    card.addEventListener('pointerup', event => {
+        if (!pointerDrag || event.pointerId !== pointerDrag.id) return;
+        const drag = pointerDrag;
+        pointerDrag = null;
+        card.classList.remove('dragging');
+        if (els.controls.packConsole) els.controls.packConsole.classList.remove('drag-ready');
+        finishManualDrag(event, drag);
+    });
+    card.addEventListener('pointercancel', () => {
+        pointerDrag = null;
+        clearMouseDrag();
+        card.classList.remove('dragging');
+        if (els.controls.packConsole) els.controls.packConsole.classList.remove('drag-ready');
+    });
+    card.addEventListener('dragstart', event => {
+        card.classList.add('dragging');
+        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.setData('text/plain', meta.value);
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    return card;
+}
+
+function renderPackCards() {
+    const container = els.controls.packCardGroups;
+    if (!container) return;
+    container.replaceChildren();
+    const currentValue = els.controls.packSelect ? els.controls.packSelect.value : '';
+
+    packGroupsFromSelect().forEach(group => {
+        const wrap = document.createElement('section');
+        wrap.className = 'pack-card-group';
+
+        const title = document.createElement('div');
+        title.className = 'pack-card-group-title';
+        title.textContent = group.label;
+
+        const grid = document.createElement('div');
+        grid.className = 'pack-card-grid';
+        group.items.forEach(meta => {
+            const card = createPackCard(meta);
+            card.classList.toggle('selected', meta.value === currentValue);
+            grid.appendChild(card);
+        });
+
+        wrap.append(title, grid);
+        container.appendChild(wrap);
+    });
+}
+
+function syncPackSelector() {
+    const option = selectedPackOption();
+    const meta = packMetaFromOption(option);
+    const controls = els.controls;
+    if (controls.packCurrentTitle) controls.packCurrentTitle.textContent = meta.title;
+    if (controls.packCurrentChip) controls.packCurrentChip.textContent = meta.chip;
+    if (controls.packDockLabel) controls.packDockLabel.textContent = meta.chip ? `${meta.chip} DOCK` : 'PACK DOCK';
+    if (controls.packConsoleStatusArt && controls.packConsole && !controls.packConsole.classList.contains('pack-inserting')) {
+        controls.packConsoleStatusArt.textContent = '';
+    }
+    if (controls.packConsole) {
+        controls.packConsole.dataset.packValue = meta.value || 'PYTHON';
+        controls.packConsole.className = `pack-console pack-style-${meta.style}`;
+    }
+    renderPackCards();
+}
+
+function animatePackEquip(meta, sourceEl) {
+    const dock = els.controls.packConsoleDock;
+    if (!dock || !document.body) return;
+
+    const sourceRect = sourceEl && typeof sourceEl.left === 'number'
+        ? sourceEl
+        : sourceEl && sourceEl.getBoundingClientRect
+        ? sourceEl.getBoundingClientRect()
+        : dock.getBoundingClientRect();
+    const targetRect = dock.getBoundingClientRect();
+    const ghost = document.createElement('div');
+    ghost.className = `pack-cartridge pack-cartridge-ghost pack-style-${meta.style}`;
+    ghost.appendChild(Object.assign(document.createElement('span'), {
+        className: 'pack-card-chip',
+        textContent: meta.chip
+    }));
+    ghost.appendChild(createPackLogo(meta));
+    ghost.appendChild(Object.assign(document.createElement('span'), {
+        className: 'pack-card-title',
+        textContent: meta.title
+    }));
+    ghost.style.left = `${sourceRect.left}px`;
+    ghost.style.top = `${sourceRect.top}px`;
+    ghost.style.width = `${sourceRect.width || 160}px`;
+    ghost.style.height = `${sourceRect.height || 164}px`;
+    ghost.style.minHeight = '0';
+    ghost.style.transform = 'scale(1)';
+    ghost.style.transition = 'none';
+    document.body.appendChild(ghost);
+    void ghost.offsetWidth;
+
+    if (els.controls.packConsoleStatusArt) {
+        els.controls.packConsoleStatusArt.textContent = packReadyText(meta);
+    }
+
+    requestAnimationFrame(() => {
+        ghost.style.transition = [
+            'left 0.38s cubic-bezier(0.2, 0.9, 0.14, 1)',
+            'top 0.38s cubic-bezier(0.2, 0.9, 0.14, 1)',
+            'width 0.38s cubic-bezier(0.2, 0.9, 0.14, 1)',
+            'height 0.38s cubic-bezier(0.2, 0.9, 0.14, 1)',
+            'transform 0.38s cubic-bezier(0.2, 0.9, 0.14, 1)',
+            'opacity 0.28s ease',
+            'filter 0.28s ease'
+        ].join(', ');
+        ghost.style.left = `${targetRect.left}px`;
+        ghost.style.top = `${targetRect.top}px`;
+        ghost.style.width = `${targetRect.width}px`;
+        ghost.style.height = `${targetRect.height}px`;
+        ghost.style.transform = 'scale(1)';
+        window.setTimeout(() => {
+            ghost.style.transition = 'filter 0.2s ease';
+            ghost.style.transform = 'scale(1)';
+            ghost.style.opacity = '0.96';
+            ghost.style.filter = 'drop-shadow(0 0 28px rgba(0, 243, 255, 0.95)) brightness(1.45)';
+            playPackLatchSound();
+            if (els.controls.packConsole) {
+                els.controls.packConsole.classList.remove('pack-inserting');
+                void els.controls.packConsole.offsetWidth;
+                els.controls.packConsole.classList.add('pack-inserting');
+            }
+        }, 390);
+    });
+
+    window.setTimeout(() => {
+        ghost.style.transition = 'opacity 0.18s ease, filter 0.18s ease';
+        ghost.style.opacity = '0';
+        ghost.style.filter = 'drop-shadow(0 0 18px rgba(0, 243, 255, 0.5)) brightness(1.15)';
+    }, 1250);
+    window.setTimeout(() => ghost.remove(), 1480);
+    if (els.controls.packConsole) {
+        window.setTimeout(() => {
+            els.controls.packConsole.classList.remove('pack-inserting');
+            if (els.controls.packConsoleStatusArt) {
+                els.controls.packConsoleStatusArt.textContent = '';
+            }
+        }, 1350);
+    }
+}
+
+async function selectPackFromUi(value, sourceEl = null) {
+    const select = els.controls.packSelect;
+    if (!select || !Array.from(select.options).some(option => option.value === value)) return;
+    const sourceRect = sourceEl && sourceEl.getBoundingClientRect ? sourceEl.getBoundingClientRect() : null;
+    select.value = value;
+    const meta = packMetaForValue(value);
+    syncPackSelector();
+
+    const customPackId = customPackIdFromValue(value);
+    if (customPackId && window.PackMaker && typeof window.PackMaker.loadPackDetail === 'function' && !WORD_PACKS[value]) {
+        try {
+            await window.PackMaker.loadPackDetail(customPackId);
+        } catch (error) {
+            renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
+        }
+    }
+
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    animatePackEquip(meta, sourceRect || sourceEl);
+    window.setTimeout(closePackPopover, 1660);
+}
+
+function initPackSelector() {
+    const controls = els.controls;
+    if (!controls.packSelect || !controls.packSelector || !controls.packTrigger || !controls.packConsole) return;
+    controls.packTrigger.addEventListener('click', event => {
+        event.stopPropagation();
+        togglePackPopover();
+    });
+    controls.packConsole.addEventListener('click', event => {
+        event.stopPropagation();
+        openPackPopover();
+    });
+    controls.packConsole.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openPackPopover();
+        }
+    });
+    if (controls.packPopoverClose) {
+        controls.packPopoverClose.addEventListener('click', closePackPopover);
+    }
+    const packDropTarget = controls.packConsoleDock || controls.packConsole;
+    packDropTarget.addEventListener('dragover', event => {
+        event.preventDefault();
+        controls.packConsole.classList.add('drag-ready');
+    });
+    packDropTarget.addEventListener('dragleave', () => {
+        controls.packConsole.classList.remove('drag-ready');
+    });
+    packDropTarget.addEventListener('drop', event => {
+        event.preventDefault();
+        controls.packConsole.classList.remove('drag-ready');
+        const value = event.dataTransfer.getData('text/plain');
+        const source = controls.packCardGroups && controls.packCardGroups.querySelector(`[data-pack-value="${CSS.escape(value)}"]`);
+        selectPackFromUi(value, source);
+    });
+    document.addEventListener('click', event => {
+        if (!controls.packSelector.contains(event.target)) closePackPopover();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closePackPopover();
+    });
+    controls.packSelect.addEventListener('change', syncPackSelector);
+    syncPackSelector();
+}
+
+window.CodeDropPackSelector = {
+    refresh: syncPackSelector,
+    render: renderPackCards,
+    select: selectPackFromUi
+};
+
 function leaderboardSelection() {
     if (isOcpEditionActive()) {
         const ocpDiff = document.getElementById('ocp-difficulty-select');
@@ -438,7 +1251,7 @@ async function fetchLeaderboard() {
         const { diff, pack, customPackId } = leaderboardSelection();
         if (customPackId) {
             if (!state.userToken) {
-                renderLeaderboardMessage('LOGIN REQUIRED FOR CUSTOM PACK RANKING', 'var(--danger-color)');
+                renderLeaderboardMessage(t('leaderboard.customLogin'), 'var(--danger-color)');
                 return;
             }
             const res = await fetch(`${API_BASE}/api/packs/${customPackId}/leaderboard?difficulty=${diff}`, {
@@ -455,7 +1268,7 @@ async function fetchLeaderboard() {
         renderLeaderboard(data.top10);
     } catch (e) {
         console.error(e);
-        renderLeaderboardMessage('CONNECTION LOST', 'var(--danger-color)');
+        renderLeaderboardMessage(t('leaderboard.connectionLost'), 'var(--danger-color)');
     }
 }
 
@@ -507,6 +1320,10 @@ function gameLoop(timestamp) {
     // Update Words. Iterate backwards because handleDrop mutates activeWords.
     for (let index = state.activeWords.length - 1; index >= 0; index--) {
         const word = state.activeWords[index];
+        if (!word || !word.el) {
+            state.activeWords.splice(index, 1);
+            continue;
+        }
         word.y += word.speed;
         word.el.style.top = `${word.y}px`;
 
@@ -543,6 +1360,7 @@ function spawnWord() {
         state.pack = 'PYTHON';
         pool = WORD_PACKS.PYTHON;
         if (els.controls.packSelect) els.controls.packSelect.value = 'PYTHON';
+        syncPackSelector();
     }
 
     // 1. Exclude currently active words (duplicates)
@@ -815,6 +1633,7 @@ async function gameOver(victory = false) {
     els.input.field.disabled = true;
     updateTargetDisplay('');
     state.activeWords.forEach(word => {
+        if (!word) return;
         if (word.el && word.el.parentNode) word.el.parentNode.removeChild(word.el);
     });
     state.activeWords = [];
@@ -840,7 +1659,7 @@ async function gameOver(victory = false) {
 
     // Submit Score
     if (state.userToken) {
-        els.result.status.textContent = "UPLOADING DATA...";
+        els.result.status.textContent = t('score.uploading');
         try {
             const customPackId = customPackIdFromValue(state.pack);
             const endpoint = customPackId
@@ -871,16 +1690,16 @@ async function gameOver(victory = false) {
             });
             const data = await res.json();
             if (data.ok) {
-                els.result.status.textContent = "UPLOAD COMPLETE. CHECK RANKING.";
+                els.result.status.textContent = t('score.uploadComplete');
             } else {
-                els.result.status.textContent = "UPLOAD FAILED.";
+                els.result.status.textContent = t('score.uploadFailed');
             }
         } catch (e) {
             console.error(e);
-            els.result.status.textContent = "SERVER ERROR. DATA NOT SAVED.";
+            els.result.status.textContent = t('score.serverError');
         }
     } else {
-        els.result.status.textContent = "OFFLINE MODE. DATA NOT SAVED.";
+        els.result.status.textContent = t('score.offline');
     }
 }
 
@@ -888,7 +1707,7 @@ function renderLeaderboard(list) {
     els.controls.leaderboard.innerHTML = '';
 
     if (!list || list.length === 0) {
-        renderLeaderboardMessage('NO DATA FOUND. BE THE FIRST.');
+        renderLeaderboardMessage(t('leaderboard.noData'));
         return;
     }
 
@@ -981,6 +1800,7 @@ function handleStart() {
             const ocpDiff = document.getElementById('ocp-difficulty-select');
             if (ocpDiff) els.controls.diffSelect.value = ocpDiff.value;
             els.controls.packSelect.value = 'OC_CORE';
+            syncPackSelector();
         }
         startGame();
     }
@@ -1120,10 +1940,36 @@ function initModeControls() {
     setMode(gameMode);
 }
 
-function startGame() {
+async function ensureSelectedPackReady(pack) {
+    const customPackId = customPackIdFromValue(pack);
+    if (!customPackId) return true;
+    if (Array.isArray(WORD_PACKS[pack]) && WORD_PACKS[pack].length > 0) return true;
+
+    if (!state.userToken) {
+        renderLeaderboardMessage(t('leaderboard.customLogin'), 'var(--danger-color)');
+        return false;
+    }
+
+    if (!window.PackMaker || typeof window.PackMaker.loadPackDetail !== 'function') {
+        renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
+        return false;
+    }
+
+    try {
+        await window.PackMaker.loadPackDetail(customPackId);
+    } catch (error) {
+        renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
+        return false;
+    }
+
+    return Array.isArray(WORD_PACKS[pack]) && WORD_PACKS[pack].length > 0;
+}
+
+async function startGame() {
     // Validate
     const diff = els.controls.diffSelect.value;
     const pack = els.controls.packSelect.value;
+    if (!await ensureSelectedPackReady(pack)) return;
 
     state.difficulty = diff;
     state.pack = pack;
@@ -1504,25 +2350,156 @@ function normalizeReadmeLanguage(value) {
     return value === 'ko' ? 'ko' : 'en';
 }
 
-function setReadmeLanguage(value, options = {}) {
-    const lang = normalizeReadmeLanguage(value);
-    const readmeBox = document.getElementById('readme-box');
+function appLang() {
+    return normalizeReadmeLanguage(
+        localStorage.getItem(APP_LANGUAGE_STORAGE_KEY) ||
+        localStorage.getItem(README_LANGUAGE_STORAGE_KEY) ||
+        'en'
+    );
+}
 
-    localStorage.setItem(README_LANGUAGE_STORAGE_KEY, lang);
+function t(key, replacements = {}) {
+    const lang = appLang();
+    let text = (I18N_TEXT[lang] && I18N_TEXT[lang][key]) || I18N_TEXT.en[key] || key;
+    Object.entries(replacements).forEach(([name, value]) => {
+        text = text.replaceAll(`{${name}}`, value);
+    });
+    return text;
+}
 
-    if (readmeBox) {
-        readmeBox.dataset.manualLang = lang;
+function setText(selector, key) {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = t(key);
+}
+
+function setPlaceholder(selector, key) {
+    const el = document.querySelector(selector);
+    if (el) el.placeholder = t(key);
+}
+
+function setOptionText(selector, key) {
+    document.querySelectorAll(selector).forEach(option => {
+        option.textContent = t(key);
+    });
+}
+
+function updateWelcomeText() {
+    const welcome = document.querySelector('.welcome-msg');
+    if (welcome && welcome.firstChild) {
+        welcome.firstChild.nodeValue = t('auth.welcome');
     }
+}
 
+function applyAppLanguage(value) {
+    const lang = normalizeReadmeLanguage(value);
+    localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, lang);
+    localStorage.setItem(README_LANGUAGE_STORAGE_KEY, lang);
+    document.documentElement.lang = lang;
+    document.body.dataset.appLang = lang;
+
+    setText('#tab-login', 'auth.login');
+    setText('#tab-register', 'auth.register');
+    setPlaceholder('#login-nick', 'auth.nickname');
+    setPlaceholder('#login-pass', 'auth.password');
+    setPlaceholder('#reg-nick', 'auth.registerNickname');
+    setPlaceholder('#reg-pass', 'auth.registerPassword');
+    setPlaceholder('#reg-pass-confirm', 'auth.confirmPassword');
+    setText('#btn-login', 'auth.login');
+    setText('#btn-guest', 'auth.guest');
+    setText('#btn-register', 'auth.register');
+    setText('.guest-note', 'auth.guestNote');
+    setText('#btn-withdraw', 'auth.withdraw');
+    updateWelcomeText();
+
+    setText('#drop-diff-group label', 'menu.systemDifficulty');
+    setText('#drop-pack-group > label', 'menu.selectPack');
+    setText('.pack-trigger-kicker', 'menu.selectPack');
+    setText('.pack-popover-head > span', 'menu.selectCartridge');
+    setText('#pack-popover-close', 'menu.close');
+    setText('#start-btn', 'menu.startCodedrop');
+    setText('#pack-maker-btn', 'menu.packMaker');
+    setText('#leaderboard-preview h3', 'menu.topAgents');
+    setOptionText('#difficulty-select option[value="EASY"], #ocp-difficulty-select option[value="EASY"]', 'difficulty.easy');
+    setOptionText('#difficulty-select option[value="NORMAL"], #ocp-difficulty-select option[value="NORMAL"]', 'difficulty.normal');
+    setOptionText('#difficulty-select option[value="DEVELOPER"], #ocp-difficulty-select option[value="DEVELOPER"]', 'difficulty.developer');
+
+    setText('.ocp-title', 'ocp.title');
+    setText('.ocp-subtitle', 'ocp.subtitle');
+    setText('#mode-learn strong', 'ocp.learn');
+    setText('#mode-learn span', 'ocp.learnDesc');
+    setText('#mode-drop span', 'ocp.dropDesc');
+    setText('#mode-scenario strong', 'ocp.scenario');
+    setText('#mode-scenario span', 'ocp.scenarioDesc');
+    setText('#mode-lab strong', 'ocp.lab');
+    setText('#mode-lab span', 'ocp.labDesc');
+    setText('#mode-exam strong', 'ocp.exam');
+    setText('#mode-exam span', 'ocp.examDesc');
+    setText('#learn-info-group label', 'ocp.learnMode');
+    const learnInfo = document.getElementById('learn-info-text');
+    if (learnInfo && /로딩|Loading/i.test(learnInfo.textContent)) learnInfo.textContent = t('ocp.loadingCurriculum');
+    setText('#ocp-drop-group label', 'ocp.cliDropDifficulty');
+    setText('#ocp-drop-group .mode-info', 'ocp.fixedPack');
+    setText('#scenario-select-group label', 'ocp.scenarioCategory');
+    setText('#lab-select-group label', 'ocp.mockLab');
+    setText('#exam-info-group label', 'ocp.examMode');
+    setText('#exam-info-group .mode-info:not(.exam-gate-note)', 'ocp.examInfo');
+    setText('#ocp-start-btn', 'ocp.start');
+    setText('#dashboard-btn', 'ocp.dashboard');
+
+    setText('.stat-item:nth-child(1) .stat-label', 'result.finalScore');
+    setText('.stat-item:nth-child(2) .stat-label', 'result.maxCombo');
+    setText('.stat-item:nth-child(4) .stat-label', 'result.accuracy');
+    setText('#restart-btn', 'result.reboot');
+
+    setText('.pack-maker-title', 'packMaker.title');
+    setText('.pack-maker-subtitle', 'packMaker.subtitle');
+    setText('#pack-maker-close', 'packMaker.home');
+    setPlaceholder('#pack-maker-input', 'packMaker.inputPlaceholder');
+    setText('#pack-maker-send', stateRefSafePackMakerBusy() ? 'packMaker.stop' : 'packMaker.ask');
+    setPlaceholder('#pack-maker-title', 'packMaker.packTitle');
+    setPlaceholder('#pack-maker-description', 'packMaker.packDescription');
+    setText('.pack-maker-table thead th:nth-child(2)', 'packMaker.term');
+    setText('.pack-maker-table thead th:nth-child(3)', 'packMaker.desc');
+    setText('.pack-maker-table thead th:nth-child(4)', 'packMaker.source');
+    setText('#pack-maker-add-item', 'packMaker.addItem');
+    setText('#pack-maker-save', 'packMaker.save');
+    setText('#pack-maker-submit', 'packMaker.submit');
+
+    const readmeBox = document.getElementById('readme-box');
+    if (readmeBox) readmeBox.dataset.manualLang = lang;
     document.querySelectorAll('.readme-lang-toggle [data-readme-lang]').forEach(langButton => {
         langButton.classList.toggle('active', normalizeReadmeLanguage(langButton.dataset.readmeLang) === lang);
     });
 
+    if (els.auth && els.auth.btns) {
+        if (els.auth.btns.withdraw) els.auth.btns.withdraw.textContent = t('auth.withdraw');
+        if (els.auth.btns.logout) {
+            els.auth.btns.logout.textContent = state.userToken ? t('auth.logout') : t('auth.loginAction');
+        }
+    }
+
+    window.dispatchEvent(new CustomEvent('codedrop:language', { detail: { lang } }));
+}
+
+function stateRefSafePackMakerBusy() {
+    return window.PackMaker && typeof window.PackMaker.isBusy === 'function' && window.PackMaker.isBusy();
+}
+
+window.CodeDropI18n = {
+    t,
+    lang: appLang,
+    set: setReadmeLanguage,
+    apply: applyAppLanguage
+};
+
+function setReadmeLanguage(value, options = {}) {
+    const lang = normalizeReadmeLanguage(value);
+    applyAppLanguage(lang);
     if (options.sound) sfx.playKey('Tab');
 }
 
 function initReadmeLanguage() {
-    setReadmeLanguage(localStorage.getItem(README_LANGUAGE_STORAGE_KEY) || 'en');
+    setReadmeLanguage(localStorage.getItem(APP_LANGUAGE_STORAGE_KEY) || localStorage.getItem(README_LANGUAGE_STORAGE_KEY) || 'en');
 }
 
 function handleReadmeLanguageClick(e) {
@@ -1582,8 +2559,12 @@ function initGameControls() {
 }
 
 function init() {
+    if (appInitialized) return;
+    appInitialized = true;
+
     setGameChrome(false);
     initOverlayChromeObserver();
+    startKugnusHealthCheck();
     initAuth();
 
     // Restore Nickname if any (though we use auth now)
@@ -1593,6 +2574,7 @@ function init() {
     // Load Initial Leaderboard
     fetchLeaderboard();
     initGameControls();
+    initPackSelector();
     initModeControls();
 
 
@@ -1639,10 +2621,29 @@ function initAuth() {
     if (storedUser) {
         try {
             const user = JSON.parse(storedUser);
-            state.userId = user.id;
-            state.userToken = user.token || null;
-            state.nickname = user.nickname;
-            showLoggedInView();
+            if (user && user.guest) {
+                loginGuest(false);
+            } else if (user && user.nickname) {
+                state.userId = null;
+                state.userToken = null;
+                state.nickname = user.nickname;
+                showAuthView();
+                if (els.auth.errors.login) els.auth.errors.login.textContent = 'Restoring session...';
+                validateRestoredSession(user).catch(err => {
+                    console.warn('Stored session validation failed:', err.message);
+                    state.userId = null;
+                    state.userToken = null;
+                    state.nickname = '';
+                    localStorage.removeItem('codedrop_user');
+                    showAuthView();
+                    if (els.auth.errors.login) {
+                        els.auth.errors.login.textContent = 'Session expired. Please login again.';
+                    }
+                });
+            } else {
+                localStorage.removeItem('codedrop_user');
+                showAuthView();
+            }
         } catch (e) {
             localStorage.removeItem('codedrop_user');
             showAuthView();
@@ -1657,6 +2658,7 @@ function initAuth() {
 
     // Buttons
     els.auth.btns.login.addEventListener('click', handleLogin);
+    if (els.auth.btns.guest) els.auth.btns.guest.addEventListener('click', () => loginGuest(true));
     els.auth.btns.register.addEventListener('click', handleRegister);
     els.auth.btns.logout.addEventListener('click', handleLogout);
     els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
@@ -1719,6 +2721,130 @@ function tryLocalDevLogin(nickname, password) {
     return true;
 }
 
+function localDevCredentialsValid(nickname, password) {
+    const key = nickname.toLowerCase();
+    const users = readLocalAuthUsers();
+    const user = users[key];
+    return Boolean(user && user.password === password);
+}
+
+async function provisionLocalDevServerSession(nickname, password) {
+    if (!isLocalDevAuthEnabled() || !localDevCredentialsValid(nickname, password)) return false;
+
+    const registerRes = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, password })
+    }).catch(() => null);
+
+    if (registerRes && registerRes.ok) {
+        const data = await registerRes.json();
+        loginSuccess(data.user_id, data.nickname, data.token);
+        return true;
+    }
+
+    const loginRes = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, password })
+    }).catch(() => null);
+
+    if (loginRes && loginRes.ok) {
+        const data = await loginRes.json();
+        loginSuccess(data.user_id, data.nickname, data.token);
+        return true;
+    }
+
+    return false;
+}
+
+async function refreshLocalDevServerSession() {
+    if (!isLocalDevAuthEnabled() || !state.nickname) return false;
+    const users = readLocalAuthUsers();
+    const user = users[String(state.nickname).toLowerCase()];
+    if (!user || !user.password) return false;
+    return provisionLocalDevServerSession(user.nickname || state.nickname, user.password);
+}
+
+window.CodeDropAuth = {
+    refreshServerSession: refreshLocalDevServerSession,
+    clearSession: handleLogout,
+    requireLogin: promptLoginRequired,
+    isGuest() {
+        return !state.userToken;
+    }
+};
+
+async function promptLoginRequired(feature = 'This feature') {
+    const result = await showCommandDialog({
+        title: t('confirm.loginRequired'),
+        message: t('confirm.loginRequiredMessage', { feature }),
+        okText: t('confirm.login'),
+        cancelText: t('confirm.stay'),
+        extraText: t('confirm.register'),
+        danger: true
+    });
+
+    if (!result.accepted) return false;
+
+    document.querySelectorAll('#pack-maker-screen, #learn-screen, #dashboard-screen')
+        .forEach(screen => screen.classList.add('hidden'));
+    els.screens.start.classList.remove('hidden');
+    handleLogout();
+    switchTab(result.action === 'extra' ? 'register' : 'login');
+    return true;
+}
+
+async function validateRestoredSession(user) {
+    if (!user || !user.nickname) {
+        handleLogout();
+        return false;
+    }
+
+    if (!user.token) {
+        if (await refreshLocalDevServerSession()) return true;
+        return false;
+    }
+
+    const res = await fetch(`${API_BASE}/api/session`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
+    }).catch(() => null);
+
+    if (res && res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.user_id && data.nickname) {
+            state.userId = data.user_id;
+            state.userToken = user.token;
+            state.nickname = data.nickname;
+            localStorage.setItem('codedrop_user', JSON.stringify({
+                id: data.user_id,
+                nickname: data.nickname,
+                token: user.token
+            }));
+            if (els.auth.errors.login) els.auth.errors.login.textContent = '';
+            showLoggedInView();
+            window.dispatchEvent(new CustomEvent('codedrop:auth', {
+                detail: { id: data.user_id, nickname: data.nickname, token: user.token }
+            }));
+            return true;
+        }
+    }
+
+    if (await refreshLocalDevServerSession()) return true;
+
+    state.userId = null;
+    state.userToken = null;
+    state.nickname = '';
+    localStorage.removeItem('codedrop_user');
+    showAuthView();
+    if (els.auth.errors.login) {
+        els.auth.errors.login.textContent = 'Session expired. Please login again.';
+    }
+    window.dispatchEvent(new CustomEvent('codedrop:auth', { detail: null }));
+    return false;
+}
+
 function createLocalDevUser(nickname, password) {
     if (!isLocalDevAuthEnabled()) return { ok: false, error: 'Local auth disabled.' };
 
@@ -1745,8 +2871,6 @@ async function handleLogin() {
         return;
     }
 
-    if (isLocalDevAuthEnabled() && tryLocalDevLogin(nickname, password)) return;
-
     try {
         const res = await fetch(`${API_BASE}/login`, {
             method: 'POST',
@@ -1758,6 +2882,8 @@ async function handleLogin() {
         if (res.ok) {
             // Success
             loginSuccess(data.user_id, data.nickname, data.token);
+        } else if (isLocalDevAuthEnabled() && await provisionLocalDevServerSession(nickname, password)) {
+            return;
         } else if (res.status >= 500 && tryLocalDevLogin(nickname, password)) {
             return;
         } else {
@@ -1823,6 +2949,24 @@ function loginSuccess(id, nickname, token = null) {
     localStorage.setItem('codedrop_user', JSON.stringify({ id, nickname, token }));
     showLoggedInView();
     window.dispatchEvent(new CustomEvent('codedrop:auth', { detail: { id, nickname, token } }));
+}
+
+function loginGuest(persist = true) {
+    state.userId = null;
+    state.userToken = null;
+    state.nickname = 'GUEST';
+    if (persist) {
+        localStorage.setItem('codedrop_user', JSON.stringify({
+            id: null,
+            nickname: 'GUEST',
+            token: null,
+            guest: true
+        }));
+    }
+    showLoggedInView();
+    window.dispatchEvent(new CustomEvent('codedrop:auth', {
+        detail: { id: null, nickname: 'GUEST', token: null, guest: true }
+    }));
 }
 
 function handleLogout() {
@@ -1926,6 +3070,12 @@ function showLoggedInView() {
     els.auth.authContainer.style.display = 'none';
     els.auth.loggedInView.classList.add('active');
     els.auth.userDisplay.textContent = state.nickname;
+    if (els.auth.btns.withdraw) {
+        els.auth.btns.withdraw.classList.toggle('hidden', !state.userToken);
+    }
+    if (els.auth.btns.logout) {
+        els.auth.btns.logout.textContent = state.userToken ? t('auth.logout') : t('auth.loginAction');
+    }
 
     // Refresh leaderboard for default view
     fetchLeaderboard();
@@ -1951,4 +3101,8 @@ function showAuthView() {
 }
 
 // Start
-window.addEventListener('load', init);
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', init, { once: true });
+} else {
+    init();
+}
