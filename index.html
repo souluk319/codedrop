@@ -19,6 +19,11 @@
             --success-color: #05ffa1;
             --font-code: 'JetBrains Mono', monospace;
             --font-display: 'Orbitron', sans-serif;
+            --corner-widget-size: 60px;
+            --corner-widget-offset: 24px;
+            --music-island-width: min(380px, calc(100vw - 120px));
+            --music-island-expanded-width: min(640px, max(var(--music-island-width), calc(50vw - 264px)));
+            --command-input-lift: -10px;
         }
 
         * {
@@ -41,6 +46,10 @@
             display: flex;
             flex-direction: column;
             position: relative;
+        }
+
+        body.game-active {
+            --corner-widget-offset: 28px;
         }
 
         /* --- Background Effects --- */
@@ -249,6 +258,19 @@
             box-shadow: 0 5px 20px rgba(0, 243, 255, 0.1);
             backdrop-filter: blur(10px);
             z-index: 10;
+            transition: opacity 0.24s ease, transform 0.24s ease;
+        }
+
+        body:not(.game-active) #hud {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-12px);
+        }
+
+        body.game-active #hud {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
         }
 
         .hud-group {
@@ -444,11 +466,22 @@
         }
 
         .scenario-feedback {
-            padding: 12px 16px;
+            display: grid;
+            gap: 10px;
+            padding: 14px 16px;
             border-radius: 6px;
             font-size: 0.95rem;
-            line-height: 1.6;
+            line-height: 1.55;
             word-break: keep-all;
+        }
+
+        .scenario-feedback .fb-title {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+            line-height: 1.3;
+            text-transform: uppercase;
         }
 
         .scenario-feedback.correct {
@@ -481,19 +514,22 @@
         }
 
         .fb-canonical {
+            display: block;
             font-family: var(--font-code);
             color: var(--success-color);
             background: rgba(0, 0, 0, 0.5);
-            padding: 8px 12px;
-            margin: 8px 0;
+            padding: 10px 12px;
             border-radius: 4px;
             user-select: text;
             overflow-x: auto;
             white-space: nowrap;
+            line-height: 1.45;
         }
 
         .fb-explain {
+            display: block;
             color: #aaa;
+            line-height: 1.65;
         }
 
         .scenario-actions {
@@ -560,14 +596,28 @@
             position: relative;
             z-index: 20;
             box-shadow: 0 -5px 30px rgba(0, 0, 0, 0.8);
+            transition: opacity 0.24s ease, transform 0.24s ease;
+        }
+
+        body:not(.game-active) #input-area {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(12px);
+        }
+
+        body.game-active #input-area {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
         }
 
         #target-display {
-            height: 24px;
+            height: 18px;
             font-size: 1rem;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
             letter-spacing: 1px;
+            transform: translateY(var(--command-input-lift));
         }
 
         #target-display span.match {
@@ -592,6 +642,7 @@
             text-align: center;
             outline: none;
             box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+            transform: translateY(var(--command-input-lift));
             transition: all 0.2s;
         }
 
@@ -610,23 +661,23 @@
 
             10%,
             90% {
-                transform: translate3d(-2px, 0, 0);
+                transform: translate3d(-2px, var(--command-input-lift), 0);
             }
 
             20%,
             80% {
-                transform: translate3d(4px, 0, 0);
+                transform: translate3d(4px, var(--command-input-lift), 0);
             }
 
             30%,
             50%,
             70% {
-                transform: translate3d(-6px, 0, 0);
+                transform: translate3d(-6px, var(--command-input-lift), 0);
             }
 
             40%,
             60% {
-                transform: translate3d(6px, 0, 0);
+                transform: translate3d(6px, var(--command-input-lift), 0);
             }
         }
 
@@ -651,8 +702,9 @@
         }
 
         #start-screen {
-            justify-content: flex-start;
-            gap: 24px;
+            justify-content: center;
+            gap: clamp(28px, 4vh, 44px);
+            padding: clamp(28px, 4vh, 56px) 0;
         }
 
         /* Electric Background Effect */
@@ -835,6 +887,17 @@
             box-shadow: 0 0 15px var(--primary-neon);
         }
 
+        .btn-small.btn-danger {
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        .btn-small.btn-danger:hover {
+            background: var(--danger-color);
+            color: #000;
+            box-shadow: 0 0 15px var(--danger-color);
+        }
+
         /* --- Leaderboard --- */
         #leaderboard-preview {
             margin-top: 20px;
@@ -842,9 +905,9 @@
             padding: 20px;
             border-radius: 12px;
             border: 1px solid var(--glass-border);
-            width: 400px;
-            max-width: 400px;
-            height: 550px;
+            width: 440px;
+            max-width: 440px;
+            height: 600px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -856,7 +919,7 @@
             display: flex;
             flex-direction: row;
             flex-wrap: wrap;
-            gap: 40px;
+            gap: 36px;
             justify-content: center;
             align-items: center;
             width: 100%;
@@ -967,16 +1030,34 @@
         /* --- Music Widget (Bottom Right) --- */
         #music-widget {
             position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1000;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            bottom: var(--corner-widget-offset);
+            right: var(--corner-widget-offset);
+            z-index: 120;
+            transform-origin: right center;
+            transition:
+                width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                height 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                border-radius 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.24s ease,
+                opacity 0.24s ease,
+                transform 0.24s ease;
+        }
+
+        #music-widget.widget-overlap,
+        #readme-widget.widget-overlap {
+            opacity: 0.26;
+            pointer-events: auto;
+        }
+
+        #music-widget.widget-overlap:hover,
+        #readme-widget.widget-overlap:hover {
+            opacity: 1;
         }
 
         /* State: Closed (Button) */
         #music-widget.closed {
-            width: 80px;
-            height: 80px;
+            width: var(--corner-widget-size);
+            height: var(--corner-widget-size);
             border-radius: 50%;
             background: rgba(5, 5, 10, 0.9);
             border: 2px solid var(--primary-neon);
@@ -1001,8 +1082,346 @@
             display: flex;
         }
 
-        /* State: Open (Player) */
-        #music-widget.open {
+        /* State: Dynamic Island Player */
+        #music-widget[data-player-ui="island"].island-open {
+            width: var(--music-island-width);
+            height: var(--corner-widget-size);
+            border-radius: 999px;
+            background:
+                linear-gradient(90deg, rgba(0, 243, 255, 0.14), rgba(5, 5, 10, 0.98) 32%, rgba(5, 5, 10, 0.94));
+            border: 2px solid var(--primary-neon);
+            box-shadow: 0 0 24px rgba(0, 243, 255, 0.32), inset 0 0 28px rgba(0, 243, 255, 0.08);
+            cursor: default;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            opacity: 0.92;
+            backdrop-filter: blur(10px);
+        }
+
+        #music-widget[data-player-ui="island"].island-open.track-open {
+            width: var(--music-island-expanded-width);
+            overflow: visible;
+        }
+
+        #music-widget[data-player-ui="island"].island-open:hover {
+            opacity: 1;
+            box-shadow: 0 0 42px rgba(0, 243, 255, 0.42), inset 0 0 34px rgba(0, 243, 255, 0.12);
+            z-index: 130;
+        }
+
+        #music-widget[data-player-ui="island"].island-open .widget-icon {
+            display: none;
+        }
+
+        #music-widget[data-player-ui="island"].island-open .widget-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            height: 100%;
+            padding: 0 14px 0 20px;
+        }
+
+        #music-widget[data-player-ui="island"].island-open.track-open .widget-content {
+            padding-left: 12px;
+        }
+
+        #music-widget[data-player-ui="island"].island-open .player-header {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            color: var(--primary-neon);
+            padding: 0;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: flex-start;
+        }
+
+        .music-detail-toggle {
+            width: 24px;
+            min-width: 24px;
+            height: 24px;
+            padding: 0;
+            border-radius: 999px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.82;
+            background: rgba(0, 0, 0, 0.28);
+        }
+
+        .music-detail-icon {
+            width: 13px;
+            height: 13px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 6px currentColor);
+            transition: transform 0.2s ease;
+        }
+
+        #music-widget.track-open .music-detail-icon {
+            transform: rotate(180deg);
+        }
+
+        .music-island-copy {
+            min-width: 0;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .music-island-title {
+            font-family: var(--font-display);
+            font-size: 0.66rem;
+            letter-spacing: 1.4px;
+            color: var(--primary-neon);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 0 0 10px var(--primary-neon);
+        }
+
+        .music-island-status {
+            font-size: 0.58rem;
+            letter-spacing: 1px;
+            color: rgba(224, 230, 237, 0.62);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .music-now-info {
+            display: none;
+            min-width: 170px;
+            max-width: 230px;
+            padding-left: 12px;
+            border-left: 1px solid rgba(0, 243, 255, 0.26);
+        }
+
+        #music-widget.track-open .music-now-info {
+            display: grid;
+            gap: 4px;
+        }
+
+        .music-now-kicker {
+            color: rgba(0, 243, 255, 0.72);
+            font-family: var(--font-display);
+            font-size: 0.5rem;
+            letter-spacing: 1.6px;
+        }
+
+        .music-now-title {
+            color: #fff;
+            font-size: 0.66rem;
+            line-height: 1.15;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.18);
+        }
+
+        .music-track-toggle {
+            display: none;
+        }
+
+        #music-widget:not(.track-open) .music-track-toggle {
+            display: none;
+        }
+
+        #music-widget.track-open .music-track-toggle {
+            display: inline-flex;
+        }
+
+        .music-track-popover {
+            position: absolute;
+            right: 18px;
+            bottom: calc(100% + 12px);
+            width: min(330px, calc(100vw - 40px));
+            padding: 12px;
+            border: 1px solid rgba(0, 243, 255, 0.58);
+            border-radius: 10px;
+            background: rgba(5, 5, 10, 0.96);
+            box-shadow: 0 0 28px rgba(0, 243, 255, 0.24), inset 0 0 20px rgba(0, 243, 255, 0.06);
+            backdrop-filter: blur(12px);
+            display: none;
+        }
+
+        #music-widget.track-list-open .music-track-popover {
+            display: block;
+        }
+
+        .music-track-popover-title {
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.62rem;
+            letter-spacing: 1.4px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px var(--primary-neon);
+        }
+
+        .music-track-list {
+            display: grid;
+            gap: 8px;
+            max-height: 190px;
+            overflow-y: auto;
+        }
+
+        .music-track-item {
+            display: grid;
+            grid-template-columns: 24px minmax(0, 1fr);
+            gap: 8px;
+            align-items: center;
+            padding: 7px 8px;
+            border: 1px solid rgba(0, 243, 255, 0.14);
+            border-radius: 7px;
+            color: #b8c4ce;
+            font-size: 0.62rem;
+            line-height: 1.25;
+            background: rgba(255, 255, 255, 0.025);
+        }
+
+        .music-track-item.active {
+            color: #fff;
+            border-color: rgba(255, 119, 0, 0.6);
+            box-shadow: inset 0 0 14px rgba(255, 119, 0, 0.12);
+        }
+
+        .music-track-index {
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.56rem;
+        }
+
+        .music-equalizer {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            width: 28px;
+            height: 26px;
+        }
+
+        .music-equalizer span {
+            width: 3px;
+            height: 9px;
+            border-radius: 999px;
+            background: var(--primary-neon);
+            box-shadow: 0 0 8px var(--primary-neon);
+            animation: musicEqualizer 0.82s ease-in-out infinite;
+        }
+
+        .music-equalizer span:nth-child(2) {
+            animation-delay: 0.12s;
+        }
+
+        .music-equalizer span:nth-child(3) {
+            animation-delay: 0.24s;
+        }
+
+        #music-widget:not(.is-playing) .music-equalizer span {
+            animation-play-state: paused;
+            height: 6px;
+            opacity: 0.55;
+        }
+
+        @keyframes musicEqualizer {
+
+            0%,
+            100% {
+                transform: scaleY(0.55);
+            }
+
+            50% {
+                transform: scaleY(1.9);
+            }
+        }
+
+        .music-control-btn,
+        #close-player {
+            height: 34px;
+            border: 1px solid rgba(0, 243, 255, 0.75);
+            background: rgba(0, 0, 0, 0.5);
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.6rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.08);
+        }
+
+        .music-control-btn {
+            min-width: 58px;
+            padding: 0 10px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .music-control-btn.music-detail-toggle {
+            width: 24px;
+            min-width: 24px;
+            height: 24px;
+            padding: 0;
+        }
+
+        .music-play-toggle {
+            width: 34px;
+            min-width: 34px;
+            padding: 0;
+        }
+
+        .music-play-icon,
+        .music-pause-icon {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+            filter: drop-shadow(0 0 7px currentColor);
+        }
+
+        .music-pause-icon,
+        #music-widget.is-playing .music-play-icon {
+            display: none;
+        }
+
+        #music-widget.is-playing .music-pause-icon {
+            display: block;
+        }
+
+        .music-ui-toggle {
+            display: none;
+            width: 34px;
+            min-width: 34px;
+            padding: 0;
+            color: #ff7700;
+            border-color: rgba(255, 119, 0, 0.8);
+        }
+
+        #music-widget.track-open .music-ui-toggle,
+        #music-widget.open.legacy-open .music-ui-toggle {
+            display: inline-flex;
+        }
+
+        .soundcloud-mark {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .music-control-btn:hover,
+        #close-player:hover {
+            background: rgba(0, 243, 255, 0.14);
+            box-shadow: 0 0 14px rgba(0, 243, 255, 0.25), inset 0 0 14px rgba(0, 243, 255, 0.12);
+        }
+
+        /* State: Legacy Open Player */
+        #music-widget.open.legacy-open {
             width: 350px;
             height: 350px;
             border-radius: 12px;
@@ -1016,23 +1435,36 @@
             transition: opacity 0.3s ease;
         }
 
-        #music-widget.open:hover {
+        #music-widget.open.legacy-open:hover {
             opacity: 1;
             /* Fully visible on hover */
             box-shadow: 0 0 60px rgba(0, 243, 255, 0.4);
-            z-index: 10000;
+            z-index: 130;
             /* Ensure it's on top when interacting */
         }
 
-        #music-widget.open .widget-icon {
+        #music-widget.open.legacy-open .widget-icon {
             display: none;
         }
 
-        #music-widget.open .widget-content {
+        #music-widget.open.legacy-open .widget-content {
             display: flex;
             flex-direction: column;
             width: 100%;
             height: 100%;
+        }
+
+        #music-widget.open.legacy-open .music-equalizer,
+        #music-widget.open.legacy-open .music-island-status,
+        #music-widget.open.legacy-open .music-now-info,
+        #music-widget.open.legacy-open .music-detail-toggle,
+        #music-widget.open.legacy-open .music-track-toggle,
+        #music-widget.open.legacy-open .music-track-popover {
+            display: none;
+        }
+
+        #music-widget.open.legacy-open .music-ui-toggle {
+            margin-left: auto;
         }
 
         /* Icon Styling */
@@ -1043,10 +1475,10 @@
         }
 
         .boombox-svg {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             fill: var(--primary-neon);
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
 
         .icon-label {
@@ -1069,30 +1501,53 @@
         }
 
         #close-player {
-            background: none;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-            color: #000;
-            font-size: 1rem;
+            width: 34px;
+            border-radius: 50%;
+            padding: 0;
+            flex: 0 0 34px;
         }
 
         .iframe-container {
-            flex: 1;
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
             overflow: hidden;
+        }
+
+        #music-widget.open.legacy-open .iframe-container {
+            position: static;
+            width: auto;
+            height: auto;
+            opacity: 1;
+            pointer-events: auto;
+            flex: 1;
             border-radius: 0 0 12px 12px;
         }
 
         /* --- Responsive Design --- */
         @media (max-width: 600px) {
+            :root {
+                --corner-widget-size: 56px;
+                --corner-widget-offset: 16px;
+                --music-island-width: calc(100vw - 36px);
+                --music-island-expanded-width: calc(100vw - 36px);
+                --command-input-lift: -6px;
+            }
+
+            body.game-active {
+                --corner-widget-offset: 20px;
+            }
+
             h1 {
                 font-size: 2.5rem;
                 margin-bottom: 20px;
             }
 
-            .card {
-                background: rgba(10, 10, 15, 0.95);
-                border: 1px solid var(--glass-border);
+        .card {
+            background: rgba(10, 10, 15, 0.95);
+            border: 1px solid var(--glass-border);
                 padding: 30px;
                 border-radius: 16px;
                 text-align: center;
@@ -1123,16 +1578,33 @@
                 font-size: 1.5rem;
                 height: 50px;
             }
+
+            body.game-active #music-widget[data-player-ui="island"].island-open {
+                bottom: 104px;
+            }
+
+            #music-widget[data-player-ui="island"].island-open .music-island-status {
+                display: none;
+            }
+
+            #music-widget.track-open .music-now-info {
+                max-width: 120px;
+                min-width: 100px;
+            }
+
+            #music-widget.track-open .music-equalizer {
+                display: none;
+            }
         }
 
         /* --- Readme Widget --- */
         #readme-widget {
             position: fixed;
-            bottom: 30px;
-            left: 30px;
-            z-index: 1000;
-            width: 80px;
-            height: 80px;
+            bottom: var(--corner-widget-offset);
+            left: var(--corner-widget-offset);
+            z-index: 120 !important;
+            width: var(--corner-widget-size);
+            height: var(--corner-widget-size);
             border-radius: 50%;
             background: rgba(5, 5, 10, 0.9);
             border: 2px solid var(--primary-neon);
@@ -1192,6 +1664,41 @@
             font-size: 2.5rem;
             margin-bottom: 30px;
             text-shadow: 0 0 10px var(--primary-neon);
+        }
+
+        #readme-box[data-manual-lang="en"] [data-i18n="ko"],
+        #readme-box[data-manual-lang="ko"] [data-i18n="en"] {
+            display: none !important;
+        }
+
+        .readme-lang-toggle {
+            display: inline-flex;
+            gap: 6px;
+            padding: 4px;
+            margin: 0 auto 18px;
+            border: 1px solid rgba(0, 243, 255, 0.45);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.42);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.12);
+        }
+
+        .readme-lang-toggle button {
+            min-width: 46px;
+            padding: 6px 10px;
+            border: 0;
+            border-radius: 3px;
+            background: transparent;
+            color: #888;
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        .readme-lang-toggle button.active {
+            color: #000;
+            background: var(--primary-neon);
+            box-shadow: 0 0 12px var(--primary-neon);
         }
 
         #readme-box p {
@@ -1425,30 +1932,31 @@
         }
 
         .logged-in-view {
-            gap: 10px;
+            gap: 14px;
             width: 100%;
+            height: 100%;
             /* Ensure container is full width */
-            padding: 0 20px;
+            padding: 0 18px;
             /* Add padding to match card */
         }
 
         /* Ensure card has no padding that interferes */
         #start-screen .card {
-            padding: 32px 40px;
-            width: 520px;
-            height: 540px;
-            min-height: 540px;
+            padding: 38px 46px 28px;
+            width: 560px;
+            height: 600px;
+            min-height: 600px;
             max-width: 92vw;
             justify-content: flex-start;
             overflow: hidden;
         }
 
         #start-screen .brand-title {
-            margin-bottom: 24px !important;
+            margin: 0 !important;
         }
 
         #logged-in-view .welcome-msg {
-            margin-bottom: 0;
+            margin-bottom: 4px;
             padding: 8px 28px;
             font-size: 1.25rem;
         }
@@ -1539,6 +2047,26 @@
             line-height: 1.35;
         }
 
+        /* 학습 모드 타일: 그리드 전폭 + 초심자 강조 */
+        .mode-choice-wide {
+            grid-column: 1 / -1;
+            border-color: rgba(188, 19, 254, 0.45);
+        }
+
+        .mode-choice-wide:hover,
+        .mode-choice-wide.active {
+            color: var(--secondary-neon);
+            border-color: var(--secondary-neon);
+            background: rgba(188, 19, 254, 0.08);
+            box-shadow: 0 0 12px rgba(188, 19, 254, 0.22);
+        }
+
+        .exam-gate-note {
+            color: #ffd700;
+            border-color: rgba(255, 215, 0, 0.4);
+            margin-top: 8px;
+        }
+
         .mode-info {
             border: 1px dashed rgba(0, 243, 255, 0.28);
             color: #bbb;
@@ -1554,7 +2082,15 @@
             display: flex;
             flex-direction: column;
             width: 100%;
-            gap: 10px;
+            gap: 14px;
+        }
+
+        .standard-menu {
+            margin-top: 4px;
+        }
+
+        .standard-menu .select-group {
+            margin: 0;
         }
 
         .ocp-menu {
@@ -1593,7 +2129,7 @@
             gap: 0;
             width: 100%;
             flex: 0 0 auto;
-            min-height: 42px;
+            min-height: 52px;
             border: 1px solid var(--glass-border);
             border-radius: 6px;
             overflow: hidden;
@@ -1604,10 +2140,10 @@
             margin: 0;
             border: 0;
             border-radius: 0;
-            padding: 12px 10px;
+            padding: 14px 12px;
             color: #777;
             box-shadow: none;
-            font-size: 0.78rem;
+            font-size: 0.84rem;
             background: transparent;
         }
 
@@ -1665,14 +2201,14 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            max-width: 1240px;
+            max-width: 1280px;
             gap: 28px;
         }
 
         body.ocp-edition #start-screen .card {
-            width: 780px;
-            height: 680px;
-            min-height: 680px;
+            width: 840px;
+            height: 720px;
+            min-height: 720px;
             max-width: 92vw;
             max-height: calc(100dvh - 120px);
             overflow: hidden;
@@ -1697,7 +2233,7 @@
 
         body.ocp-edition .ocp-menu {
             display: grid;
-            grid-template-columns: minmax(0, 1.24fr) minmax(250px, 0.9fr);
+            grid-template-columns: minmax(0, 1.18fr) minmax(270px, 0.82fr);
             grid-template-rows: auto minmax(0, 1fr) auto auto;
             gap: 14px 18px;
             flex: 1 1 auto;
@@ -1725,17 +2261,82 @@
             grid-column: 1;
             grid-row: 2 / 5;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            grid-auto-rows: minmax(118px, 1fr);
+            grid-auto-rows: minmax(104px, 1fr);
             gap: 12px;
             min-height: 0;
         }
 
         body.ocp-edition .mode-choice {
-            min-height: 118px;
+            min-height: 104px;
             padding: 16px 18px;
             display: flex;
             flex-direction: column;
             justify-content: center;
+        }
+
+        .confirm-card {
+            width: 520px;
+            max-width: 92vw;
+            height: auto;
+            min-height: 0;
+            gap: 18px;
+            justify-content: flex-start;
+            text-align: left;
+            overflow: hidden;
+        }
+
+        .confirm-card h2 {
+            margin: 0;
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            letter-spacing: 2px;
+            text-shadow: 0 0 12px var(--primary-neon);
+        }
+
+        .confirm-message {
+            color: #cfcfcf;
+            line-height: 1.65;
+            margin: 0;
+        }
+
+        .confirm-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-family: var(--font-code);
+            font-size: 1rem;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.62);
+            border: 2px solid var(--glass-border);
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .confirm-input:focus {
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 16px rgba(0, 243, 255, 0.2);
+        }
+
+        .confirm-input.wrong {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 16px rgba(255, 42, 109, 0.45);
+            animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        .confirm-error {
+            min-height: 18px;
+            color: var(--danger-color);
+            font-family: var(--font-code);
+            font-size: 0.85rem;
+        }
+
+        #confirm-screen.danger .confirm-card {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 34px rgba(255, 42, 109, 0.18), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #confirm-screen.danger .confirm-card h2 {
+            color: var(--danger-color);
+            text-shadow: 0 0 12px var(--danger-color);
         }
 
         body.ocp-edition .mode-choice strong {
@@ -1748,6 +2349,18 @@
             line-height: 1.3;
         }
 
+        body.ocp-edition .mode-choice-wide {
+            border-color: rgba(255, 48, 69, 0.42);
+            background: rgba(255, 48, 69, 0.05);
+        }
+
+        body.ocp-edition .mode-choice-wide:hover,
+        body.ocp-edition .mode-choice-wide.active {
+            color: var(--primary-neon);
+            border-color: var(--primary-neon);
+        }
+
+        body.ocp-edition #learn-info-group,
         body.ocp-edition #ocp-drop-group,
         body.ocp-edition #scenario-select-group,
         body.ocp-edition #lab-select-group,
@@ -1788,14 +2401,18 @@
 
         body.ocp-edition #leaderboard-preview {
             position: static;
-            width: 360px;
-            max-width: min(360px, 28vw);
-            height: 560px;
+            width: 340px;
+            max-width: min(340px, 26vw);
+            height: 520px;
             max-height: calc(100dvh - 120px);
             transform: none;
             opacity: 1;
             overflow-y: auto;
             align-self: center;
+        }
+
+        #logged-in-view>div:last-child {
+            margin-top: auto !important;
         }
 
         body.ocp-edition #logged-in-view>div:last-child {
@@ -1832,20 +2449,41 @@
             }
 
             body.ocp-edition .ocp-menu {
-                display: flex;
-                flex-direction: column;
+                display: grid;
+                grid-template-columns: minmax(0, 1.12fr) minmax(240px, 0.88fr);
+                grid-template-rows: auto minmax(0, 1fr) auto auto;
+                gap: 10px 14px;
             }
 
             body.ocp-edition .mode-grid {
-                flex: 0 0 auto;
-                grid-column: auto;
-                grid-row: auto;
-                grid-auto-rows: minmax(70px, auto);
-                min-height: 152px;
+                grid-column: 1;
+                grid-row: 2 / 5;
+                grid-auto-rows: minmax(68px, auto);
+                min-height: 0;
             }
 
             body.ocp-edition .mode-choice {
-                min-height: 70px;
+                min-height: 68px;
+                padding: 10px 12px;
+            }
+
+            body.ocp-edition #learn-info-group,
+            body.ocp-edition #ocp-drop-group,
+            body.ocp-edition #scenario-select-group,
+            body.ocp-edition #lab-select-group,
+            body.ocp-edition #exam-info-group {
+                grid-column: 2;
+                grid-row: 2;
+            }
+
+            body.ocp-edition #ocp-start-btn {
+                grid-column: 2;
+                grid-row: 3;
+            }
+
+            body.ocp-edition #dashboard-btn {
+                grid-column: 2;
+                grid-row: 4;
             }
         }
 
@@ -1996,36 +2634,51 @@
 
         .lab-checklist {
             display: grid;
-            gap: 6px;
-            max-height: 155px;
+            gap: 8px;
+            max-height: 168px;
             overflow-y: auto;
-            padding-right: 4px;
+            padding: 2px 4px 2px 0;
         }
 
         .lab-check-item {
             display: grid;
-            grid-template-columns: 34px 1fr;
-            gap: 8px;
-            align-items: center;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 10px;
+            align-items: start;
             color: #777;
             font-size: 0.8rem;
-            line-height: 1.35;
+            line-height: 1.45;
+            min-width: 0;
+            padding: 7px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.16);
         }
 
         .lab-check-marker {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 30px;
-            height: 22px;
+            width: 36px;
+            height: 24px;
             border: 1px solid #333;
             border-radius: 4px;
             font-size: 0.7rem;
             font-family: var(--font-display);
+            line-height: 1;
+            flex: 0 0 auto;
+        }
+
+        .lab-check-text {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            user-select: text;
         }
 
         .lab-check-item.current {
             color: #fff;
+            border-color: rgba(0, 243, 255, 0.26);
+            background: rgba(0, 243, 255, 0.05);
         }
 
         .lab-check-item.current .lab-check-marker {
@@ -2039,10 +2692,18 @@
             border-color: var(--success-color);
         }
 
+        .lab-check-item.done {
+            color: #bbb;
+        }
+
         .lab-check-item.skipped .lab-check-marker {
             color: #000;
             background: #ffd166;
             border-color: #ffd166;
+        }
+
+        .lab-check-item.skipped {
+            color: #c8aa55;
         }
 
         #lab-input {
@@ -2072,6 +2733,762 @@
             border-color: var(--danger-color);
             box-shadow: 0 0 15px var(--danger-color);
             animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        /* --- Learn Mode (학습 모드) --- */
+        .learn-picker-intro {
+            color: #aaa;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            word-break: keep-all;
+        }
+
+        .learn-continue {
+            align-self: flex-start;
+        }
+
+        .learn-track-list {
+            max-height: 380px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .learn-track-head {
+            font-family: var(--font-display);
+            color: var(--primary-neon);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            margin-top: 12px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.15);
+        }
+
+        .learn-track-head .learn-track-sub {
+            color: #666;
+            font-family: var(--font-code);
+            letter-spacing: 0;
+            margin-left: 8px;
+            font-size: 0.8rem;
+        }
+
+        .learn-lesson-row {
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: all 0.2s;
+        }
+
+        .learn-lesson-row:hover {
+            background: rgba(0, 243, 255, 0.06);
+            border-color: rgba(0, 243, 255, 0.25);
+        }
+
+        .learn-lesson-row .learn-lesson-state {
+            width: 22px;
+            text-align: center;
+        }
+
+        .learn-lesson-row span:nth-child(2) {
+            min-width: 0;
+        }
+
+        .learn-lesson-row.done .learn-lesson-state {
+            color: var(--success-color);
+        }
+
+        .learn-lesson-row.locked {
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .learn-lesson-row.locked:hover {
+            background: transparent;
+            border-color: transparent;
+        }
+
+        .learn-lesson-row .learn-lesson-quiz {
+            margin-left: 0;
+            font-size: 0.8rem;
+            color: #777;
+            font-family: var(--font-code);
+            white-space: nowrap;
+        }
+
+        .learn-intro {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--secondary-neon);
+            padding: 16px 18px;
+            border-radius: 4px;
+            line-height: 1.75;
+            font-size: 0.98rem;
+            white-space: pre-line;
+            word-break: keep-all;
+            max-height: 340px;
+            overflow-y: auto;
+            margin-bottom: 14px;
+        }
+
+        .learn-target {
+            font-family: var(--font-code);
+            font-size: 1.05rem;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px dashed rgba(0, 243, 255, 0.35);
+            border-radius: 6px;
+            padding: 12px 16px;
+            min-height: 44px;
+            letter-spacing: 0.5px;
+            word-break: break-all;
+        }
+
+        .learn-target .ok {
+            color: var(--success-color);
+            text-shadow: 0 0 6px rgba(5, 255, 161, 0.5);
+        }
+
+        .learn-target .bad {
+            color: var(--danger-color);
+            text-decoration: underline;
+        }
+
+        .learn-target .rest {
+            color: #556;
+        }
+
+        #learn-input {
+            width: 100%;
+            padding: 14px 16px;
+            font-family: var(--font-code);
+            font-size: 1.05rem;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid var(--glass-border);
+            border-radius: 6px;
+            color: #fff;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        #learn-input:focus {
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+
+        #learn-input.correct {
+            border-color: var(--success-color);
+            box-shadow: 0 0 15px rgba(5, 255, 161, 0.3);
+        }
+
+        #learn-input.wrong {
+            border-color: var(--danger-color);
+            box-shadow: 0 0 15px var(--danger-color);
+            animation: shake 0.3s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        .learn-output {
+            background: #030604;
+            border: 1px solid #1d3a2a;
+            border-radius: 6px;
+            color: #9fefb0;
+            font-family: var(--font-code);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            padding: 12px 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 220px;
+            overflow-y: auto;
+            margin: 0;
+            animation: learnOutputReveal 0.35s ease-out;
+        }
+
+        #learn-screen.learn-session-active {
+            display: grid;
+            grid-template-columns: minmax(650px, min(56vw, 860px)) minmax(430px, min(37vw, 560px));
+            gap: clamp(22px, 2vw, 34px);
+            align-items: stretch;
+            justify-items: stretch;
+            place-content: center;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            margin: 0;
+            padding: clamp(24px, 3vh, 36px) clamp(24px, 4vw, 48px);
+            box-sizing: border-box;
+        }
+
+        #learn-screen.learn-session-active #learn-card {
+            width: 100%;
+            max-width: none;
+            height: min(820px, calc(100dvh - 72px));
+            min-height: 0;
+            max-height: calc(100dvh - 72px);
+            overflow-y: auto;
+            padding: 34px 38px;
+            gap: 22px;
+        }
+
+        #learn-screen.learn-session-active .scenario-text {
+            font-size: 1.04rem;
+            line-height: 1.75;
+            padding: 18px 20px;
+        }
+
+        #learn-screen.learn-session-active .learn-intro {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            max-height: none;
+            padding: 22px 24px;
+        }
+
+        #learn-screen.learn-session-active .learn-target {
+            font-size: 1.14rem;
+            min-height: 56px;
+            padding: 16px 18px;
+        }
+
+        #learn-screen.learn-session-active #learn-input {
+            font-size: 1.12rem;
+            padding: 17px 18px;
+        }
+
+        .learn-step-nav {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+            align-items: center;
+        }
+
+        .learn-step-nav .btn-small:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .learn-chat-panel {
+            width: 100%;
+            max-width: none;
+            height: min(820px, calc(100dvh - 72px));
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 20px;
+            border: 1px solid rgba(255, 48, 69, 0.34);
+            border-radius: 14px;
+            background: rgba(10, 4, 7, 0.94);
+            box-shadow: 0 0 28px rgba(255, 48, 69, 0.12), inset 0 0 18px rgba(0, 0, 0, 0.55);
+        }
+
+        .learn-chat-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .learn-chat-meta {
+            display: grid;
+            gap: 7px;
+            position: relative;
+        }
+
+        .learn-chat-title {
+            font-family: var(--font-display);
+            color: var(--primary-neon);
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px var(--primary-neon);
+        }
+
+        #learn-chat-engine {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .learn-engine-select {
+            position: relative;
+            width: min(240px, 100%);
+        }
+
+        .learn-engine-toggle {
+            width: 100%;
+            min-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 9px 11px;
+            font-family: var(--font-code);
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: #fff;
+            background:
+                linear-gradient(rgba(255, 48, 69, 0.07), rgba(255, 48, 69, 0.02)),
+                rgba(0, 0, 0, 0.78);
+            border: 1px solid rgba(255, 48, 69, 0.66);
+            border-radius: 5px;
+            cursor: pointer;
+            outline: none;
+            text-align: left;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 14px rgba(255, 48, 69, 0.08);
+            transition: border-color 0.16s, box-shadow 0.16s, color 0.16s;
+        }
+
+        .learn-engine-toggle:hover,
+        .learn-engine-toggle:focus-visible,
+        .learn-engine-select.open .learn-engine-toggle {
+            color: #ffebef;
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 18px rgba(255, 48, 69, 0.24), 0 0 10px rgba(0, 243, 255, 0.08);
+        }
+
+        .learn-engine-chevron {
+            color: var(--primary-neon);
+            transform: rotate(0deg);
+            transition: transform 0.16s ease;
+        }
+
+        .learn-engine-select.open .learn-engine-chevron {
+            transform: rotate(180deg);
+        }
+
+        .learn-engine-menu {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            width: 100%;
+            z-index: 180;
+            display: grid;
+            padding: 5px;
+            border: 1px solid rgba(255, 48, 69, 0.78);
+            border-radius: 6px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 5px),
+                linear-gradient(180deg, rgba(35, 2, 8, 0.98), rgba(6, 0, 2, 0.98));
+            box-shadow: 0 0 22px rgba(255, 48, 69, 0.24), inset 0 0 18px rgba(255, 48, 69, 0.08);
+        }
+
+        .learn-engine-option {
+            border: 0;
+            border-radius: 4px;
+            padding: 10px 11px;
+            font-family: var(--font-code);
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: #bbb;
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+            letter-spacing: 0.4px;
+        }
+
+        .learn-engine-option:hover,
+        .learn-engine-option[aria-selected="true"] {
+            color: #fff;
+            background: rgba(255, 48, 69, 0.22);
+            text-shadow: 0 0 8px rgba(255, 48, 69, 0.8);
+        }
+
+        .learn-chat-status,
+        .learn-chat-context {
+            font-family: var(--font-code);
+            font-size: 0.74rem;
+            color: #888;
+            line-height: 1.45;
+        }
+
+        .learn-chat-context {
+            padding: 8px 10px;
+            border: 1px dashed rgba(255, 48, 69, 0.2);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.24);
+        }
+
+        .learn-chat-log-wrap {
+            position: relative;
+            flex: 1;
+            min-height: 280px;
+            display: flex;
+            min-width: 0;
+        }
+
+        .learn-chat-log {
+            flex: 1;
+            overflow-y: auto;
+            display: grid;
+            align-content: start;
+            gap: 10px;
+            padding: 4px 6px 4px 4px;
+            min-width: 0;
+        }
+
+        .learn-chat-msg {
+            padding: 10px 12px;
+            border-radius: 6px;
+            line-height: 1.58;
+            font-size: 0.88rem;
+            display: grid;
+            gap: 8px;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
+        }
+
+        .learn-chat-body {
+            display: grid;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .learn-chat-msg.user .learn-chat-body,
+        .learn-chat-msg.system .learn-chat-body {
+            white-space: pre-wrap;
+        }
+
+        .learn-chat-msg.user {
+            margin-left: 24px;
+            color: #fff;
+            border: 1px solid rgba(255, 48, 69, 0.34);
+            background: rgba(255, 48, 69, 0.1);
+        }
+
+        .learn-chat-msg.assistant {
+            margin-right: 18px;
+            color: #ddd;
+            border: 1px solid rgba(255, 176, 0, 0.22);
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .learn-chat-msg.system {
+            color: #888;
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.03);
+            font-size: 0.8rem;
+        }
+
+        .learn-chat-msg.stopped {
+            border-style: dashed;
+            opacity: 0.9;
+        }
+
+        .learn-chat-msg.failed {
+            border-color: rgba(255, 48, 69, 0.45);
+            color: #ffd0d4;
+        }
+
+        .learn-chat-note {
+            color: #aaa;
+            font-family: var(--font-code);
+            font-size: 0.74rem;
+        }
+
+        .learn-chat-body p,
+        .learn-chat-body blockquote,
+        .learn-chat-body pre,
+        .learn-chat-body table,
+        .learn-chat-body ul,
+        .learn-chat-body ol {
+            margin: 0;
+        }
+
+        .learn-chat-body h1,
+        .learn-chat-body h2,
+        .learn-chat-body h3 {
+            margin: 0;
+            color: #fff;
+            font-family: var(--font-display);
+            letter-spacing: 0;
+            line-height: 1.35;
+        }
+
+        .learn-chat-body h1 {
+            font-size: 1.05rem;
+        }
+
+        .learn-chat-body h2 {
+            font-size: 1rem;
+        }
+
+        .learn-chat-body h3 {
+            font-size: 0.94rem;
+        }
+
+        .learn-chat-body ul,
+        .learn-chat-body ol {
+            padding-left: 20px;
+            display: grid;
+            gap: 4px;
+        }
+
+        .learn-chat-body blockquote {
+            border-left: 3px solid rgba(255, 176, 0, 0.5);
+            padding-left: 10px;
+            color: #cfcfcf;
+        }
+
+        .learn-chat-body code {
+            font-family: var(--font-code);
+            color: #ffe6aa;
+            background: rgba(255, 176, 0, 0.08);
+            border: 1px solid rgba(255, 176, 0, 0.12);
+            border-radius: 4px;
+            padding: 1px 4px;
+        }
+
+        .learn-chat-code-wrap {
+            position: relative;
+            min-width: 0;
+        }
+
+        .learn-chat-body pre {
+            max-width: 100%;
+            overflow-x: auto;
+            white-space: pre;
+            background: #050303;
+            border: 1px solid rgba(255, 48, 69, 0.2);
+            border-radius: 6px;
+            padding: 12px 44px 12px 12px;
+        }
+
+        .learn-chat-body pre code {
+            display: block;
+            color: #ffddd5;
+            background: transparent;
+            border: 0;
+            padding: 0;
+        }
+
+        .learn-chat-copy-code,
+        .learn-chat-action,
+        .learn-chat-bottom {
+            font-family: var(--font-display);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .learn-chat-copy-code {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            padding: 4px 7px;
+            font-size: 0.62rem;
+            color: #ffd7d7;
+            background: rgba(0, 0, 0, 0.72);
+            border: 1px solid rgba(255, 48, 69, 0.35);
+        }
+
+        .learn-chat-body table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            overflow: hidden;
+        }
+
+        .learn-chat-body th,
+        .learn-chat-body td {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 6px 7px;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .learn-chat-body th {
+            color: #fff;
+            background: rgba(255, 48, 69, 0.12);
+        }
+
+        .learn-chat-body a {
+            color: var(--primary-neon);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 48, 69, 0.45);
+        }
+
+        .learn-chat-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .learn-chat-action {
+            padding: 4px 7px;
+            font-size: 0.62rem;
+            color: #aaa;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .learn-chat-action:hover,
+        .learn-chat-copy-code:hover {
+            color: #fff;
+            border-color: rgba(255, 48, 69, 0.55);
+        }
+
+        .learn-chat-typing {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            min-height: 22px;
+            color: #bbb;
+        }
+
+        .learn-chat-typing::before {
+            content: "";
+            width: 24px;
+            height: 12px;
+            border-radius: 999px;
+            background:
+                linear-gradient(90deg, rgba(255, 48, 69, 0.25), rgba(255, 176, 0, 0.65), rgba(255, 48, 69, 0.25));
+            background-size: 200% 100%;
+            box-shadow: 0 0 12px rgba(255, 48, 69, 0.3);
+            animation: learnChatPulse 0.8s linear infinite;
+        }
+
+        .learn-chat-caret {
+            display: inline-block;
+            width: 7px;
+            height: 1em;
+            margin-left: 3px;
+            vertical-align: -2px;
+            background: var(--primary-neon);
+            box-shadow: 0 0 8px var(--primary-neon);
+            animation: learnChatBlink 0.7s steps(2, start) infinite;
+        }
+
+        .learn-chat-bottom {
+            position: absolute;
+            right: 12px;
+            bottom: 10px;
+            z-index: 3;
+            padding: 7px 10px;
+            color: #fff;
+            background: rgba(255, 48, 69, 0.86);
+            border: 1px solid rgba(255, 180, 180, 0.55);
+            box-shadow: 0 0 16px rgba(255, 48, 69, 0.28);
+        }
+
+        @keyframes learnChatPulse {
+            from {
+                background-position: 0 0;
+            }
+
+            to {
+                background-position: -200% 0;
+            }
+        }
+
+        @keyframes learnChatBlink {
+            50% {
+                opacity: 0;
+            }
+        }
+
+        .learn-chat-form {
+            display: grid;
+            gap: 8px;
+        }
+
+        .learn-chat-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        #learn-chat-input {
+            width: 100%;
+            min-height: 58px;
+            max-height: 128px;
+            resize: vertical;
+            padding: 11px 12px;
+            font-family: var(--font-code);
+            font-size: 0.88rem;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.62);
+            border: 1px solid rgba(255, 48, 69, 0.35);
+            border-radius: 6px;
+            outline: none;
+        }
+
+        #learn-chat-input:focus {
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 14px rgba(255, 48, 69, 0.2);
+        }
+
+        #learn-chat-send {
+            min-width: 74px;
+            margin: 0;
+        }
+
+        #learn-chat-send.stop {
+            color: #fff;
+            border-color: var(--danger-color);
+            box-shadow: 0 0 16px rgba(255, 48, 69, 0.24);
+        }
+
+        @keyframes learnOutputReveal {
+            from {
+                opacity: 0;
+                transform: translateY(-4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        #learn-work-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        #learn-picker,
+        #learn-card,
+        #learn-summary {
+            justify-content: flex-start;
+            max-height: calc(100dvh - 80px);
+            overflow-y: auto;
+        }
+
+        body.ocp-edition .learn-track-head {
+            border-bottom-color: rgba(255, 48, 69, 0.24);
+        }
+
+        body.ocp-edition .learn-lesson-row:hover {
+            background: rgba(255, 48, 69, 0.06);
+            border-color: rgba(255, 48, 69, 0.25);
+        }
+
+        body.ocp-edition .learn-target {
+            border-color: rgba(255, 48, 69, 0.35);
+        }
+
+        body.ocp-edition #learn-input:focus {
+            box-shadow: 0 0 15px rgba(255, 48, 69, 0.2);
+        }
+
+        body.ocp-edition .learn-output {
+            background: #080202;
+            border-color: #4a1516;
+            color: #ffddd5;
+        }
+
+        body.ocp-edition .learn-target .ok {
+            text-shadow: 0 0 6px rgba(255, 239, 90, 0.45);
+        }
+
+        body.ocp-edition .learn-chat-panel {
+            border-color: rgba(255, 48, 69, 0.34);
         }
 
         .dashboard-card {
@@ -2146,6 +3563,30 @@
             background: var(--danger-color);
         }
 
+        @media (max-width: 1180px) {
+            #learn-screen.learn-session-active {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 16px;
+                padding: 24px 0;
+            }
+
+            #learn-screen.learn-session-active #learn-card {
+                width: min(860px, 92vw);
+                height: auto;
+                max-height: none;
+                min-height: 0;
+            }
+
+            .learn-chat-panel {
+                width: min(860px, 92vw);
+                height: 420px;
+                max-height: calc(100dvh - 90px);
+            }
+        }
+
         @media (max-width: 720px) {
             .overlay {
                 justify-content: flex-start;
@@ -2170,6 +3611,52 @@
                 min-height: 0;
                 max-height: calc(100dvh - 64px);
                 overflow-y: auto;
+            }
+
+            #learn-picker,
+            #learn-card,
+            #learn-summary {
+                max-height: calc(100dvh - 64px);
+            }
+
+            #learn-screen.learn-session-active {
+                flex-direction: column;
+                justify-content: flex-start;
+                gap: 12px;
+            }
+
+            #learn-screen.learn-session-active #learn-card {
+                width: min(640px, 92vw);
+                padding: 24px 22px;
+            }
+
+            .learn-chat-panel {
+                width: min(640px, 92vw);
+                height: auto;
+                max-height: 360px;
+            }
+
+            .learn-chat-log-wrap {
+                min-height: 150px;
+            }
+
+            .learn-chat-log {
+                max-height: 210px;
+            }
+
+            .learn-step-nav {
+                order: 3;
+                width: 100%;
+                margin-left: 0;
+                justify-content: space-between;
+            }
+
+            .learn-track-list {
+                max-height: 48dvh;
+            }
+
+            .learn-output {
+                max-height: 150px;
             }
 
             .scenario-top {
@@ -2347,6 +3834,11 @@
                         </div>
 
                         <div class="mode-grid" id="mode-grid">
+                            <button class="mode-choice mode-choice-wide" id="mode-learn" data-mode="LEARN"
+                                type="button">
+                                <strong>학습 모드</strong>
+                                <span>처음이라면 여기부터 — 따라치며 배우는 EX280</span>
+                            </button>
                             <button class="mode-choice active" id="mode-drop" data-mode="DROP" type="button">
                                 <strong>CLI DROP</strong>
                                 <span>OC 핵심 명령 낙하 타자</span>
@@ -2365,6 +3857,10 @@
                             </button>
                         </div>
 
+                        <div class="select-group hidden" id="learn-info-group">
+                            <label>Learn Mode</label>
+                            <div class="mode-info" id="learn-info-text">커리큘럼 로딩...</div>
+                        </div>
                         <div class="select-group" id="ocp-drop-group">
                             <label>CLI Drop Difficulty</label>
                             <select id="ocp-difficulty-select">
@@ -2385,6 +3881,7 @@
                         <div class="select-group hidden" id="exam-info-group">
                             <label>Exam Mode</label>
                             <div class="mode-info">전 영역 15문제 · 문제당 90초 · 힌트 없음 · 합격선 70%</div>
+                            <div class="mode-info exam-gate-note hidden" id="exam-gate-note"></div>
                         </div>
                         <button class="btn" id="ocp-start-btn" type="button">START OCP</button>
                         <button class="btn-small" id="dashboard-btn" type="button">학습 대시보드</button>
@@ -2441,6 +3938,21 @@
                 style="margin-bottom: 15px; color: var(--primary-neon); font-size: 0.9rem; font-family: var(--font-code);">
             </div>
             <button class="btn" id="restart-btn">Reboot System</button>
+        </div>
+    </div>
+
+    <!-- Themed confirmation / password modal -->
+    <div id="confirm-screen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="card confirm-card">
+            <h2 id="confirm-title">CONFIRM</h2>
+            <p class="confirm-message" id="confirm-message"></p>
+            <input class="confirm-input hidden" type="password" id="confirm-input" autocomplete="current-password"
+                spellcheck="false" placeholder="PASSWORD">
+            <div class="confirm-error" id="confirm-error"></div>
+            <div class="scenario-actions" style="justify-content: flex-end;">
+                <button class="btn-small" id="confirm-cancel" type="button">CANCEL</button>
+                <button class="btn-small btn-danger" id="confirm-ok" type="button">CONFIRM</button>
+            </div>
         </div>
     </div>
 
@@ -2520,13 +4032,119 @@
                     <div id="dashboard-cats"></div>
                 </div>
                 <div style="display: grid; gap: 18px;">
+                    <div class="dashboard-panel" id="dashboard-learn"></div>
                     <div class="dashboard-panel" id="dashboard-weak"></div>
                     <div class="dashboard-panel" id="dashboard-exams"></div>
                 </div>
             </div>
             <div class="scenario-actions" style="justify-content: center;">
                 <button class="btn-small" id="dashboard-review-btn">오답노트 풀기</button>
+                <button class="btn-small" id="dashboard-next-btn">다음 추천</button>
+                <button class="btn-small hidden" id="dashboard-reset-btn">QA RESET</button>
                 <button class="btn-small" id="dashboard-close">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Learn Mode (학습 모드) -->
+    <div id="learn-screen" class="overlay hidden">
+        <!-- 커리큘럼 픽커 -->
+        <div class="card scenario-card" id="learn-picker">
+            <div class="scenario-top">
+                <span class="scenario-badge">학습 모드</span>
+                <span id="learn-picker-progress"></span>
+                <button class="btn-small" id="learn-picker-home">홈</button>
+            </div>
+            <div class="learn-picker-intro">따라 치면서 배우는 EX280 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.</div>
+            <button class="btn-small learn-continue" id="learn-continue-btn">이어서 학습</button>
+            <div class="learn-track-list" id="learn-track-list"></div>
+        </div>
+
+        <!-- 레슨 진행 카드 -->
+        <div class="card scenario-card hidden" id="learn-card">
+            <div class="scenario-top">
+                <span class="scenario-badge" id="learn-lesson-title"></span>
+                <span id="learn-progress"></span>
+                <div class="learn-step-nav">
+                    <button class="btn-small" id="learn-prev-step" type="button">← 이전</button>
+                    <button class="btn-small" id="learn-next-step" type="button">다음 →</button>
+                </div>
+                <button class="btn-small" id="learn-quit">레슨 목록</button>
+            </div>
+
+            <!-- 개념 카드 -->
+            <div id="learn-intro-wrap">
+                <div class="learn-intro" id="learn-intro"></div>
+                <button class="btn-small" id="learn-begin-btn">학습 시작 →</button>
+            </div>
+
+            <!-- 스텝/퀴즈 진행 -->
+            <div id="learn-work-wrap" class="hidden">
+                <div class="scenario-text" id="learn-desc"></div>
+                <div class="learn-target" id="learn-target"></div>
+                <input type="text" id="learn-input" autocomplete="off" spellcheck="false"
+                    placeholder="명령어를 그대로 입력 후 Enter">
+                <pre class="learn-output hidden" id="learn-output"></pre>
+                <div class="scenario-feedback hidden" id="learn-feedback"></div>
+                <div class="scenario-actions">
+                    <button class="btn-small hidden" id="learn-peek">정답 보기</button>
+                    <button class="btn-small hidden" id="learn-hint">힌트</button>
+                    <button class="btn-small hidden" id="learn-skip">건너뛰기</button>
+                    <button class="btn-small hidden" id="learn-next">다음 →</button>
+                </div>
+            </div>
+        </div>
+
+        <aside class="learn-chat-panel hidden" id="learn-chat-panel" aria-label="학습 질문 챗">
+            <div class="learn-chat-head">
+                <div class="learn-chat-meta">
+                    <div class="learn-chat-title" id="learn-chat-title">ASK TO KUGNUS AI</div>
+                    <div class="learn-engine-select" id="learn-chat-engine-shell">
+                        <button class="learn-engine-toggle" id="learn-chat-engine-toggle" type="button"
+                            aria-haspopup="listbox" aria-expanded="false">
+                            <span id="learn-chat-engine-label">KUGNUS SERVER</span>
+                            <span class="learn-engine-chevron">⌄</span>
+                        </button>
+                        <div class="learn-engine-menu hidden" id="learn-chat-engine-menu" role="listbox"
+                            aria-label="LLM 엔진 선택">
+                            <button class="learn-engine-option" type="button" role="option" data-engine="kugnus"
+                                aria-selected="true">KUGNUS SERVER</button>
+                            <button class="learn-engine-option" type="button" role="option" data-engine="openai"
+                                aria-selected="false">GPT 5.4 MINI</button>
+                        </div>
+                    </div>
+                    <select id="learn-chat-engine" aria-label="LLM 엔진 선택" tabindex="-1">
+                        <option value="kugnus">KUGNUS SERVER</option>
+                        <option value="openai">GPT 5.4 MINI</option>
+                    </select>
+                    <div class="learn-chat-status" id="learn-chat-status">LOCAL LLM READY</div>
+                </div>
+                <button class="btn-small" id="learn-chat-clear" type="button">CLR</button>
+            </div>
+            <div class="learn-chat-context" id="learn-chat-context"></div>
+            <div class="learn-chat-log-wrap">
+                <div class="learn-chat-log" id="learn-chat-log"></div>
+                <button class="learn-chat-bottom hidden" id="learn-chat-bottom" type="button">↓ NEW</button>
+            </div>
+            <form class="learn-chat-form" id="learn-chat-form">
+                <div class="learn-chat-row">
+                    <textarea id="learn-chat-input" rows="2" maxlength="1200"
+                        placeholder="궁금한 점을 질문"></textarea>
+                    <button class="btn-small" id="learn-chat-send" type="submit">ASK</button>
+                </div>
+            </form>
+        </aside>
+
+        <!-- 레슨 요약 -->
+        <div class="card scenario-card hidden" id="learn-summary">
+            <h2 class="scenario-summary-title" id="learn-summary-title">LESSON REPORT</h2>
+            <div class="stat-grid scenario-stat-grid" id="learn-summary-stats"></div>
+            <div class="scenario-review" id="learn-summary-review"></div>
+            <div class="scenario-actions" style="justify-content: center;">
+                <button class="btn-small hidden" id="learn-retry-quiz">퀴즈 재도전</button>
+                <button class="btn-small hidden" id="learn-next-lesson">다음 레슨</button>
+                <button class="btn-small" id="learn-list-btn">레슨 목록</button>
+                <button class="btn-small" id="learn-home">홈</button>
             </div>
         </div>
     </div>
@@ -2537,24 +4155,73 @@
     </div>
     </div>
 
-    <div id="music-widget" class="closed">
+    <div id="music-widget" class="closed" data-player-ui="island" aria-label="Music player">
         <!-- Icon State -->
         <div class="widget-icon">
             <svg class="boombox-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path
                     d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3v5c0 1.66 1.34 3 3 3v1c0 .55.45 1 1 1h16c.55 0 1-.45 1-1v-1c1.66 0 3-1.34 3-3v-5c0-1.66-1.34-3-3-3zM12 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-4 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm10 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z" />
             </svg>
-            <span class="icon-label">MUSICBOX</span>
+            <span class="icon-label">MUSIC</span>
         </div>
 
         <!-- Content State -->
         <div class="widget-content">
             <div class="player-header">
-                <span>CYBER_DECK // AUDIO</span>
-                <button id="close-player">_</button>
+                <button class="music-control-btn music-detail-toggle" id="music-detail-toggle"
+                    data-music-action="details" type="button" aria-label="Expand music details">
+                    <svg class="music-detail-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 6l-6 6 6 6" />
+                    </svg>
+                </button>
+                <div class="music-island-copy">
+                    <span class="music-island-title">CYBER_DECK // AUDIO</span>
+                    <span class="music-island-status" id="music-status">KUGNUS X AI STREAM</span>
+                </div>
+                <div class="music-now-info" aria-live="polite">
+                    <span class="music-now-kicker">NOW PLAYING</span>
+                    <span class="music-now-title" id="music-now-title">KUGNUS X AI SET</span>
+                </div>
+                <div class="music-equalizer" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <button class="music-control-btn music-play-toggle" id="music-play-toggle" data-music-action="toggle"
+                    type="button" aria-label="Play music" title="Play music">
+                    <svg class="music-play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 5v14l11-7z" />
+                    </svg>
+                    <svg class="music-pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M7 5h4v14H7zM13 5h4v14h-4z" />
+                    </svg>
+                </button>
+                <button class="music-control-btn music-track-toggle" id="music-track-toggle"
+                    data-music-action="track-list" type="button">LIST</button>
+                <button class="music-control-btn music-ui-toggle" id="music-ui-toggle" data-music-action="switch-ui"
+                    type="button" aria-label="Open SoundCloud player view" title="SoundCloud view">
+                    <svg class="soundcloud-mark" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M17.4 10.2c-.6 0-1.1.1-1.6.4-.3-2.8-2.7-5-5.6-5-.7 0-1.4.1-2 .4-.3.1-.4.3-.4.6v10.6c0 .3.2.6.6.6h9c2.1 0 3.8-1.7 3.8-3.8s-1.7-3.8-3.8-3.8zM5.8 8.2c-.3 0-.5.2-.5.5v8.5c0 .3.2.5.5.5s.5-.2.5-.5V8.7c0-.3-.2-.5-.5-.5zm-2 2c-.3 0-.5.2-.5.5v6.5c0 .3.2.5.5.5s.5-.2.5-.5v-6.5c0-.3-.2-.5-.5-.5zm-2 2.2c-.3 0-.5.2-.5.5v4.3c0 .3.2.5.5.5s.5-.2.5-.5v-4.3c0-.3-.2-.5-.5-.5z" />
+                    </svg>
+                </button>
+                <button id="close-player" data-music-action="close" type="button" aria-label="Collapse music player">_</button>
+            </div>
+            <div class="music-track-popover" id="music-track-popover">
+                <div class="music-track-popover-title">PLAYLIST QUEUE</div>
+                <div class="music-track-list" id="music-track-list">
+                    <div class="music-track-item active">
+                        <span class="music-track-index">01</span>
+                        <span>KUGNUS X AI SET</span>
+                    </div>
+                    <div class="music-track-item">
+                        <span class="music-track-index">02</span>
+                        <span>SoundCloud playlist loading...</span>
+                    </div>
+                </div>
             </div>
             <div class="iframe-container">
-                <iframe width="100%" height="100%" scrolling="no" frameborder="no" allow="autoplay"
+                <iframe id="soundcloud-player" width="100%" height="100%" scrolling="no" frameborder="no" allow="autoplay"
                     src="https://w.soundcloud.com/player/?url=https%3A//soundcloud.com/kugnus/sets/kugnus-x-ai&color=%2300f3ff&auto_play=false&hide_related=false&show_comments=true&show_user=true&show_reposts=false&show_teaser=true&visual=true">
                 </iframe>
             </div>
@@ -2576,7 +4243,7 @@
 
     <!-- Readme Widget -->
     <div id="readme-widget"
-        style="position: fixed; bottom: 20px; left: 20px; width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--primary-neon); background: rgba(0,0,0,0.8); color: var(--primary-neon); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 9999; box-shadow: 0 0 15px var(--primary-neon); transition: all 0.3s;">
+        style="position: fixed; bottom: var(--corner-widget-offset); left: var(--corner-widget-offset); width: var(--corner-widget-size); height: var(--corner-widget-size); border-radius: 50%; border: 2px solid var(--primary-neon); background: rgba(0,0,0,0.8); color: var(--primary-neon); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 120; box-shadow: 0 0 15px var(--primary-neon); transition: all 0.3s;">
         <div class="widget-label"
             style="font-family: var(--font-display); font-size: 0.8rem; text-align: center; line-height: 1.1;">
             READ<br>ME</div>
@@ -2586,29 +4253,52 @@
     <div id="readme-overlay" class="hidden"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
         <div id="readme-box"
+            data-manual-lang="en"
             style="background: rgba(10, 10, 10, 0.95); border: 1px solid var(--primary-neon); padding: 40px; width: 400px; max-width: 600px; position: relative; box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);">
             <button id="readme-close"
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--primary-neon); font-size: 1.5rem; cursor: pointer;">X</button>
+            <div class="readme-lang-toggle" aria-label="Manual language">
+                <button type="button" class="active" data-readme-lang="en">ENG</button>
+                <button type="button" data-readme-lang="ko">KOR</button>
+            </div>
             <h2
                 style="color: var(--primary-neon); font-family: var(--font-display); margin-bottom: 20px; text-align: center; letter-spacing: 2px;">
-                SYSTEM MANUAL</h2>
+                <span data-i18n="en">SYSTEM MANUAL</span>
+                <span data-i18n="ko">시스템 매뉴얼</span>
+            </h2>
 
             <p style="color: #fff; margin-bottom: 15px; line-height: 1.6;">
-                <strong style="color: var(--primary-neon);">MISSION:</strong><br>
-                Falling code fragments threaten the system integrity.<br>
-                Type the commands exactly as they appear to neutralize them.
+                <span data-i18n="en">
+                    <strong style="color: var(--primary-neon);">MISSION:</strong><br>
+                    Falling code fragments threaten the system integrity.<br>
+                    Type the commands exactly as they appear to neutralize them.
+                </span>
+                <span data-i18n="ko">
+                    <strong style="color: var(--primary-neon);">임무:</strong><br>
+                    떨어지는 코드 조각이 시스템 무결성을 위협합니다.<br>
+                    화면에 나타난 명령어를 정확히 입력해 조각을 무력화하세요.
+                </span>
             </p>
 
             <p style="color: #fff; margin-bottom: 30px; line-height: 1.6;">
-                <strong style="color: var(--primary-neon);">PROTOCOL:</strong><br>
-                Prevent fragments from reaching the bottom.<br>
-                Maintain high accuracy for combo bonuses.
+                <span data-i18n="en">
+                    <strong style="color: var(--primary-neon);">PROTOCOL:</strong><br>
+                    Prevent fragments from reaching the bottom.<br>
+                    Maintain high accuracy for combo bonuses.
+                </span>
+                <span data-i18n="ko">
+                    <strong style="color: var(--primary-neon);">프로토콜:</strong><br>
+                    코드 조각이 하단에 닿지 않도록 막으세요.<br>
+                    높은 정확도를 유지하면 콤보 보너스를 획득합니다.
+                </span>
             </p>
 
             <div class="contact-info" style="border-top: 1px solid #333; padding-top: 20px;">
-                <div style="color: #888; margin-bottom: 15px; font-size: 0.9rem; text-align: center;">SYSTEM
-                    ADMINISTRATOR CONTACT</div>
-                <div class="contact-links" style="display: flex; justify-content: center; gap: 20px;">
+                <div style="color: #888; margin-bottom: 15px; font-size: 0.9rem; text-align: center;">
+                    <span data-i18n="en">SYSTEM ADMINISTRATOR CONTACT</span>
+                    <span data-i18n="ko">시스템 관리자 연락처</span>
+                </div>
+                <div class="contact-links" style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
                     <a href="https://github.com/souluk319" target="_blank" class="contact-link"
                         style="color: #fff; text-decoration: none; display: flex; align-items: center; gap: 5px; font-size: 0.9rem; transition: color 0.3s;">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
@@ -2616,6 +4306,14 @@
                                 d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                         </svg>
                         GITHUB
+                    </a>
+                    <a href="https://www.kugnus.com" target="_blank" rel="noopener noreferrer" class="contact-link"
+                        style="color: #fff; text-decoration: none; display: flex; align-items: center; gap: 5px; font-size: 0.9rem; transition: color 0.3s;">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                            <path
+                                d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.93 9h-3.02a15.7 15.7 0 0 0-1.25-5.02A8.02 8.02 0 0 1 18.93 11zM12 4.04c.72 1.04 1.55 3.05 1.85 6.96h-3.7C10.45 7.09 11.28 5.08 12 4.04zM4.26 13h3.83c.12 1.92.45 3.63.96 5.02A8.04 8.04 0 0 1 4.26 13zm3.83-2H4.26a8.04 8.04 0 0 1 4.79-5.02A15.7 15.7 0 0 0 8.09 11zM12 19.96c-.72-1.04-1.55-3.05-1.85-6.96h3.7c-.3 3.91-1.13 5.92-1.85 6.96zm2.95-1.94c.51-1.39.84-3.1.96-5.02h3.83a8.04 8.04 0 0 1-4.79 5.02z" />
+                        </svg>
+                        WWW.KUGNUS.COM
                     </a>
                     <a href="https://kugnus.tistory.com" target="_blank" class="contact-link"
                         style="color: #fff; text-decoration: none; display: flex; align-items: center; gap: 5px; font-size: 0.9rem; transition: color 0.3s;">
@@ -2626,7 +4324,7 @@
                         </svg>
                         BLOG
                     </a>
-                    <a href="mailto:souluk319@gmail.com" class="contact-link"
+                    <a href="mailto:kugnus@cywell.co.kr" class="contact-link"
                         style="color: #fff; text-decoration: none; display: flex; align-items: center; gap: 5px; font-size: 0.9rem; transition: color 0.3s;">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                             <path
@@ -2642,10 +4340,13 @@
     <script src="js/word_packs.js"></script>
     <script src="js/scenario_packs.js"></script>
     <script src="js/lab_packs.js"></script>
+    <script src="js/lesson_packs.js"></script>
     <script src="js/study_stats.js"></script>
+    <script src="https://w.soundcloud.com/player/api.js"></script>
     <script src="js/game.js"></script>
     <script src="js/scenario_mode.js"></script>
     <script src="js/lab_mode.js"></script>
+    <script src="js/learn_mode.js"></script>
     <script src="js/dashboard.js"></script>
 
 

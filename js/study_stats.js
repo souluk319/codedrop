@@ -194,5 +194,9 @@ const StudyStats = (() => {
         return load();
     }
 
-    return { record, recordExam, categorySummary, reviewPool, categoryOf, get };
+    function reset() {
+        localStorage.removeItem(KEY);
+    }
+
+    return { record, recordExam, categorySummary, reviewPool, categoryOf, get, reset };
 })();

@@ -5,6 +5,13 @@
 
 // --- API Config ---
 const API_BASE = "";
+const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language';
+const MUSIC_UI_STORAGE_KEY = 'codedrop_music_ui';
+const MUSIC_FALLBACK_TRACKS = [
+    'KUGNUS X AI SET',
+    'SoundCloud playlist queue',
+    'Open SoundCloud view for full track list'
+];
 
 const DIFFICULTY = {
     EASY: { spawnRate: 2500, speedMin: 0.5, speedMax: 1.0, eventChance: 0 },
@@ -103,8 +110,196 @@ const els = {
         authContainer: document.getElementById('auth-container'),
         userDisplay: document.getElementById('user-display')
     },
-    musicWidget: document.getElementById('music-widget')
+    musicWidget: document.getElementById('music-widget'),
+    confirm: {
+        screen: document.getElementById('confirm-screen'),
+        title: document.getElementById('confirm-title'),
+        message: document.getElementById('confirm-message'),
+        input: document.getElementById('confirm-input'),
+        error: document.getElementById('confirm-error'),
+        cancel: document.getElementById('confirm-cancel'),
+        ok: document.getElementById('confirm-ok')
+    }
 };
+
+const overlayChromeIds = [
+    'result-screen',
+    'pause-screen',
+    'scenario-screen',
+    'lab-screen',
+    'dashboard-screen',
+    'learn-screen',
+    'confirm-screen',
+    'readme-overlay'
+];
+
+let overlayChromeObserver = null;
+let commandDialogSession = null;
+let commandDialogBound = false;
+let widgetOverlapCheckAt = 0;
+let soundCloudWidget = null;
+let soundCloudWidgetBound = false;
+let musicPlaying = false;
+
+function setGameChrome(active) {
+    document.body.classList.toggle('game-active', Boolean(active));
+}
+
+function isElementVisible(el) {
+    return Boolean(el) && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none';
+}
+
+function syncOverlayChrome() {
+    const hasOverlay = overlayChromeIds.some(id => isElementVisible(document.getElementById(id)));
+    document.body.classList.toggle('overlay-chrome-hidden', hasOverlay);
+}
+
+function rectsOverlap(a, b, padding = 4) {
+    return a.left < b.right + padding &&
+        a.right > b.left - padding &&
+        a.top < b.bottom + padding &&
+        a.bottom > b.top - padding;
+}
+
+function bottomWidgets() {
+    return [
+        document.getElementById('readme-widget'),
+        els.musicWidget
+    ].filter(Boolean);
+}
+
+function setBottomWidgetsTranslucent(active) {
+    bottomWidgets().forEach(widget => widget.classList.toggle('widget-overlap', Boolean(active)));
+}
+
+function updateBottomWidgetOverlap(timestamp = 0) {
+    if (!state.isPlaying || state.isPaused || state.activeWords.length === 0) {
+        setBottomWidgetsTranslucent(false);
+        return;
+    }
+
+    if (timestamp && timestamp - widgetOverlapCheckAt < 80) return;
+    widgetOverlapCheckAt = timestamp || Date.now();
+
+    const widgets = bottomWidgets()
+        .filter(widget => getComputedStyle(widget).display !== 'none')
+        .map(widget => widget.getBoundingClientRect());
+    if (widgets.length === 0) return;
+
+    const overlaps = state.activeWords.some(word => {
+        if (!word.el || !word.el.isConnected) return false;
+        const wordRect = word.el.getBoundingClientRect();
+        return widgets.some(widgetRect => rectsOverlap(wordRect, widgetRect, 8));
+    });
+
+    setBottomWidgetsTranslucent(overlaps);
+}
+
+function initOverlayChromeObserver() {
+    if (overlayChromeObserver) return;
+
+    overlayChromeObserver = new MutationObserver(syncOverlayChrome);
+    overlayChromeIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) overlayChromeObserver.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
+    });
+    window.syncCodeDropChrome = syncOverlayChrome;
+    syncOverlayChrome();
+}
+
+function showCommandDialog({
+    title,
+    message,
+    okText = 'CONFIRM',
+    cancelText = 'CANCEL',
+    input = false,
+    placeholder = 'PASSWORD',
+    danger = false,
+    requireValue = false
+}) {
+    return new Promise(resolve => {
+        const c = els.confirm;
+        if (!c.screen) {
+            resolve({ accepted: false, value: '' });
+            return;
+        }
+
+        if (commandDialogSession) {
+            commandDialogSession.resolve({ accepted: false, value: '' });
+        }
+
+        commandDialogSession = { resolve, input, requireValue };
+        c.title.textContent = title;
+        c.message.textContent = message;
+        c.ok.textContent = okText;
+        c.cancel.textContent = cancelText || '';
+        c.cancel.classList.toggle('hidden', !cancelText);
+        c.input.value = '';
+        c.input.placeholder = placeholder;
+        c.input.classList.toggle('hidden', !input);
+        c.error.textContent = '';
+        c.screen.classList.toggle('danger', danger);
+        c.screen.classList.remove('hidden');
+        syncOverlayChrome();
+
+        window.setTimeout(() => {
+            if (input) c.input.focus();
+            else c.ok.focus();
+        }, 0);
+    });
+}
+
+function closeCommandDialog(result) {
+    if (!commandDialogSession) return;
+
+    const session = commandDialogSession;
+    commandDialogSession = null;
+    els.confirm.screen.classList.add('hidden');
+    els.confirm.input.value = '';
+    els.confirm.error.textContent = '';
+    syncOverlayChrome();
+    session.resolve(result);
+}
+
+function acceptCommandDialog() {
+    if (!commandDialogSession) return;
+
+    const value = els.confirm.input.value.trim();
+    if (commandDialogSession.requireValue && !value) {
+        els.confirm.error.textContent = 'PASSWORD REQUIRED';
+        els.confirm.input.classList.add('wrong');
+        window.setTimeout(() => els.confirm.input.classList.remove('wrong'), 260);
+        els.confirm.input.focus();
+        return;
+    }
+
+    closeCommandDialog({ accepted: true, value });
+}
+
+function cancelCommandDialog() {
+    closeCommandDialog({ accepted: false, value: '' });
+}
+
+function initCommandDialog() {
+    const c = els.confirm;
+    if (commandDialogBound || !c.screen) return;
+    commandDialogBound = true;
+
+    c.ok.addEventListener('click', acceptCommandDialog);
+    c.cancel.addEventListener('click', cancelCommandDialog);
+    c.screen.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) cancelCommandDialog();
+    });
+    c.screen.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelCommandDialog();
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            acceptCommandDialog();
+        }
+    });
+}
 
 // --- Sound FX (Web Audio API & WAVs) ---
 const sfx = {
@@ -272,6 +467,7 @@ function gameLoop(timestamp) {
     }
 
     if (state.isPaused) {
+        updateBottomWidgetOverlap(timestamp);
         requestAnimationFrame(gameLoop);
         return;
     }
@@ -305,6 +501,7 @@ function gameLoop(timestamp) {
         }
     }
 
+    updateBottomWidgetOverlap(timestamp);
     requestAnimationFrame(gameLoop);
 }
 
@@ -590,6 +787,8 @@ async function gameOver(victory = false) {
 
     state.isPlaying = false;
     state.isPaused = false;
+    setGameChrome(false);
+    setBottomWidgetsTranslucent(false);
     state.targetId = null;
     state.lastInputLength = 0;
     els.input.field.value = '';
@@ -617,6 +816,7 @@ async function gameOver(victory = false) {
     els.result.acc.textContent = accuracy + "%";
 
     els.screens.result.classList.remove('hidden');
+    syncOverlayChrome();
 
     // Submit Score
     if (state.userToken) {
@@ -729,7 +929,10 @@ function triggerEditionBurst() {
 }
 
 function handleStart() {
-    if (gameMode === 'SCENARIO') {
+    if (gameMode === 'LEARN') {
+        els.screens.start.classList.add('hidden');
+        LearnMode.openPicker();
+    } else if (gameMode === 'SCENARIO') {
         const catSelect = document.getElementById('scenario-category-select');
         els.screens.start.classList.add('hidden');
         ScenarioMode.start(catSelect.value);
@@ -762,6 +965,7 @@ function initModeControls() {
     const ocpStartBtn = document.getElementById('ocp-start-btn');
     const dashboardBtn = document.getElementById('dashboard-btn');
     const modeGroups = {
+        LEARN: ['learn-info-group'],
         DROP: ['ocp-drop-group'],
         SCENARIO: ['scenario-select-group'],
         LAB: ['lab-select-group'],
@@ -799,6 +1003,31 @@ function initModeControls() {
                 if (el) el.classList.toggle('hidden', groupMode !== mode);
             });
         });
+
+        // 학습 모드: 커리큘럼 진행도 문구 갱신
+        if (mode === 'LEARN' && typeof LearnMode !== 'undefined') {
+            const info = document.getElementById('learn-info-text');
+            if (info) {
+                const p = LearnMode.progress();
+                info.textContent = p.next
+                    ? `${p.done}/${p.total} 레슨 완료 · 다음: ${p.next.title}`
+                    : `커리큘럼 완주! ${p.done}/${p.total} 레슨 완료`;
+            }
+        }
+
+        // 시험 모드 소프트 게이트 (비차단 권장 문구)
+        if (mode === 'EXAM' && typeof LearnMode !== 'undefined' && typeof StudyStats !== 'undefined') {
+            const gate = document.getElementById('exam-gate-note');
+            if (gate) {
+                const p = LearnMode.progress();
+                const examCount = (StudyStats.get().exams || []).length;
+                const show = p.total > 0 && p.done / p.total < 0.3 && examCount === 0;
+                gate.classList.toggle('hidden', !show);
+                if (show) {
+                    gate.textContent = `커리큘럼 ${p.done}/${p.total} — 학습 모드를 먼저 도는 것을 권장합니다.`;
+                }
+            }
+        }
     }
 
     function openOcpEdition() {
@@ -866,11 +1095,14 @@ function startGame() {
 
     state.difficulty = diff;
     state.pack = pack;
+    setBottomWidgetsTranslucent(false);
 
     // UI Reset
     els.screens.start.classList.add('hidden');
     els.screens.pause.classList.add('hidden');
     els.screens.result.classList.add('hidden');
+    setGameChrome(true);
+    syncOverlayChrome();
     els.gameArea.innerHTML = ''; // Clear words
     els.input.field.value = '';
     state.lastInputLength = 0;
@@ -919,29 +1151,41 @@ function togglePause() {
         els.input.field.focus();
         state.lastSpawnTime = performance.now();
     }
+    syncOverlayChrome();
 }
 
-function goHome() {
-    if (confirm("ABORT MISSION? Progress will be lost.")) {
-        state.isPlaying = false;
-        state.isPaused = false;
-        els.screens.pause.classList.add('hidden');
-        els.screens.result.classList.add('hidden');
-        els.screens.start.classList.remove('hidden');
-        els.input.field.value = '';
-        els.input.field.disabled = true;
-        updateTargetDisplay('');
-        state.targetId = null;
-        state.lastInputLength = 0;
+async function goHome() {
+    const result = await showCommandDialog({
+        title: 'ABORT MISSION?',
+        message: '현재 낙하 세션을 종료하고 시작 화면으로 돌아갑니다. 진행 중인 점수는 저장되지 않습니다.',
+        okText: 'ABORT',
+        cancelText: 'STAY',
+        danger: true
+    });
 
-        // Clear game area
-        els.gameArea.innerHTML = '';
-        state.activeWords = [];
+    if (!result.accepted) return;
 
-        fetchLeaderboard();
-        initGameControls();
-        // sfx.playBGM();
-    }
+    state.isPlaying = false;
+    state.isPaused = false;
+    setGameChrome(false);
+    setBottomWidgetsTranslucent(false);
+    els.screens.pause.classList.add('hidden');
+    els.screens.result.classList.add('hidden');
+    els.screens.start.classList.remove('hidden');
+    els.input.field.value = '';
+    els.input.field.disabled = true;
+    updateTargetDisplay('');
+    state.targetId = null;
+    state.lastInputLength = 0;
+
+    // Clear game area
+    els.gameArea.innerHTML = '';
+    state.activeWords = [];
+
+    fetchLeaderboard();
+    initGameControls();
+    syncOverlayChrome();
+    // sfx.playBGM();
 }
 
 // Add Listeners for Game Controls
@@ -950,28 +1194,259 @@ function goHome() {
 function handleRestart() {
     els.screens.result.classList.add('hidden');
     els.screens.start.classList.remove('hidden');
+    setGameChrome(false);
     els.input.field.value = '';
     els.input.field.disabled = true;
     updateTargetDisplay('');
     state.targetId = null;
     state.lastInputLength = 0;
     fetchLeaderboard();
+    syncOverlayChrome();
     // sfx.playBGM();
 }
 
-function handleMusicWidgetClick(e) {
-    // If clicking close button, minimize
-    if (e.target.id === 'close-player') {
-        e.stopPropagation();
-        els.musicWidget.classList.remove('open');
-        els.musicWidget.classList.add('closed');
+function normalizeMusicUi(value) {
+    return value === 'legacy' ? 'legacy' : 'island';
+}
+
+function preferredMusicUi() {
+    return normalizeMusicUi(localStorage.getItem(MUSIC_UI_STORAGE_KEY) || els.musicWidget?.dataset.playerUi);
+}
+
+function setMusicStatus(text) {
+    const status = document.getElementById('music-status');
+    if (status) status.textContent = text;
+}
+
+function setMusicNowTitle(text) {
+    const title = document.getElementById('music-now-title');
+    if (title) title.textContent = text || MUSIC_FALLBACK_TRACKS[0];
+}
+
+function renderMusicTrackList(tracks = MUSIC_FALLBACK_TRACKS, activeTitle = tracks[0]) {
+    const list = document.getElementById('music-track-list');
+    if (!list) return;
+
+    list.replaceChildren();
+    tracks.slice(0, 8).forEach((track, index) => {
+        const title = typeof track === 'string' ? track : track?.title;
+        const item = document.createElement('div');
+        item.className = 'music-track-item';
+        if (title === activeTitle || index === 0) item.classList.add('active');
+
+        const number = document.createElement('span');
+        number.className = 'music-track-index';
+        number.textContent = String(index + 1).padStart(2, '0');
+
+        const label = document.createElement('span');
+        label.textContent = title || `Track ${index + 1}`;
+
+        item.append(number, label);
+        list.appendChild(item);
+    });
+}
+
+function updateSoundCloudMetadata() {
+    renderMusicTrackList(MUSIC_FALLBACK_TRACKS, MUSIC_FALLBACK_TRACKS[0]);
+    setMusicNowTitle(MUSIC_FALLBACK_TRACKS[0]);
+
+    if (!soundCloudWidget) return;
+
+    try {
+        if (typeof soundCloudWidget.getCurrentSound === 'function') {
+            soundCloudWidget.getCurrentSound(sound => {
+                const title = sound?.title || MUSIC_FALLBACK_TRACKS[0];
+                setMusicNowTitle(title);
+                setMusicStatus(title);
+            });
+        }
+
+        if (typeof soundCloudWidget.getSounds === 'function') {
+            soundCloudWidget.getSounds(sounds => {
+                if (!Array.isArray(sounds) || sounds.length === 0) return;
+                const titles = sounds.map(sound => sound?.title).filter(Boolean);
+                if (titles.length) renderMusicTrackList(titles, titles[0]);
+            });
+        }
+    } catch (error) {
+        renderMusicTrackList(MUSIC_FALLBACK_TRACKS, MUSIC_FALLBACK_TRACKS[0]);
+    }
+}
+
+function setMusicPlayback(active) {
+    musicPlaying = Boolean(active);
+    if (els.musicWidget) els.musicWidget.classList.toggle('is-playing', musicPlaying);
+
+    const playToggle = document.getElementById('music-play-toggle');
+    if (playToggle) {
+        const label = musicPlaying ? 'Pause music' : 'Play music';
+        playToggle.setAttribute('aria-label', label);
+        playToggle.title = label;
+    }
+}
+
+function syncMusicUiControls(mode = preferredMusicUi()) {
+    const normalized = normalizeMusicUi(mode);
+    const uiToggle = document.getElementById('music-ui-toggle');
+    if (uiToggle) {
+        const label = normalized === 'legacy' ? 'Return to island player' : 'Open SoundCloud player view';
+        uiToggle.setAttribute('aria-label', label);
+        uiToggle.title = label;
+    }
+    setMusicPlayback(musicPlaying);
+}
+
+function initSoundCloudWidget() {
+    if (soundCloudWidgetBound) return soundCloudWidget;
+
+    const iframe = document.getElementById('soundcloud-player');
+    if (!iframe || !window.SC || !window.SC.Widget) {
+        setMusicStatus('SOUNDCLOUD LINK READY');
+        return null;
+    }
+
+    try {
+        soundCloudWidget = window.SC.Widget(iframe);
+        const events = window.SC.Widget.Events || {};
+        if (events.READY) soundCloudWidget.bind(events.READY, updateSoundCloudMetadata);
+        if (events.PLAY) soundCloudWidget.bind(events.PLAY, () => {
+            setMusicPlayback(true);
+            setMusicStatus('STREAMING KUGNUS X AI');
+            updateSoundCloudMetadata();
+        });
+        if (events.PAUSE) soundCloudWidget.bind(events.PAUSE, () => {
+            setMusicPlayback(false);
+            setMusicStatus('KUGNUS X AI STREAM');
+        });
+        if (events.FINISH) soundCloudWidget.bind(events.FINISH, () => {
+            setMusicPlayback(false);
+            setMusicStatus('STREAM COMPLETE');
+        });
+        soundCloudWidgetBound = true;
+        setMusicStatus('SOUNDCLOUD READY');
+        updateSoundCloudMetadata();
+    } catch (error) {
+        soundCloudWidget = null;
+        setMusicStatus('SOUNDCLOUD LINK READY');
+    }
+
+    return soundCloudWidget;
+}
+
+function openMusicWidget(mode = preferredMusicUi()) {
+    if (!els.musicWidget) return;
+
+    const normalized = normalizeMusicUi(mode);
+    els.musicWidget.dataset.playerUi = normalized;
+    els.musicWidget.classList.remove('closed', 'open', 'legacy-open', 'island-open', 'track-open', 'track-list-open');
+
+    if (normalized === 'legacy') {
+        els.musicWidget.classList.add('open', 'legacy-open');
+    } else {
+        els.musicWidget.classList.add('island-open');
+    }
+
+    initSoundCloudWidget();
+    updateSoundCloudMetadata();
+    syncMusicUiControls(normalized);
+}
+
+function closeMusicWidget() {
+    if (!els.musicWidget) return;
+    els.musicWidget.classList.remove('open', 'legacy-open', 'island-open', 'track-open', 'track-list-open');
+    els.musicWidget.classList.add('closed');
+}
+
+function switchMusicWidgetUi() {
+    if (!els.musicWidget) return;
+    const nextMode = els.musicWidget.classList.contains('legacy-open') ? 'island' : 'legacy';
+    localStorage.setItem(MUSIC_UI_STORAGE_KEY, nextMode);
+    openMusicWidget(nextMode);
+    sfx.playKey('Tab');
+}
+
+function toggleMusicDetails() {
+    if (!els.musicWidget || !els.musicWidget.classList.contains('island-open')) return;
+    const willOpen = !els.musicWidget.classList.contains('track-open');
+    els.musicWidget.classList.toggle('track-open', willOpen);
+    if (!willOpen) els.musicWidget.classList.remove('track-list-open');
+
+    const detailToggle = document.getElementById('music-detail-toggle');
+    if (detailToggle) {
+        detailToggle.setAttribute('aria-label', willOpen ? 'Collapse music details' : 'Expand music details');
+    }
+
+    if (willOpen) updateSoundCloudMetadata();
+    sfx.playKey('Tab');
+}
+
+function toggleMusicTrackList() {
+    if (!els.musicWidget || !els.musicWidget.classList.contains('island-open')) return;
+    els.musicWidget.classList.add('track-open');
+    els.musicWidget.classList.toggle('track-list-open');
+    updateSoundCloudMetadata();
+    sfx.playKey('Tab');
+}
+
+function toggleMusicPlayback() {
+    const widget = initSoundCloudWidget();
+
+    if (widget && typeof widget.play === 'function' && typeof widget.pause === 'function') {
+        if (musicPlaying) {
+            widget.pause();
+        } else {
+            widget.play();
+        }
         return;
     }
 
-    // If closed, open it
+    setMusicPlayback(!musicPlaying);
+    setMusicStatus(musicPlaying ? 'STREAMING KUGNUS X AI' : 'SOUNDCLOUD LINK READY');
+}
+
+function initMusicWidgetPreference() {
+    if (!els.musicWidget) return;
+    const mode = preferredMusicUi();
+    els.musicWidget.dataset.playerUi = mode;
+    syncMusicUiControls(mode);
+    renderMusicTrackList();
+}
+
+function handleMusicWidgetClick(e) {
+    const action = e.target.closest('[data-music-action]')?.dataset.musicAction;
+
+    if (action === 'close') {
+        e.stopPropagation();
+        closeMusicWidget();
+        return;
+    }
+
+    if (action === 'toggle') {
+        e.stopPropagation();
+        toggleMusicPlayback();
+        return;
+    }
+
+    if (action === 'switch-ui') {
+        e.stopPropagation();
+        switchMusicWidgetUi();
+        return;
+    }
+
+    if (action === 'details') {
+        e.stopPropagation();
+        toggleMusicDetails();
+        return;
+    }
+
+    if (action === 'track-list') {
+        e.stopPropagation();
+        toggleMusicTrackList();
+        return;
+    }
+
     if (els.musicWidget.classList.contains('closed')) {
-        els.musicWidget.classList.remove('closed');
-        els.musicWidget.classList.add('open');
+        openMusicWidget(preferredMusicUi());
     }
 }
 
@@ -993,8 +1468,44 @@ function handleReadmeOverlayClick(e) {
     }
 }
 
+function normalizeReadmeLanguage(value) {
+    return value === 'ko' ? 'ko' : 'en';
+}
+
+function setReadmeLanguage(value, options = {}) {
+    const lang = normalizeReadmeLanguage(value);
+    const readmeBox = document.getElementById('readme-box');
+
+    localStorage.setItem(README_LANGUAGE_STORAGE_KEY, lang);
+
+    if (readmeBox) {
+        readmeBox.dataset.manualLang = lang;
+    }
+
+    document.querySelectorAll('.readme-lang-toggle [data-readme-lang]').forEach(langButton => {
+        langButton.classList.toggle('active', normalizeReadmeLanguage(langButton.dataset.readmeLang) === lang);
+    });
+
+    if (options.sound) sfx.playKey('Tab');
+}
+
+function initReadmeLanguage() {
+    setReadmeLanguage(localStorage.getItem(README_LANGUAGE_STORAGE_KEY) || 'en');
+}
+
+function handleReadmeLanguageClick(e) {
+    const button = e.target.closest('[data-readme-lang]');
+    if (!button) return;
+
+    const lang = normalizeReadmeLanguage(button.dataset.readmeLang);
+    setReadmeLanguage(lang, { sound: true });
+}
+
 // Add Listeners for Game Controls
 function initGameControls() {
+    initCommandDialog();
+    initOverlayChromeObserver();
+
     // Remove existing to be safe (though named functions handle this mostly)
     els.input.field.removeEventListener('input', handleInput);
     els.input.field.removeEventListener('keydown', handleKeydown);
@@ -1014,6 +1525,7 @@ function initGameControls() {
 
     // Music Widget Logic
     if (els.musicWidget) {
+        initMusicWidgetPreference();
         els.musicWidget.addEventListener('click', handleMusicWidgetClick);
     }
 
@@ -1022,21 +1534,27 @@ function initGameControls() {
     const readmeWidget = document.getElementById('readme-widget');
     const readmeOverlay = document.getElementById('readme-overlay');
     const readmeClose = document.getElementById('readme-close');
+    const readmeLangToggle = document.querySelector('.readme-lang-toggle');
 
     if (readmeWidget && readmeOverlay && readmeClose) {
         console.log("README Elements Found & Listeners Attached");
         readmeWidget.removeEventListener('click', handleReadmeWidgetClick);
         readmeClose.removeEventListener('click', handleReadmeCloseClick);
         readmeOverlay.removeEventListener('click', handleReadmeOverlayClick);
+        if (readmeLangToggle) readmeLangToggle.removeEventListener('click', handleReadmeLanguageClick);
         readmeWidget.addEventListener('click', handleReadmeWidgetClick);
         readmeClose.addEventListener('click', handleReadmeCloseClick);
         readmeOverlay.addEventListener('click', handleReadmeOverlayClick);
+        if (readmeLangToggle) readmeLangToggle.addEventListener('click', handleReadmeLanguageClick);
+        initReadmeLanguage();
     }
 
     console.log("Game Controls Initialized");
 }
 
 function init() {
+    setGameChrome(false);
+    initOverlayChromeObserver();
     initAuth();
 
     // Restore Nickname if any (though we use auth now)
@@ -1068,9 +1586,11 @@ function init() {
         if (e.key === 'Enter') {
             // Only if Start Screen is visible, User is Logged In, and Game is NOT playing
             const dashboard = document.getElementById('dashboard-screen');
+            const commandDialog = document.getElementById('confirm-screen');
             if (!els.screens.start.classList.contains('hidden') &&
                 els.auth.loggedInView.classList.contains('active') &&
                 (!dashboard || dashboard.classList.contains('hidden')) &&
+                (!commandDialog || commandDialog.classList.contains('hidden')) &&
                 !state.isPlaying) {
                 if (isOcpEditionActive()) {
                     handleStart();
@@ -1291,10 +1811,45 @@ function handleLogout() {
 }
 
 async function handleWithdraw() {
-    if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
+    const result = await showCommandDialog({
+        title: 'DELETE ACCOUNT?',
+        message: '계정을 삭제하면 로컬 로그인 정보와 원격 계정 복구가 불가능합니다. 계속하려면 비밀번호를 입력하세요.',
+        okText: 'WITHDRAW',
+        cancelText: 'CANCEL',
+        input: true,
+        placeholder: 'PASSWORD',
+        requireValue: true,
+        danger: true
+    });
 
-    const password = prompt("Please enter your password to confirm deletion:");
-    if (!password) return;
+    if (!result.accepted) return;
+
+    const password = result.value;
+
+    if (isLocalDevAuthEnabled() && !state.userToken) {
+        const key = state.nickname.toLowerCase();
+        const users = readLocalAuthUsers();
+        if (users[key] && users[key].password === password) {
+            delete users[key];
+            saveLocalAuthUsers(users);
+            await showCommandDialog({
+                title: 'LOCAL ACCOUNT DELETED',
+                message: '로컬 개발 계정이 삭제되었습니다.',
+                okText: 'OK',
+                cancelText: ''
+            });
+            handleLogout();
+        } else {
+            await showCommandDialog({
+                title: 'WITHDRAW FAILED',
+                message: '비밀번호가 일치하지 않습니다.',
+                okText: 'OK',
+                cancelText: '',
+                danger: true
+            });
+        }
+        return;
+    }
 
     try {
         const res = await fetch(`${API_BASE}/withdraw`, {
@@ -1307,14 +1862,31 @@ async function handleWithdraw() {
         });
 
         if (res.ok) {
-            alert("Account deleted.");
+            await showCommandDialog({
+                title: 'ACCOUNT DELETED',
+                message: '계정이 삭제되었습니다.',
+                okText: 'OK',
+                cancelText: ''
+            });
             handleLogout();
         } else {
             const data = await res.json();
-            alert("Failed: " + (data.error || "Unknown error"));
+            await showCommandDialog({
+                title: 'WITHDRAW FAILED',
+                message: data.error || 'Unknown error',
+                okText: 'OK',
+                cancelText: '',
+                danger: true
+            });
         }
     } catch (e) {
-        alert("Server error.");
+        await showCommandDialog({
+            title: 'SERVER ERROR',
+            message: '서버 응답을 받지 못했습니다.',
+            okText: 'OK',
+            cancelText: '',
+            danger: true
+        });
     }
 }
 
@@ -1326,10 +1898,12 @@ function showLoggedInView() {
     // Refresh leaderboard for default view
     fetchLeaderboard();
     initGameControls();
+    syncOverlayChrome();
 }
 
 function showAuthView() {
     document.body.classList.remove('ocp-edition');
+    setGameChrome(false);
     const standardMenu = document.getElementById('standard-menu');
     const ocpMenu = document.getElementById('ocp-menu');
     const editionCodeBtn = document.getElementById('edition-code-btn');
@@ -1341,6 +1915,7 @@ function showAuthView() {
     els.auth.authContainer.style.display = 'block';
     els.auth.loggedInView.classList.remove('active');
     switchTab('login');
+    syncOverlayChrome();
 }
 
 // Start

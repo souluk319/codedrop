@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
+import net from 'net';
 
-const PORT = 3999;
+const PORT = Number(process.env.VERIFY_SERVER_PORT || await freePort());
 const base = `http://127.0.0.1:${PORT}`;
 
 function assert(condition, message) {
@@ -26,8 +27,29 @@ async function waitForServer() {
     throw new Error('server did not become ready');
 }
 
+async function freePort() {
+    return new Promise((resolve, reject) => {
+        const server = net.createServer();
+        server.unref();
+        server.on('error', reject);
+        server.listen(0, '127.0.0.1', () => {
+            const { port } = server.address();
+            server.close(() => resolve(port));
+        });
+    });
+}
+
 const child = spawn(process.execPath, ['server.js'], {
-    env: { ...process.env, PORT: String(PORT), ALLOWED_ORIGINS: `${base},http://localhost:${PORT}` },
+    env: {
+        ...process.env,
+        PORT: String(PORT),
+        ALLOWED_ORIGINS: `${base},http://localhost:${PORT}`,
+        LLM_ENDPOINT: '',
+        LLM_BASE_URL: 'http://127.0.0.1:9',
+        LLM_PROVIDER: 'openai',
+        LLM_MODEL: 'smoke-test-model',
+        LLM_TIMEOUT_MS: '1000'
+    },
     stdio: ['ignore', 'pipe', 'pipe']
 });
 
@@ -66,12 +88,50 @@ try {
     });
     assert(unauthSubmit.status === 401, '/submit should require a bearer token');
 
+    const emptyLearnChat = await request('/api/learn-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '' })
+    });
+    assert(emptyLearnChat.status === 400, '/api/learn-chat should reject empty messages before LLM access');
+
+    const emptyLearnChatStream = await request('/api/learn-chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '' })
+    });
+    assert(emptyLearnChatStream.status === 400, '/api/learn-chat/stream should reject empty messages before LLM access');
+
+    const invalidLearnChatStream = await request('/api/learn-chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '테스트', engine: 'gpt-4o' })
+    });
+    assert(invalidLearnChatStream.status === 400, '/api/learn-chat/stream should reject invalid engines');
+
+    const streamError = await request('/api/learn-chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '스트림 스모크 테스트', engine: 'kugnus' })
+    });
+    assert(streamError.status === 200, '/api/learn-chat/stream should keep stream responses HTTP 200 after validation');
+    assert(streamError.headers.get('content-type').includes('application/x-ndjson'), '/api/learn-chat/stream should use NDJSON');
+    assert(streamError.text.includes('"event":"meta"'), '/api/learn-chat/stream should emit a meta event');
+    assert(streamError.text.includes('"event":"error"') || streamError.text.includes('"event":"delta"') || streamError.text.includes('"event":"done"'),
+        '/api/learn-chat/stream should emit at least error/delta/done after meta');
+
     console.log(JSON.stringify({
+        port: PORT,
         server: 'ok',
         publicAssets: ['/', '/js/game.js', '/assets/red-hat-logo.svg'],
         protectedPaths: denied.length,
-        authSmoke: 'ok'
+        authSmoke: 'ok',
+        learnChatSmoke: 'ok',
+        learnChatStreamSmoke: 'ok'
     }, null, 2));
+} catch (err) {
+    err.message = `${err.message}\nServer output:\n${output}`;
+    throw err;
 } finally {
     child.kill('SIGTERM');
 }

@@ -582,6 +582,45 @@ const ScenarioMode = (() => {
             });
         }
 
+        // 놓친 영역 → 학습 모드 레슨 복습 추천 칩
+        if (typeof LearnMode !== 'undefined') {
+            const weakCats = Object.entries(perCat).filter(([, [c, t]]) => c < t).map(([cat]) => cat);
+            const chips = [];
+            weakCats.forEach(cat => {
+                LearnMode.lessonsForCategory(cat).forEach(lesson => {
+                    // 아직 잠긴 레슨은 추천하지 않음 (순차 언락 유지)
+                    if (LearnMode.isUnlocked(lesson.id) && !chips.some(ch => ch.id === lesson.id)) {
+                        chips.push(lesson);
+                    }
+                });
+            });
+            if (chips.length > 0) {
+                const cTitle = document.createElement('div');
+                cTitle.className = 'review-title';
+                cTitle.style.marginTop = '15px';
+                cTitle.textContent = '이 레슨으로 복습하세요';
+                ui.summaryReview.appendChild(cTitle);
+
+                const chipWrap = document.createElement('div');
+                chipWrap.style.display = 'flex';
+                chipWrap.style.flexWrap = 'wrap';
+                chipWrap.style.gap = '8px';
+                chips.forEach(lesson => {
+                    const chip = document.createElement('button');
+                    chip.className = 'btn-small';
+                    chip.type = 'button';
+                    chip.textContent = `학습: ${lesson.title}`;
+                    chip.addEventListener('click', () => {
+                        stopTimer();
+                        ui.screen.classList.add('hidden');
+                        LearnMode.startLesson(lesson.id);
+                    });
+                    chipWrap.appendChild(chip);
+                });
+                ui.summaryReview.appendChild(chipWrap);
+            }
+        }
+
         StudyStats.recordExam({
             score: correct,
             total,
