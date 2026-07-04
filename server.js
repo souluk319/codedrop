@@ -270,7 +270,7 @@ function authUser(req, res, next) {
     const session = sessions.get(token) || readSignedSession(token);
     if (!session || session.expiresAt < Date.now()) {
         if (session) sessions.delete(token);
-        return res.status(401).json({ error: "Session expired" });
+        return res.status(401).json({ error: "Authentication required", code: "SESSION_EXPIRED" });
     }
 
     req.user = { id: session.userId, nickname: session.nickname };
@@ -1527,8 +1527,7 @@ function writeNdjson(res, event, payload = {}) {
     res.write(`${JSON.stringify({ event, ...payload })}\n`);
 }
 
-// 🔹 서버 + DB 살아있는지 확인용
-// 🔹 서버 + DB 살아있는지 확인용 (DB 체크 임시 비활성화)
+// 서버 프로세스 자체의 생존 상태를 확인한다. DB 준비 여부는 /ready에서 검증한다.
 app.get("/health", (req, res) => {
     res.json({ server: "ok" });
 });

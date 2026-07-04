@@ -2637,7 +2637,7 @@ function initAuth() {
                     localStorage.removeItem('codedrop_user');
                     showAuthView();
                     if (els.auth.errors.login) {
-                        els.auth.errors.login.textContent = 'Session expired. Please login again.';
+                        els.auth.errors.login.textContent = '로그인이 필요합니다. 다시 로그인하거나 비회원으로 계속할 수 있습니다.';
                     }
                 });
             } else {
@@ -2839,7 +2839,7 @@ async function validateRestoredSession(user) {
     localStorage.removeItem('codedrop_user');
     showAuthView();
     if (els.auth.errors.login) {
-        els.auth.errors.login.textContent = 'Session expired. Please login again.';
+        els.auth.errors.login.textContent = '로그인이 필요합니다. 다시 로그인하거나 비회원으로 계속할 수 있습니다.';
     }
     window.dispatchEvent(new CustomEvent('codedrop:auth', { detail: null }));
     return false;
