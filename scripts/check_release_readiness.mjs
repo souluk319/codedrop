@@ -23,6 +23,7 @@ if (fs.existsSync(envPath)) {
 const target = String(args.get('target') || process.env.DEPLOY_TARGET || 'node').toLowerCase();
 const errors = [];
 const warnings = [];
+const nextActions = [];
 
 function value(name) {
     return String(process.env[name] || '').trim();
@@ -45,6 +46,14 @@ function requireFile(file, message = `Missing ${file}`) {
     if (!fs.existsSync(path.join(root, file))) errors.push(message);
 }
 
+function addAction(message) {
+    if (!nextActions.includes(message)) nextActions.push(message);
+}
+
+function hasAnyFile(files) {
+    return files.some(file => fs.existsSync(path.join(root, file)));
+}
+
 function checkCommon() {
     const defaultEngine = value('DEFAULT_CHAT_ENGINE');
     if (defaultEngine && defaultEngine !== 'kugnus') {
@@ -58,15 +67,18 @@ function checkCommon() {
 
     if (!hasExplicitGateway && !hasOpenAiAlias) {
         errors.push('KUGNUS release requires KUGNUS_GATEWAY_* or OPENAI_* alias with local KUGNUS model');
+        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_MODEL=gemma4:12b-it-qat in the deployment environment.');
     }
 
     const gatewayBase = value('KUGNUS_GATEWAY_BASE_URL') || (hasOpenAiAlias ? value('OPENAI_BASE_URL') : '');
     if (gatewayBase && !publicUrlLike(gatewayBase)) {
         errors.push(`KUGNUS release gateway must be public https URL, got ${gatewayBase}`);
+        addAction('Use the public KUGNUS gateway URL for release; do not deploy localhost, private IP, Tailscale, or direct Ollama URLs.');
     }
 
     if (has('LLM_BASE_URL') && process.env.ALLOW_DIRECT_KUGNUS !== '1') {
         errors.push('LLM_BASE_URL direct KUGNUS endpoint is local/dev only; unset it for release or set ALLOW_DIRECT_KUGNUS=1 intentionally');
+        addAction('Unset LLM_BASE_URL for release after KUGNUS_GATEWAY_* is configured.');
     }
 
     if (!has('GPT_OPENAI_API_KEY') && !has('GPT_OPENAI_MODEL')) {
@@ -81,6 +93,11 @@ function checkCommon() {
 function checkNodeRelease() {
     ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'].forEach(name => addMissing([name], name));
     ['SESSION_SECRET', 'ALLOWED_ORIGINS'].forEach(name => addMissing([name], name));
+    if (!has('DB_HOST') || !has('DB_USER') || !has('DB_PASSWORD') || !has('DB_NAME')) {
+        addAction('Fill the production MySQL-compatible DB variables, or switch DEPLOY_TARGET=firebase after Firebase migration is implemented.');
+    }
+    if (!has('SESSION_SECRET')) addAction('Set a long random SESSION_SECRET in the deployment environment.');
+    if (!has('ALLOWED_ORIGINS')) addAction('Set ALLOWED_ORIGINS to the exact deployed app origin.');
 
     if (!has('PACK_ADMIN_NICKNAMES')) {
         warnings.push('PACK_ADMIN_NICKNAMES is empty; public pack review approval will be unavailable');
@@ -91,12 +108,29 @@ function checkFirebaseRelease() {
     requireFile('firebase.json');
     requireFile('.firebaserc');
     requireFile('firestore.rules');
+    if (!fs.existsSync(path.join(root, 'firebase.json'))) {
+        addAction('Create firebase.json after Firebase project setup; Hosting must rewrite /api/** to Cloud Run or Functions.');
+    }
+    if (!fs.existsSync(path.join(root, '.firebaserc'))) {
+        addAction('Create .firebaserc with the real Firebase project id from Firebase Console.');
+    }
+    if (!fs.existsSync(path.join(root, 'firestore.rules'))) {
+        addAction('Add firestore.rules before Firebase deploy; do not deploy Firestore with open development rules.');
+    }
 
-    const hasFunctions = fs.existsSync(path.join(root, 'functions'))
-        || fs.existsSync(path.join(root, 'cloudrun'))
-        || fs.existsSync(path.join(root, 'api'));
-    if (!hasFunctions) {
+    const hasApiLayer = hasAnyFile([
+        'functions/package.json',
+        'functions/src/index.js',
+        'functions/src/index.ts',
+        'functions/index.js',
+        'cloudrun/Dockerfile',
+        'cloudrun/package.json',
+        'api/package.json',
+        'api/server.js'
+    ]);
+    if (!hasApiLayer) {
         errors.push('Firebase release needs Functions/Cloud Run API layer for KUGNUS, DuckDuckGo, Pack Maker, and private keys');
+        addAction('Add a real Functions or Cloud Run API layer for /api/learn-chat/stream, /api/pack-maker/chat/stream, KUGNUS, DuckDuckGo, score verification, and public pack review.');
     }
 }
 
@@ -113,7 +147,8 @@ const result = {
     envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
     ok: errors.length === 0,
     errors,
-    warnings
+    warnings,
+    nextActions
 };
 
 console.log(JSON.stringify(result, null, 2));
