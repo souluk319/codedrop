@@ -9,6 +9,7 @@
     "test": "npm run verify",
     "verify": "node scripts/verify_all.mjs",
     "verify:5x": "node scripts/verify_5x.mjs",
+    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "release:check": "node scripts/check_release_readiness.mjs",
     "db:local:up": "docker compose -f docker-compose.local.yml up -d",
     "db:local:down": "docker compose -f docker-compose.local.yml down",
@@ -23,5 +24,9 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "mysql2": "^3.15.3"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.4.2",
+    "qs": "^6.15.3"
   }
 }
