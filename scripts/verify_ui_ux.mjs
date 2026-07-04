@@ -317,6 +317,8 @@ assert(index.includes('body.edition-burst .edition-surge'), 'edition switch burs
 assert(!game.includes('confirm('), 'native confirm should be replaced with the in-app themed modal');
 assert(!game.includes('prompt('), 'native prompt should be replaced with the in-app themed modal');
 assert(!game.includes('alert('), 'native alert should be replaced with the in-app themed modal');
+assert(!game.includes('Loop:') && !game.includes('Spawning Word...'), 'DROP game loop should not keep noisy debug logging');
+assert(!game.includes('Game Controls Initialized') && !game.includes('Audio Initialized & BGM Started'), 'game startup should not emit debug-only console logs');
 assert(game.includes('showCommandDialog({'), 'themed command dialog route is missing');
 assert(game.includes('setGameChrome(true)'), 'game HUD/input should only activate during actual gameplay');
 assert(game.includes('MutationObserver(syncOverlayChrome)'), 'overlay chrome observer is missing');
@@ -403,6 +405,7 @@ assert(!packMaker.includes('innerHTML'), 'pack maker client should avoid raw inn
 assert(packMaker.includes('function renderDraft(options = {})'), 'pack maker draft renderer should support preserving an existing status');
 assert(packMaker.includes('const updateStatus = options.updateStatus !== false;'), 'pack maker renderDraft should be able to skip status updates');
 assert(packMaker.includes('renderDraft({ updateStatus: Boolean(state.userToken) });'), 'pack maker open should not let draft count hide the remote-login warning');
+assert(packMaker.includes("if (busy) renderStatus('SEARCHING + STREAMING');"), 'pack maker setBusy(false) should not overwrite the final status');
 assert(game.includes("els.musicWidget.classList.add('open', 'legacy-open')"), 'music widget SoundCloud icon should open the legacy square player');
 assert(game.includes('function toggleMusicDetails'), 'music island should expand/collapse track details from the left toggle');
 assert(game.includes('function toggleMusicTrackList'), 'music island should show/hide the playlist popover');
@@ -453,6 +456,8 @@ assert(!game.includes('user_id: state.userId'), 'score submit should not trust c
 assert(game.includes('Authorization'), 'authenticated API calls should send a bearer token');
 assert(server.includes('const MAX_SUBMITTED_SCORE = 25000;'), 'server should reject implausible forged leaderboard scores');
 assert(server.includes('function rateLimit('), 'auth and score endpoints should have basic rate limiting');
+assert(server.includes('process.env.REQUEST_LOGS === "1"'), 'request logging should be opt-in for quieter local/dev runs');
+assert(!server.includes('Serving index.html from:'), 'root route should not log a debug-only file path on every load');
 
 console.log(JSON.stringify({
     ui: 'ok',

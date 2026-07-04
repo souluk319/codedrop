@@ -33,16 +33,16 @@ app.use((req, res, next) => {
     next();
 });
 
-// 🔹 Request Logger
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-});
+if (process.env.REQUEST_LOGS === "1") {
+    app.use((req, res, next) => {
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        next();
+    });
+}
 
 // Serve index.html at root (Explicitly before static)
 app.get('/', (req, res) => {
     const indexPath = path.join(__dirname, 'index.html');
-    console.log("Serving index.html from:", indexPath);
     res.sendFile(indexPath, (err) => {
         if (err) {
             console.error("Error serving index.html:", err);
@@ -1465,15 +1465,7 @@ async function getCustomPackLeaderboard(packIdValue, difficulty) {
     return rows;
 }
 
-// 🔹 서버 실행 (마지막에 위치)
-// [변경점 4] 포트 번호 유연화
-// 설명: Render가 환경변수로 주는 PORT 값을 우선 사용하고, 없으면(로컬) 3001을 씁니다.
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`✅ CodeDrop server running on port ${PORT}`);
+    console.log(`CodeDrop server running on port ${PORT}`);
 });
-
-// 🔹 서버 실행 (마지막에 위치)
-// app.listen(3001, () => {
-//    console.log("✅ CodeDrop server running at http://127.0.0.1:3001");
-//});

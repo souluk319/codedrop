@@ -53,7 +53,7 @@ const PackMaker = (() => {
             ui.send.classList.toggle('stop', busy);
         }
         if (ui.input) ui.input.disabled = busy;
-        renderStatus(busy ? 'SEARCHING + STREAMING' : 'READY');
+        if (busy) renderStatus('SEARCHING + STREAMING');
     }
 
     function clearNode(node) {
@@ -210,6 +210,7 @@ const PackMaker = (() => {
             row.remove();
             renumberRows();
             collectDraftFromEditor();
+            renderStatus('UNSAVED DRAFT');
         });
         actionCell.appendChild(del);
 
@@ -503,6 +504,9 @@ const PackMaker = (() => {
         ui.openBtn.addEventListener('click', open);
         ui.closeBtn.addEventListener('click', close);
         ui.form.addEventListener('submit', sendChat);
+        [ui.title, ui.description].forEach(field => {
+            field.addEventListener('input', () => renderStatus('UNSAVED DRAFT'));
+        });
         ui.addItem.addEventListener('click', () => {
             addItemRow({}, ui.itemBody.children.length);
             renderStatus('UNSAVED DRAFT');

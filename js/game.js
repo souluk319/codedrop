@@ -336,8 +336,7 @@ const sfx = {
             this.bgm.currentTime = 0;
             const promise = this.bgm.play();
             if (promise !== undefined) {
-                promise.catch(error => {
-                    console.log("BGM Autoplay blocked. Waiting for interaction.");
+                promise.catch(() => {
                     const playOnInteraction = () => {
                         this.bgm.play().catch(() => { });
                         document.removeEventListener('click', playOnInteraction);
@@ -481,10 +480,6 @@ function updateHUD() {
 
 function gameLoop(timestamp) {
     if (!state.isPlaying) return;
-    // Debug Log (Throttle to avoid spam, e.g., every 60 frames)
-    if (Math.floor(timestamp) % 60 === 0) {
-        console.log("Loop:", Math.floor(timestamp), "Last:", Math.floor(state.lastSpawnTime), "Diff:", Math.floor(timestamp - state.lastSpawnTime));
-    }
 
     if (state.isPaused) {
         updateBottomWidgetOverlap(timestamp);
@@ -526,7 +521,6 @@ function gameLoop(timestamp) {
 }
 
 function spawnWord() {
-    console.log("Spawning Word...");
     state.spawnedCount++;
     updateHUD();
 
@@ -1127,7 +1121,6 @@ function initModeControls() {
 }
 
 function startGame() {
-    console.log('Starting Game...');
     // Validate
     const diff = els.controls.diffSelect.value;
     const pack = els.controls.packSelect.value;
@@ -1576,7 +1569,6 @@ function initGameControls() {
     const readmeLangToggle = document.querySelector('.readme-lang-toggle');
 
     if (readmeWidget && readmeOverlay && readmeClose) {
-        console.log("README Elements Found & Listeners Attached");
         readmeWidget.removeEventListener('click', handleReadmeWidgetClick);
         readmeClose.removeEventListener('click', handleReadmeCloseClick);
         readmeOverlay.removeEventListener('click', handleReadmeOverlayClick);
@@ -1587,8 +1579,6 @@ function initGameControls() {
         if (readmeLangToggle) readmeLangToggle.addEventListener('click', handleReadmeLanguageClick);
         initReadmeLanguage();
     }
-
-    console.log("Game Controls Initialized");
 }
 
 function init() {
@@ -1610,7 +1600,6 @@ function init() {
     const initAudio = () => {
         sfx.init();
         sfx.playBGM();
-        console.log("Audio Initialized & BGM Started");
         document.removeEventListener('click', initAudio);
         document.removeEventListener('touchstart', initAudio);
         document.removeEventListener('keydown', initAudio);
