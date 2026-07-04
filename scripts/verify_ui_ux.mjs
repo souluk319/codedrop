@@ -584,6 +584,11 @@ assert(!game.includes('user_id: state.userId'), 'score submit should not trust c
 assert(game.includes('Authorization'), 'authenticated API calls should send a bearer token');
 assert(server.includes('const MAX_SUBMITTED_SCORE = 25000;'), 'server should reject implausible forged leaderboard scores');
 assert(!server.includes('DB 체크 임시 비활성화'), 'server readiness comments should not claim DB checks are disabled');
+assert(server.includes('SELECT id, nickname FROM users WHERE id = ? LIMIT 1'), 'auth middleware should verify that bearer-token users still exist');
+assert(server.includes('code: "SESSION_REVOKED"'), 'auth middleware should return a stable revoked-session code');
+assert(server.includes('DELETE FROM custom_pack_scores'), 'withdraw should clean up custom pack scores explicitly');
+assert(server.includes('DELETE FROM custom_pack_items'), 'withdraw should clean up custom pack items explicitly');
+assert(server.includes('DELETE FROM custom_packs WHERE owner_id = ?'), 'withdraw should clean up custom packs explicitly');
 assert(server.includes('function rateLimit('), 'auth and score endpoints should have basic rate limiting');
 assert(server.includes('process.env.REQUEST_LOGS === "1"'), 'request logging should be opt-in for quieter local/dev runs');
 assert(!server.includes('Serving index.html from:'), 'root route should not log a debug-only file path on every load');

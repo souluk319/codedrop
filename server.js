@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-dotenv.config({ path: [".env.local", ".env"] });
+dotenv.config({ path: [".env.local", ".env"], quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -261,7 +261,7 @@ function readSignedSession(token) {
     }
 }
 
-function authUser(req, res, next) {
+async function authUser(req, res, next) {
     const header = req.get("authorization") || "";
     const match = header.match(/^Bearer\s+(.+)$/i);
     if (!match) return res.status(401).json({ error: "Authentication required" });
@@ -273,8 +273,20 @@ function authUser(req, res, next) {
         return res.status(401).json({ error: "Authentication required", code: "SESSION_EXPIRED" });
     }
 
-    req.user = { id: session.userId, nickname: session.nickname };
-    next();
+    try {
+        const [rows] = await db.query("SELECT id, nickname FROM users WHERE id = ? LIMIT 1", [session.userId]);
+        if (rows.length === 0) {
+            sessions.delete(token);
+            return res.status(401).json({ error: "Authentication required", code: "SESSION_REVOKED" });
+        }
+
+        req.sessionToken = token;
+        req.user = { id: rows[0].id, nickname: rows[0].nickname };
+        next();
+    } catch (err) {
+        console.error("Auth validation failed:", err.message);
+        res.status(503).json({ error: "Authentication service unavailable" });
+    }
 }
 
 app.get("/api/session", authUser, rateLimit("session", 120, 60_000, req => req.user.id), (req, res) => {
@@ -2070,6 +2082,7 @@ app.post("/withdraw", authUser, rateLimit("withdraw", 8, 60_000, req => req.user
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: "Missing fields" });
 
+    await ensureCustomPackTables();
     const connection = await db.getConnection();
 
     try {
@@ -2087,13 +2100,20 @@ app.post("/withdraw", authUser, rateLimit("withdraw", 8, 60_000, req => req.user
             return res.status(401).json({ error: "Incorrect password" });
         }
 
-        // Delete user (Cascade should handle leaderboard, but let's be safe or assume cascade is set. 
-        // If not, we might need to delete leaderboard entries first. 
-        // For now, let's assume simple delete user is enough or we leave leaderboard data as 'Unknown')
-        // Actually, let's delete leaderboard entries for privacy.
+        await connection.query(`
+            DELETE FROM custom_pack_scores
+            WHERE user_id = ?
+               OR pack_id IN (SELECT id FROM custom_packs WHERE owner_id = ?)
+        `, [req.user.id, req.user.id]);
+        await connection.query(`
+            DELETE FROM custom_pack_items
+            WHERE pack_id IN (SELECT id FROM custom_packs WHERE owner_id = ?)
+        `, [req.user.id]);
+        await connection.query("DELETE FROM custom_packs WHERE owner_id = ?", [req.user.id]);
         await connection.query("DELETE FROM leaderboard WHERE user_id = ?", [req.user.id]);
         await connection.query("DELETE FROM users WHERE id = ?", [req.user.id]);
         await connection.commit();
+        if (req.sessionToken) sessions.delete(req.sessionToken);
 
         res.json({ ok: true });
     } catch (err) {
