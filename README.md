@@ -84,6 +84,8 @@ npm run db:local:reset
 
 ## Environment
 
+Use `.env.local.example` for local development and `.env.production.example` as the deployment checklist. Do not commit real `.env` or secret-filled production files.
+
 Minimum local DB variables:
 
 ```env
@@ -199,6 +201,12 @@ Run release preflight before deploying the current Node backend:
 
 ```bash
 DEPLOY_TARGET=node npm run release:check
+```
+
+To validate a filled production env file locally before entering values in the deployment dashboard:
+
+```bash
+RELEASE_ENV_FILE=.env.production DEPLOY_TARGET=node npm run release:check
 ```
 
 This intentionally fails if release env still uses `LLM_BASE_URL` direct local/Ollama routing instead of a public `https://` KUGNUS gateway. For a future Firebase release:

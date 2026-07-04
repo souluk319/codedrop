@@ -11,6 +11,7 @@ const learn = read('js/learn_mode.js');
 const dockerCompose = read('docker-compose.local.yml');
 const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
+const productionEnvExample = read('.env.production.example');
 
 function read(file) {
     return fs.readFileSync(path.join(root, file), 'utf8');
@@ -590,6 +591,14 @@ assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example sh
 assert(localEnvExample.includes('LLM_BASE_URL='), '.env.local.example should expose dev-only direct KUGNUS routing');
 assert(/(^|\n)KUGNUS_GATEWAY_BASE_URL=\s*(\n|$)/.test(localEnvExample), '.env.local.example should not activate a fake KUGNUS gateway URL by default');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document the public KUGNUS gateway key');
+assert(productionEnvExample.includes('NODE_ENV=production'), '.env.production.example should be explicitly production-scoped');
+assert(productionEnvExample.includes('SESSION_SECRET='), '.env.production.example should require a session secret');
+assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://'), '.env.production.example should require public allowed origins');
+assert(productionEnvExample.includes('DB_SSL=true'), '.env.production.example should default production DB SSL on');
+assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.production.example should require the public KUGNUS gateway URL');
+assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
+assert(!/(^|\n)LLM_BASE_URL=\\S/.test(productionEnvExample), '.env.production.example must not enable direct KUGNUS routing');
+assert(productionEnvExample.includes('ALLOW_DIRECT_KUGNUS=0'), '.env.production.example should explicitly reject direct KUGNUS by default');
 
 console.log(JSON.stringify({
     ui: 'ok',
