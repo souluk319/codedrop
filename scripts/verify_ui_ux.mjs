@@ -29,6 +29,27 @@ function assert(condition, message) {
     if (!condition) throw new Error(message);
 }
 
+function extractJsConstObject(source, constName) {
+    const marker = `const ${constName} =`;
+    const markerIndex = source.indexOf(marker);
+    assert(markerIndex !== -1, `missing JS const object: ${constName}`);
+    const start = source.indexOf('{', markerIndex);
+    assert(start !== -1, `missing object body for ${constName}`);
+
+    let depth = 0;
+    for (let i = start; i < source.length; i++) {
+        if (source[i] === '{') depth++;
+        if (source[i] === '}') {
+            depth--;
+            if (depth === 0) {
+                return Function(`return (${source.slice(start, i + 1)})`)();
+            }
+        }
+    }
+
+    throw new Error(`unterminated JS const object: ${constName}`);
+}
+
 function assertUniqueIds(html) {
     const counts = new Map();
     for (const match of html.matchAll(/\bid="([^"]+)"/g)) {
@@ -112,6 +133,24 @@ expectedOrder.forEach(src => {
     assert(current > lastIndex, `script order is wrong around ${src}`);
     lastIndex = current;
     assert(fs.existsSync(path.join(root, src)), `script file does not exist: ${src}`);
+});
+
+const i18nText = extractJsConstObject(game, 'I18N_TEXT');
+const enI18nKeys = Object.keys(i18nText.en || {}).sort();
+const koI18nKeys = Object.keys(i18nText.ko || {}).sort();
+assert(enI18nKeys.length === koI18nKeys.length, `EN/KO i18n key counts differ: ${enI18nKeys.length} vs ${koI18nKeys.length}`);
+assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n keys must match exactly');
+[
+    'menu.startCodedrop',
+    'ocp.start',
+    'menu.packMaker',
+    'menu.keyTest',
+    'packMaker.title',
+    'packMaker.home',
+    'packMaker.ask',
+    'packMaker.stop'
+].forEach(key => {
+    assert(i18nText.ko[key] === i18nText.en[key], `${key} should stay as a stable game/action label across languages`);
 });
 
 [
