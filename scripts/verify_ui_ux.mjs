@@ -272,6 +272,16 @@ assert(index.includes('class="difficulty-picker" data-difficulty-for="ocp-diffic
 assert(index.includes('.difficulty-menu'), 'difficulty picker neon menu styles are missing');
 assert(index.includes('.select-group select.difficulty-native-select'), 'hidden difficulty select must override generic select width');
 assert(index.includes('clip-path: inset(50%)'), 'hidden native selects must be clipped so browser popovers cannot leak visually');
+assert(index.includes('opacity: 0 !important;'), 'native difficulty select should be visually invisible');
+assert(index.includes('pointer-events: none !important;'), 'native difficulty select should not receive clicks');
+const difficultyTrigger = cssBlock('.difficulty-trigger');
+assert(difficultyTrigger.includes('background:'), 'difficulty trigger should be a themed control, not a browser default select');
+assert(difficultyTrigger.includes('border: 1px solid rgba(0, 243, 255'), 'difficulty trigger should use neon theme border styling');
+const difficultyMenu = cssBlock('.difficulty-menu');
+assert(difficultyMenu.includes('position: absolute;'), 'difficulty menu should render as an in-app popover');
+assert(difficultyMenu.includes('linear-gradient'), 'difficulty menu should use the CodeDrop themed background');
+const difficultyActive = cssBlock('.difficulty-option.active::after');
+assert(difficultyActive.includes('content: "ACTIVE";'), 'difficulty active option should render an in-theme active marker');
 assert(game.includes('function initDifficultyPickers()'), 'difficulty picker initializer is missing');
 assert(game.includes("select.dispatchEvent(new Event('change', { bubbles: true }))"), 'difficulty picker must dispatch native select change events');
 
