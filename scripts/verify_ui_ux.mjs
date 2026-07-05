@@ -882,6 +882,8 @@ assert(server.includes('/^\\/games\\/codedrop(?:\\/.*)?$/'), 'server should fall
 assert(readme.includes('https://www.kugnus.com/games/codedrop/'), 'README should document the public CodeDrop subpath');
 assert(readme.includes('/games/codedrop/*') && readme.includes('-> CodeDrop backend'), 'README should document the reverse proxy path for CodeDrop');
 assert(readme.includes('/games/codedrop/api/*') && readme.includes('/games/codedrop/login'), 'README should document base-prefixed API proxy routing for subpath deploy');
+assert(readme.includes('handle /games/codedrop/*'), 'README Caddy example should preserve the /games/codedrop prefix');
+assert(!readme.includes('handle_path /games/codedrop/*'), 'README should not suggest stripping /games/codedrop before proxying direct browser routes');
 assert(readme.includes('ALLOWED_ORIGINS') && readme.includes('https://www.kugnus.com'), 'README should document the production allowed origin for kugnus.com');
 assert(verifyServerSmoke.includes('/games/codedrop/pack-maker'), 'server smoke should verify Pack Maker direct subpath refresh');
 assert(verifyServerSmoke.includes('/games/codedrop/ocp/dashboard'), 'server smoke should verify OCP dashboard direct subpath refresh');

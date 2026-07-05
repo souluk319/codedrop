@@ -305,10 +305,14 @@ location ^~ /games/codedrop/ {
 Example Caddy shape:
 
 ```caddyfile
-handle_path /games/codedrop/* {
+handle /games/codedrop/* {
     reverse_proxy https://codedrop-backend.example.com
 }
 ```
+
+Do not use `handle_path` for this route unless you also rewrite the path back to
+`/games/codedrop/*`; direct browser routes such as `/games/codedrop/pack-maker`
+must arrive at the backend with the base path intact.
 
 For this domain, production `ALLOWED_ORIGINS` should include exactly:
 
