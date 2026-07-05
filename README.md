@@ -194,9 +194,10 @@ npm run verify:5x      # Repeat verification
 npm run verify:db      # Local DB E2E: register, custom pack, score, withdraw
 npm run verify:packmaker:kugnus
                        # Real KUGNUS E2E: vague prompt gate + 50 Korean auto-parts pack + save + custom leaderboard
+npm run doctor:local   # Fast local runtime doctor; skips deployment env preflight
 npm run doctor:local:full
                        # Local product doctor: deep checks + KUGNUS Pack Maker, skips deployment env preflight
-npm run doctor:full     # Deep system doctor plus real KUGNUS Pack Maker E2E summary
+npm run doctor:full     # Deep system doctor plus release preflight; BLOCKED until production env is filled
 npm run doctor:release  # Fail-fast doctor for release gates; exits non-zero on FAIL/BLOCKED
 npm run doctor:release:full
                        # Fail-fast release gate; runs slow Pack Maker E2E only after preflight passes
