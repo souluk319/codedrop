@@ -380,6 +380,9 @@ assert(!learn.includes('sessionStorage'), 'learn chat fallback should not persis
 assert(learn.includes('function syncChatEngineUi()'), 'custom learn chat engine picker should sync with the hidden select value');
 assert(learn.includes('function toggleChatEngineMenu()'), 'custom learn chat engine picker should use a themed popover');
 assert(index.includes('.learn-engine-menu'), 'learn chat engine popover should be themeable instead of native browser blue');
+const learnEngineNative = cssBlock('#learn-chat-engine');
+assert(learnEngineNative.includes('display: none;'), 'learn chat native engine select should be removed from layout');
+assert(index.includes('id="learn-chat-engine" aria-label="LLM 엔진 선택" aria-hidden="true" tabindex="-1"'), 'learn chat hidden engine select should not be accessible as the visible control');
 assert(server.includes('app.post("/api/learn-chat"'), 'learn chat proxy route is missing');
 assert(server.includes('app.post("/api/learn-chat/stream"'), 'streaming learn chat proxy route is missing');
 assert(server.includes('application/x-ndjson'), 'streaming learn chat should emit NDJSON');
@@ -761,6 +764,9 @@ assert(index.includes('id="pack-maker-engine-shell"'), 'pack maker should use a 
 assert(index.includes('id="pack-maker-engine-toggle"'), 'pack maker should use a themed engine picker toggle');
 assert(index.includes('id="pack-maker-engine-menu"'), 'pack maker should use a themed engine picker popover');
 assert(index.includes('#pack-maker-engine') && index.includes('pointer-events: none;'), 'pack maker native engine select should stay hidden');
+const packMakerEngineNative = cssBlock('#pack-maker-engine');
+assert(packMakerEngineNative.includes('display: none;'), 'pack maker native engine select should be removed from layout');
+assert(index.includes('id="pack-maker-engine" aria-label="Pack maker engine" aria-hidden="true" tabindex="-1"'), 'pack maker hidden engine select should not be accessible as the visible control');
 assert(index.includes('--pack-maker-safe-bottom'), 'pack maker overlay should reserve bottom space for global README/MUSIC widgets');
 assert(index.includes('100dvh - var(--pack-maker-safe-bottom)'), 'pack maker shell height should avoid the global bottom widget zone');
 assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client should call the stream endpoint');

@@ -1776,6 +1776,7 @@
 
         #pack-maker-engine {
             position: absolute;
+            display: none;
             width: 1px;
             height: 1px;
             opacity: 0;
@@ -4535,6 +4536,7 @@
 
         #learn-chat-engine {
             position: absolute;
+            display: none;
             width: 1px;
             height: 1px;
             opacity: 0;
@@ -5585,7 +5587,7 @@
                                 aria-selected="false">GPT 5.4 MINI</button>
                         </div>
                     </div>
-                    <select id="pack-maker-engine" aria-label="Pack maker engine">
+                    <select id="pack-maker-engine" aria-label="Pack maker engine" aria-hidden="true" tabindex="-1">
                         <option value="kugnus" selected>KUGNUS SERVER</option>
                         <option value="openai">GPT 5.4 MINI</option>
                     </select>
@@ -5841,7 +5843,7 @@
                                 aria-selected="false">GPT 5.4 MINI</button>
                         </div>
                     </div>
-                    <select id="learn-chat-engine" aria-label="LLM 엔진 선택" tabindex="-1">
+                    <select id="learn-chat-engine" aria-label="LLM 엔진 선택" aria-hidden="true" tabindex="-1">
                         <option value="kugnus" selected>KUGNUS SERVER</option>
                         <option value="openai">GPT 5.4 MINI</option>
                     </select>
