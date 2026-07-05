@@ -463,8 +463,13 @@ assert(game.includes("els.musicWidget.classList.add('island-open')"), 'music wid
 
 assert(server.includes('app.post("/api/pack-maker/chat/stream", authUser'), 'pack maker stream endpoint should require auth');
 assert(server.includes('function extractPackIntent'), 'pack maker should parse realistic natural-language pack requests');
+assert(server.includes('function isPackGenerationRequest'), 'pack maker should gate vague chat before starting search/generation');
+assert(server.includes('PACK BRIEF REQUIRED'), 'pack maker should answer vague prompts with a brief request instead of generating');
 assert(server.includes('requestedCount'), 'pack maker should track the requested item count');
 assert(server.includes('packMakerTokenBudget'), 'pack maker should scale LLM token budget from target item count');
+assert(server.includes('PACK_MAKER_BATCH_TIMEOUT_MS'), 'pack maker should bound each LLM batch so requests do not hang indefinitely');
+assert(server.includes('linkedTimeoutSignal'), 'pack maker should link per-batch timeout to client aborts');
+assert(server.includes('readLearnLlmStream('), 'pack maker batch generation should stream LLM deltas instead of hiding work until the end');
 assert(server.includes('PACK_REPAIR_ATTEMPTS'), 'pack maker should retry/repair drafts that are short');
 assert(server.includes('draftMeetsPackIntent'), 'pack maker should verify draft count/language before success');
 assert(server.includes('DRAFT SHORT'), 'pack maker should fail visibly when the target draft is still short');
@@ -588,6 +593,8 @@ assert(!game.includes('${item.nickname}'), 'leaderboard nickname must not be int
 assert(!game.includes('Session expired'), 'UI should not show raw session-expired copy to users');
 assert(!game.includes('user_id: state.userId'), 'score submit should not trust client-side user_id');
 assert(game.includes('Authorization'), 'authenticated API calls should send a bearer token');
+assert(packMaker.includes("e.key === 'Enter' && !e.shiftKey"), 'pack maker chat textarea should send on Enter and keep Shift+Enter for newlines');
+assert(packMaker.includes('ui.form.requestSubmit()'), 'pack maker Enter shortcut should submit through the form handler');
 assert(server.includes('const MAX_SUBMITTED_SCORE = 25000;'), 'server should reject implausible forged leaderboard scores');
 assert(!server.includes('DB 체크 임시 비활성화'), 'server readiness comments should not claim DB checks are disabled');
 assert(server.includes('SELECT id, nickname FROM users WHERE id = ? LIMIT 1'), 'auth middleware should verify that bearer-token users still exist');

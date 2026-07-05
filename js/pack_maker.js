@@ -1147,6 +1147,13 @@ const PackMaker = (() => {
         ui.openBtn.addEventListener('click', open);
         ui.closeBtn.addEventListener('click', close);
         ui.form.addEventListener('submit', sendChat);
+        ui.input.addEventListener('keydown', e => {
+            e.stopPropagation();
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                ui.form.requestSubmit();
+            }
+        });
         ui.engine.addEventListener('change', () => {
             setEngine(ui.engine.value);
             if (!stateRef.busy) renderStatus(`${engineLabel()} READY`);

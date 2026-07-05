@@ -93,7 +93,7 @@ const MAX_SUBMITTED_SCORE = 25000;
 const MAX_CHAT_MESSAGE_LEN = 1200;
 const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
-const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 600_000, 900_000));
+const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 180_000, 300_000));
 const KUGNUS_HEALTH_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.KUGNUS_HEALTH_TIMEOUT_MS) || 12_000, 30_000));
 const CHAT_ENGINES = new Set(["kugnus", "openai"]);
 const PACK_STATUSES = new Set(["draft", "pending", "approved", "rejected"]);
@@ -106,7 +106,8 @@ const MAX_PACK_ITEM_DESC_LEN = 180;
 const MAX_PACK_SOURCES = 3;
 const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
-const PACK_MAKER_BATCH_SIZE = 8;
+const PACK_MAKER_BATCH_SIZE = 25;
+const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 45_000, 120_000));
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
         .split(",")
@@ -634,6 +635,56 @@ function extractPackIntent(message) {
     return { requestedCount, termLanguage, title, topic };
 }
 
+function packTopicSignal(intent) {
+    return sanitizePackText(intent.topic || "", 160)
+        .replace(/\b(?:pack|data pack|terms?|items?|words?|make|create|generate|draft|build)\b/gi, " ")
+        .replace(/(?:팩|데이터팩|단어|용어|개|만들어줘|만들|생성|제작|작성|뽑아줘|뽑아서|초안|부탁|해줘)/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function isPackGenerationRequest(message, intent = extractPackIntent(message)) {
+    const text = sanitizePackText(message, MAX_CHAT_MESSAGE_LEN);
+    const compact = text.replace(/\s+/g, "");
+
+    if (/^(되냐|돼|가능|가능해|가능한가|되나|되나요|테스트|test|help|도움|안녕|hi|hello)[?!.。]*$/i.test(compact)) {
+        return false;
+    }
+
+    const hasCreateVerb = /(만들|생성|제작|작성|뽑|추출|정리|초안|추천|부탁|make|create|generate|draft|build)/i.test(text);
+    const hasPackWord = /(?:팩|데이터팩|\bpack\b|\bdata\s*pack\b)/i.test(text);
+    const hasTermHint = /(?:단어|용어|고유명사|명령어|커맨드|부품|키워드|어휘|\bterms?\b|\bitems?\b|\bwords?\b|\bvocab(?:ulary)?\b|\bglossary\b|\bcommands?\b)/i.test(text);
+    const hasCount = /(\d{1,3})\s*(?:개|단어|용어|terms?|items?|words?)/i.test(text);
+    const topicSignal = packTopicSignal(intent);
+    const hasDomainSignal = /[가-힣A-Za-z0-9]{2,}/.test(topicSignal);
+
+    return hasCreateVerb && hasDomainSignal && (hasPackWord || hasTermHint || hasCount);
+}
+
+function packMakerBriefResponse(message) {
+    const korean = /[가-힣]/.test(message || "");
+    if (korean) {
+        return [
+            "팩 생성 요청이 아니어서 검색/생성을 시작하지 않았습니다.",
+            "",
+            "Pack Maker에는 아래 4가지를 한 문장에 넣어주세요.",
+            "- 도메인: 자동차 정비, EX280, 간호학, 회계 등",
+            "- 언어: 한글 또는 영어",
+            "- 개수: 10-120개",
+            "- 팩 이름: 카 파츠 팩처럼 저장될 이름",
+            "",
+            "예: 자동차 정비소에 취직하는데 한글 자동차부품 단어 50개로 카 파츠 팩 만들어줘"
+        ].join("\n");
+    }
+
+    return [
+        "I did not start search/generation because this is not a pack-making request.",
+        "",
+        "Tell Pack Maker the domain, term language, item count, and pack name.",
+        "Example: Make a Korean car-parts pack with 50 common auto repair terms."
+    ].join("\n");
+}
+
 function packLanguageLabel(language) {
     if (language === "korean") return "KOREAN";
     if (language === "english") return "ENGLISH";
@@ -660,7 +711,7 @@ function packIntentMessage(intent) {
 }
 
 function packMakerTokenBudget(count) {
-    return Math.max(2200, Math.min(12000, 1200 + clampPackTargetCount(count) * 140));
+    return Math.max(900, Math.min(5200, 500 + clampPackTargetCount(count) * 85));
 }
 
 function isLikelyLanguageMismatch(term, language) {
@@ -827,15 +878,31 @@ function draftFromPackMakerLines(answer, intent, count, fallbackSources = []) {
 
 async function generatePackMakerBatchDraft(target, payload, draft, searchResults, batchCount, batchNumber, signal, onDelta) {
     const batchMessages = buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber);
-    const answer = await callPackMakerLlmOnce(
-        target,
-        batchMessages,
-        signal,
-        {
-            maxTokens: packMakerTokenBudget(batchCount)
+    const childSignal = linkedTimeoutSignal(signal, PACK_MAKER_BATCH_TIMEOUT_MS);
+    let answer = "";
+
+    try {
+        answer = await readLearnLlmStream(
+            target,
+            batchMessages,
+            childSignal.signal,
+            delta => onDelta(delta),
+            {
+                maxTokens: packMakerTokenBudget(batchCount)
+            }
+        );
+    } catch (err) {
+        if (signal.aborted) throw err;
+        if (childSignal.signal.aborted) {
+            const timeoutError = new Error(`KUGNUS batch timeout after ${Math.round(PACK_MAKER_BATCH_TIMEOUT_MS / 1000)}s`);
+            timeoutError.code = "PACK_BATCH_TIMEOUT";
+            throw timeoutError;
         }
-    );
-    if (answer) onDelta(`\n${answer}\n`);
+        throw err;
+    } finally {
+        childSignal.cleanup();
+    }
+
     const parsed = extractDraftJson(answer);
     const parsedDraft = normalizeDraftForIntent(parsed || {}, { ...payload.intent, requestedCount: batchCount }, searchResults);
     const lineDraft = draftFromPackMakerLines(answer, payload.intent, batchCount, searchResults);
@@ -853,15 +920,13 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
         items: []
     }, payload.intent, searchResults);
     let answer = "";
-    const maxBatches = Math.max(
-        Math.ceil(payload.intent.requestedCount / Math.max(1, Math.floor(PACK_MAKER_BATCH_SIZE / 2))),
-        payload.intent.requestedCount
-    );
+    const plannedBatches = Math.ceil(payload.intent.requestedCount / PACK_MAKER_BATCH_SIZE);
+    const maxBatches = plannedBatches + PACK_REPAIR_ATTEMPTS + 2;
 
     for (let batchNumber = 1; batchNumber <= maxBatches && draft.items.length < payload.intent.requestedCount; batchNumber += 1) {
         const remaining = payload.intent.requestedCount - draft.items.length;
         let batchCount = Math.min(PACK_MAKER_BATCH_SIZE, remaining);
-        onStatus(`${draft.items.length}/${payload.intent.requestedCount} GENERATING`);
+        onStatus(`${draft.items.length}/${payload.intent.requestedCount} GENERATING BATCH ${batchNumber}/${maxBatches}`);
 
         let result = null;
         let lastError = null;
@@ -1534,6 +1599,26 @@ async function callPackMakerLlmOnce(target, messages, signal, options = {}) {
     return answer;
 }
 
+function linkedTimeoutSignal(parentSignal, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const abortFromParent = () => controller.abort();
+
+    if (parentSignal.aborted) {
+        controller.abort();
+    } else {
+        parentSignal.addEventListener("abort", abortFromParent, { once: true });
+    }
+
+    return {
+        signal: controller.signal,
+        cleanup() {
+            clearTimeout(timeout);
+            parentSignal.removeEventListener("abort", abortFromParent);
+        }
+    };
+}
+
 function writeNdjson(res, event, payload = {}) {
     if (res.writableEnded || res.destroyed) return;
     res.write(`${JSON.stringify({ event, ...payload })}\n`);
@@ -1764,6 +1849,16 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
 
     try {
         const intent = extractPackIntent(message);
+        if (!isPackGenerationRequest(message, intent)) {
+            const answer = packMakerBriefResponse(message);
+            finished = true;
+            writeNdjson(res, "status", { text: "PACK BRIEF REQUIRED" });
+            writeNdjson(res, "delta", { text: answer });
+            writeNdjson(res, "done", { answer });
+            if (!res.writableEnded && !res.destroyed) res.end();
+            return;
+        }
+
         writeNdjson(res, "status", {
             text: `TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS`
         });
@@ -1810,7 +1905,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
         if (aborted && res.destroyed) return;
 
         const status = err.status && Number.isInteger(err.status) ? err.status : (aborted ? 499 : 500);
-        const messageText = aborted ? "LLM stream stopped" : (status === 503 ? err.message : "Pack Maker request failed");
+        const messageText = aborted ? "Pack Maker timed out before completing the draft" : (status === 503 ? err.message : "Pack Maker request failed");
         if (!aborted) console.error("Pack Maker stream failed:", err.message);
 
         finished = true;
