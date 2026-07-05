@@ -33,6 +33,18 @@ app.use((req, res, next) => {
     next();
 });
 
+function preventStaleUiCache(res) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
+}
+
+function sendNoStoreFile(res, filePath, onError) {
+    preventStaleUiCache(res);
+    res.sendFile(filePath, onError);
+}
+
 if (process.env.REQUEST_LOGS === "1") {
     app.use((req, res, next) => {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -43,7 +55,7 @@ if (process.env.REQUEST_LOGS === "1") {
 // Serve index.html at root (Explicitly before static)
 app.get('/', (req, res) => {
     const indexPath = path.join(__dirname, 'index.html');
-    res.sendFile(indexPath, (err) => {
+    sendNoStoreFile(res, indexPath, (err) => {
         if (err) {
             console.error("Error serving index.html:", err);
             res.status(500).send("Error loading game: " + err.message);
@@ -53,11 +65,15 @@ app.get('/', (req, res) => {
 
 ["privacy.html", "terms.html", "data-deletion.html", "meta-review.html"].forEach(file => {
     app.get(`/${file}`, (req, res) => {
-        res.sendFile(path.join(__dirname, file));
+        sendNoStoreFile(res, path.join(__dirname, file));
     });
 });
 
-app.use("/js", express.static(path.join(__dirname, "js")));
+app.use("/js", express.static(path.join(__dirname, "js"), {
+    etag: false,
+    lastModified: false,
+    setHeaders: preventStaleUiCache
+}));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use("/sound", express.static(path.join(__dirname, "sound")));
 
