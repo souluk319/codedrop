@@ -138,6 +138,48 @@ const PackMaker = (() => {
         return `${engineLabel()}${engineRouteLabel(meta)} ${status}`;
     }
 
+    function compactPrompt(message) {
+        return String(message || '').replace(/\s+/g, '').trim();
+    }
+
+    function isLocalPackGenerationRequest(message) {
+        const text = escapeText(message);
+        const compact = compactPrompt(text);
+        if (!text) return false;
+        if (/^(되냐|돼|가능|가능해|가능한가|되나|되나요|테스트|test|help|도움|안녕|hi|hello)[?!.。]*$/i.test(compact)) {
+            return false;
+        }
+
+        const hasCreateVerb = /(만들|생성|제작|작성|뽑|추출|정리|초안|추천|부탁|make|create|generate|draft|build)/i.test(text);
+        const hasPackWord = /(?:팩|데이터팩|\bpack\b|\bdata\s*pack\b)/i.test(text);
+        const hasTermHint = /(?:단어|용어|고유명사|명령어|커맨드|부품|키워드|어휘|\bterms?\b|\bitems?\b|\bwords?\b|\bvocab(?:ulary)?\b|\bglossary\b|\bcommands?\b)/i.test(text);
+        const hasCount = /(\d{1,3})\s*(?:개|단어|용어|terms?|items?|words?)/i.test(text);
+        return hasCreateVerb && (hasPackWord || hasTermHint || hasCount);
+    }
+
+    function localBriefResponse(message) {
+        if (/[가-힣]/.test(message || '')) {
+            return [
+                '됩니다. 다만 Pack Maker는 일반 대화보다 **데이터팩 생성 요청**에 맞춰져 있습니다.',
+                '',
+                '한 문장에 아래 4가지를 넣으면 KUGNUS SERVER가 검색 근거를 보고 초안을 만듭니다.',
+                '- 도메인: 자동차 정비, EX280, 회계, 병원 행정 등',
+                '- 언어: 한글 또는 영어',
+                '- 개수: 10-120개',
+                '- 팩 이름: 카 파츠 팩처럼 저장될 이름',
+                '',
+                '예: 자동차 정비소에 취직하는데 한글 자동차부품 단어 50개로 카 파츠 팩 만들어줘'
+            ].join('\n');
+        }
+
+        return [
+            'Yes. Pack Maker is for **data pack generation requests**, not open-ended chat.',
+            '',
+            'Include the domain, term language, item count, and pack name.',
+            'Example: Make a Korean car-parts pack with 50 common auto repair terms.'
+        ].join('\n');
+    }
+
     function updateEngineRouteStatus(meta = null) {
         if (!ui.route) return;
         ui.route.classList.remove('warn', 'danger');
@@ -701,6 +743,18 @@ const PackMaker = (() => {
         renderStatus(state.userToken ? engineStatus('READY') : t('packMaker.guestPreview'));
     }
 
+    function answerLocalBrief(message) {
+        ui.input.value = '';
+        const answer = localBriefResponse(message);
+        stateRef.chat.push({ role: 'user', content: message });
+        stateRef.chat.push({ role: 'assistant', content: answer, question: message });
+        stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
+        persistChatHistory();
+        appendChat('user', message);
+        appendChat('assistant', answer, { question: message });
+        renderStatus('PACK BRIEF REQUIRED');
+    }
+
     function persistDraft() {
         const key = draftStorageKey();
         if (!key) return;
@@ -1030,10 +1084,6 @@ const PackMaker = (() => {
             return;
         }
 
-        if (!await ensureRemoteAuth()) {
-            return;
-        }
-
         const message = ui.input.value.trim();
         if (!message) return;
         await sendChatText(message);
@@ -1041,6 +1091,11 @@ const PackMaker = (() => {
 
     async function sendChatText(message) {
         if (stateRef.busy) return;
+        if (!isLocalPackGenerationRequest(message)) {
+            answerLocalBrief(message);
+            return;
+        }
+
         if (!await ensureRemoteAuth()) {
             return;
         }

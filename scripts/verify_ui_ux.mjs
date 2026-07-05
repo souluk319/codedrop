@@ -573,6 +573,9 @@ assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client sho
 assert(packMaker.includes('function engineStatus'), 'pack maker status should include KUGNUS route context');
 assert(index.includes('id="pack-maker-route"'), 'pack maker should show the active KUGNUS route separately from draft status');
 assert(packMaker.includes('function updateEngineRouteStatus'), 'pack maker should update the visible KUGNUS route indicator');
+assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
+assert(packMaker.includes('function answerLocalBrief'), 'pack maker should answer brief/how-to prompts locally without touching auth or KUGNUS');
+assert(packMaker.includes('PACK BRIEF REQUIRED'), 'pack maker local brief path should expose a clear non-generation status');
 assert(packMaker.includes("codedrop_pack_maker_draft_v2"), 'pack maker should not restore stale pre-release draft storage');
 assert(packMaker.includes("const SCOPED_STORAGE_VERSION = 'v3';"), 'pack maker draft/chat storage should be versioned by auth scope');
 assert(packMaker.includes('function storageScope()'), 'pack maker should compute a user-scoped local storage key');
