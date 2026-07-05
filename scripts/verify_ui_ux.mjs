@@ -13,6 +13,8 @@ const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
 const productionEnvExample = read('.env.production.example');
 const verifyWorkflow = read('.github/workflows/verify.yml');
+const releaseCheck = read('scripts/check_release_readiness.mjs');
+const systemDoctor = read('scripts/system_doctor.mjs');
 const packageJson = JSON.parse(read('package.json'));
 
 function read(file) {
@@ -510,6 +512,8 @@ assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugn
 assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doctor script is missing');
 assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'package should expose the system doctor command');
 assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
+assert(releaseCheck.includes("['.env.local', '.env']"), 'release check should load the same default env stack as the server');
+assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
 assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');
 assert(verifyWorkflow.includes('npm run verify:db'), 'CI workflow should run database E2E against local MySQL');
 assert(verifyWorkflow.includes('npm run doctor'), 'CI workflow should publish the system doctor report');

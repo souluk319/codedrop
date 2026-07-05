@@ -18,9 +18,12 @@ for (let i = 2; i < process.argv.length; i++) {
     }
 }
 
-const envFile = valueArg.get('env-file') || process.env.DOCTOR_ENV_FILE || '.env';
-const envPath = path.resolve(root, envFile);
-if (fs.existsSync(envPath)) dotenv.config({ path: envPath, override: false, quiet: true });
+const explicitEnvFile = valueArg.get('env-file') || process.env.DOCTOR_ENV_FILE || '';
+const envFiles = explicitEnvFile ? [explicitEnvFile] : ['.env.local', '.env'];
+const envPaths = envFiles
+    .map(file => path.resolve(root, file))
+    .filter(file => fs.existsSync(file));
+if (envPaths.length) dotenv.config({ path: envPaths, override: false, quiet: true });
 
 const baseUrl = (valueArg.get('base-url') || process.env.CODEDROP_DOCTOR_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
 const deep = args.has('--deep');
@@ -150,7 +153,7 @@ try {
 const release = command('release.check', process.execPath, ['scripts/check_release_readiness.mjs'], {
     blockedOnFailure: true,
     timeoutMs: 20_000,
-    env: { RELEASE_ENV_FILE: envFile }
+    env: explicitEnvFile ? { RELEASE_ENV_FILE: explicitEnvFile } : {}
 });
 const releaseSummary = summarizeReleaseCheck(release.stdout);
 addCheck('release.preflight', releaseSummary.ok ? 'PASS' : 'BLOCKED', {
@@ -190,7 +193,7 @@ const counts = Object.fromEntries(order.map(status => [status, checks.filter(che
 
 const result = {
     codedropDoctor: overall,
-    envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
+    envFile: envPaths.length ? envPaths.map(file => path.relative(root, file) || file).join(',') : '(process env only)',
     baseUrl,
     deep,
     packmaker,

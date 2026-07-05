@@ -14,10 +14,13 @@ for (let i = 2; i < process.argv.length; i++) {
     }
 }
 
-const envFile = args.get('env-file') || process.env.RELEASE_ENV_FILE || '.env';
-const envPath = path.resolve(root, envFile);
-if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath, override: false, quiet: true });
+const explicitEnvFile = args.get('env-file') || process.env.RELEASE_ENV_FILE || '';
+const envFiles = explicitEnvFile ? [explicitEnvFile] : ['.env.local', '.env'];
+const envPaths = envFiles
+    .map(file => path.resolve(root, file))
+    .filter(file => fs.existsSync(file));
+if (envPaths.length) {
+    dotenv.config({ path: envPaths, override: false, quiet: true });
 }
 
 const target = String(args.get('target') || process.env.DEPLOY_TARGET || 'node').toLowerCase();
@@ -148,7 +151,7 @@ if (target === 'firebase') checkFirebaseRelease();
 
 const result = {
     target,
-    envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
+    envFile: envPaths.length ? envPaths.map(file => path.relative(root, file) || file).join(',') : '(process env only)',
     ok: errors.length === 0,
     errors,
     warnings,
