@@ -207,6 +207,7 @@ npm run doctor:full     # Deep system doctor plus release preflight; BLOCKED unt
 npm run doctor:release  # Fail-fast doctor for release gates; exits non-zero on FAIL/BLOCKED
 npm run doctor:release:full
                        # Fail-fast release gate; runs slow Pack Maker E2E only after preflight passes
+npm run verify:docker # Build the production Docker image and probe /health
 npm run release:secret # Print a random SESSION_SECRET for deployment env
 npm run release:check  # Fail-fast release environment preflight
 npm run db:local:up    # Start local MySQL

@@ -600,6 +600,8 @@ assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugn
 assert(packageJson.scripts?.['verify:release-matrix'] === 'node scripts/verify_release_readiness_matrix.mjs', 'package should expose release readiness matrix verification');
 assert(packageJson.scripts?.['verify:release-runtime'] === 'node scripts/verify_release_runtime_route.mjs', 'package should expose release runtime route verification');
 assert(packageJson.scripts?.['verify:release-runtime-contract'] === 'node scripts/verify_release_runtime_contract.mjs', 'package should expose release runtime contract verification');
+assert(packageJson.scripts?.['verify:docker'] === 'node scripts/verify_docker_image.mjs', 'package should expose a production Docker image verifier');
+assert(fs.existsSync(path.join(root, 'scripts/verify_docker_image.mjs')), 'Docker image verifier script is missing');
 assert(fs.existsSync(path.join(root, 'scripts/verify_release_readiness_matrix.mjs')), 'release readiness matrix verifier script is missing');
 assert(fs.existsSync(path.join(root, 'scripts/verify_release_runtime_route.mjs')), 'release runtime route verifier script is missing');
 assert(fs.existsSync(path.join(root, 'scripts/verify_release_runtime_contract.mjs')), 'release runtime contract verifier script is missing');
@@ -607,6 +609,7 @@ const liveGatewayVerifier = read('scripts/verify_kugnus_gateway_live.mjs');
 const releaseReadinessMatrix = read('scripts/verify_release_readiness_matrix.mjs');
 const releaseRuntimeVerifier = read('scripts/verify_release_runtime_route.mjs');
 const releaseRuntimeContract = read('scripts/verify_release_runtime_contract.mjs');
+const dockerImageVerifier = read('scripts/verify_docker_image.mjs');
 const readme = read('README.md');
 assert(liveGatewayVerifier.includes("const envStyle = 'kugnus-gateway';"), 'live gateway verifier should report the canonical gateway env style');
 assert(liveGatewayVerifier.includes("const expectedRuntimeRoute = 'gateway';"), 'live gateway verifier should print the canonical gateway route');
@@ -624,6 +627,8 @@ assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_TEST_MODE'), 'release ru
 assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_SKIP_READY_DB'), 'release runtime contract should skip DB only in explicit test mode');
 assert(releaseRuntimeContract.includes("mode: 'gateway'"), 'release runtime contract should verify canonical KUGNUS gateway routing');
 assert(releaseRuntimeContract.includes("envContract: 'KUGNUS_GATEWAY_* only'"), 'release runtime contract should state the canonical KUGNUS env contract');
+assert(dockerImageVerifier.includes("docker', ['build'"), 'Docker verifier should build the production image');
+assert(dockerImageVerifier.includes('/health'), 'Docker verifier should probe the container health endpoint');
 assert(kugnusGatewayContract.includes('verifyOpenAiEnvDoesNotConfigureKugnus'), 'KUGNUS gateway contract should prove OPENAI_* remains GPT fallback only');
 assert(kugnusGatewayContract.includes('verifyCanonicalGatewayRequired'), 'KUGNUS gateway contract should require canonical KUGNUS gateway env');
 assert(readme.includes('KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the canonical KUGNUS gateway base URL');
@@ -667,6 +672,7 @@ assert(systemDoctor.includes('expectedKugnusRoutes'), 'system doctor should know
 assert(systemDoctor.includes("expectedRoutes.length && !expectedRoutes.includes(body.route)"), 'system doctor should block when running server does not use configured KUGNUS gateway route');
 assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');
 assert(verifyWorkflow.includes('npm run verify:db'), 'CI workflow should run database E2E against local MySQL');
+assert(verifyWorkflow.includes('npm run verify:docker'), 'CI workflow should verify the production Docker image builds');
 assert(verifyWorkflow.includes('npm run doctor'), 'CI workflow should publish the system doctor report');
 assert(verifyWorkflow.includes('actions/checkout@v7'), 'CI checkout action should use a Node 24-ready major');
 assert(verifyWorkflow.includes('actions/setup-node@v6'), 'CI setup-node action should use a Node 24-ready major');

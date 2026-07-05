@@ -23,6 +23,7 @@
     "verify:release-matrix": "node scripts/verify_release_readiness_matrix.mjs",
     "verify:release-runtime-contract": "node scripts/verify_release_runtime_contract.mjs",
     "verify:release-runtime": "node scripts/verify_release_runtime_route.mjs",
+    "verify:docker": "node scripts/verify_docker_image.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "release:secret": "node scripts/generate_session_secret.mjs",
     "release:check": "node scripts/check_release_readiness.mjs",

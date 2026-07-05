@@ -62,6 +62,9 @@ jobs:
       - name: Production dependency audit
         run: npm run audit:prod
 
+      - name: Verify production Docker image builds
+        run: npm run verify:docker
+
       - name: Start fake KUGNUS gateway
         run: |
           node scripts/ci_fake_kugnus_gateway.mjs > /tmp/kugnus-ci.log 2>&1 &
