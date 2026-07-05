@@ -14,6 +14,25 @@ async function request(path, options = {}) {
     return { status: res.status, text, headers: res.headers };
 }
 
+function assertNoStore(headers, label) {
+    const cacheControl = headers.get('cache-control') || '';
+    assert(cacheControl.includes('no-store'), `${label} should use no-store cache headers`);
+    assert((headers.get('pragma') || '').includes('no-cache'), `${label} should use no-cache pragma`);
+    assert((headers.get('expires') || '') === '0', `${label} should disable expires caching`);
+}
+
+function extractLocalScripts(html) {
+    const scripts = [];
+    const re = /<script\s+[^>]*src=["']([^"']+)["'][^>]*>/gi;
+    let match;
+    while ((match = re.exec(html)) !== null) {
+        const src = match[1];
+        if (/^https?:\/\//i.test(src)) continue;
+        scripts.push(src.startsWith('/') ? src : `/${src}`);
+    }
+    return scripts;
+}
+
 async function waitForServer() {
     const started = Date.now();
     while (Date.now() - started < 7000) {
@@ -69,6 +88,34 @@ try {
 
     const root = await request('/');
     assert(root.status === 200 && root.text.includes('CodeDrop: Neon Cyberpunk'), '/ should serve the app shell');
+    assertNoStore(root.headers, '/');
+    assert(root.text.includes('id="pack-maker-screen"'), '/ should include the Pack Maker screen');
+    assert(root.text.includes('id="keyboard-test-screen"'), '/ should include the Keyboard Test screen');
+
+    const localScripts = extractLocalScripts(root.text);
+    const requiredScripts = [
+        '/js/word_packs.js',
+        '/js/scenario_packs.js',
+        '/js/lab_packs.js',
+        '/js/lesson_packs.js',
+        '/js/study_stats.js',
+        '/js/game.js',
+        '/js/scenario_mode.js',
+        '/js/lab_mode.js',
+        '/js/learn_mode.js',
+        '/js/dashboard.js',
+        '/js/pack_maker.js',
+        '/js/keyboard_test.js'
+    ];
+    for (const script of requiredScripts) {
+        assert(localScripts.includes(script), `${script} should be referenced by index.html`);
+    }
+    for (const script of localScripts) {
+        const res = await request(script);
+        assert(res.status === 200, `${script} should be publicly served`);
+        assertNoStore(res.headers, script);
+        assert(res.text.trim().length > 0, `${script} should not be empty`);
+    }
 
     const gameJs = await request('/js/game.js');
     assert(gameJs.status === 200 && gameJs.text.includes('CodeDrop - Cyberpunk Edition'), '/js/game.js should be public');
@@ -151,7 +198,7 @@ try {
     console.log(JSON.stringify({
         port: PORT,
         server: 'ok',
-        publicAssets: ['/', '/js/game.js', '/assets/red-hat-logo.svg'],
+        publicAssets: ['/', ...localScripts, '/assets/red-hat-logo.svg'],
         protectedPaths: denied.length,
         authSmoke: 'ok',
         learnChatSmoke: 'ok',
