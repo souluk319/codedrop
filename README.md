@@ -168,6 +168,8 @@ npm start              # Run server
 npm run verify         # Full static/content/server smoke verification
 npm run verify:5x      # Repeat verification
 npm run verify:db      # Local DB E2E: register, custom pack, score, withdraw
+npm run verify:packmaker:kugnus
+                       # Real KUGNUS E2E: vague prompt gate + 50 Korean auto-parts pack + save + custom leaderboard
 npm run release:check  # Fail-fast release environment preflight
 npm run db:local:up    # Start local MySQL
 npm run db:local:down  # Stop local MySQL

@@ -93,7 +93,7 @@ const MAX_SUBMITTED_SCORE = 25000;
 const MAX_CHAT_MESSAGE_LEN = 1200;
 const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
-const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 180_000, 300_000));
+const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 300_000, 600_000));
 const KUGNUS_HEALTH_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.KUGNUS_HEALTH_TIMEOUT_MS) || 12_000, 30_000));
 const CHAT_ENGINES = new Set(["kugnus", "openai"]);
 const PACK_STATUSES = new Set(["draft", "pending", "approved", "rejected"]);
@@ -107,7 +107,7 @@ const MAX_PACK_SOURCES = 3;
 const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
 const PACK_MAKER_BATCH_SIZE = 25;
-const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 45_000, 120_000));
+const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 90_000, 180_000));
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
         .split(",")
@@ -802,12 +802,38 @@ function buildPackMakerRepairMessages(payload, draft, reason) {
     ];
 }
 
+function packMakerBatchFocus(intent, batchNumber) {
+    const topic = `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
+    const carRepair = /(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic);
+
+    const carGroups = [
+        "엔진 내부 부품, 흡기/배기, 윤활, 냉각 계통",
+        "브레이크, 조향, 서스펜션, 하체 연결 부품",
+        "전장, 센서, 배터리, 발전기, 조명, 배선 부품",
+        "변속기, 구동계, 차축, 클러치, 디퍼런셜 부품",
+        "외장, 차체 패널, 유리, 와이퍼, 실내 조작 부품",
+        "소모품, 필터, 호스, 벨트, 가스켓, 정비 현장 교체 부품"
+    ];
+
+    const genericGroups = [
+        "입문자가 먼저 외워야 하는 핵심 기본 용어",
+        "하위 구성요소, 세부 부품, 관련 명령/속성",
+        "현장에서 자주 보는 상태, 오류, 점검, 검증 용어",
+        "운영/실무 작업에 쓰이는 도구, 절차, 액션 용어",
+        "고급 주제, 약어, 주변 시스템, 연관 개념",
+        "실전 문제에서 헷갈리기 쉬운 비슷하지만 다른 용어"
+    ];
+
+    const groups = carRepair ? carGroups : genericGroups;
+    return groups[(Math.max(1, Number(batchNumber) || 1) - 1) % groups.length];
+}
+
 function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
     const excludedTerms = draft.items
         .map(item => item.term)
-        .filter(Boolean)
-        .slice(-80);
+        .filter(Boolean);
     const batchIntent = { ...payload.intent, requestedCount: batchCount };
+    const focus = packMakerBatchFocus(payload.intent, batchNumber);
 
     return [
         {
@@ -823,16 +849,69 @@ function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
         { role: "system", content: `이번 batch 계약:\n${packIntentMessage(batchIntent)}` },
         { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
         { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
-        { role: "system", content: `이미 사용한 term 목록(중복 금지): ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}` },
+        { role: "system", content: `이번 batch의 범주 초점: ${focus}` },
+        {
+            role: "system",
+            content: [
+                `이미 사용한 term 목록(절대 재사용 금지): ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}`,
+                "위 금지 목록과 같은 term, 조사/띄어쓰기만 다른 term, 같은 부품의 표현만 바꾼 term은 모두 실패로 간주한다.",
+                "금지 목록이 많을수록 더 구체적인 하위 부품명, 센서명, 소모품명, 외장/전장/하체 부품명으로 확장한다."
+            ].join("\n")
+        },
         { role: "system", content: `검색 결과:\n${payload.sourceBundle}` },
         {
             role: "user",
             content: [
                 `batch ${batchNumber}: 아직 없는 새 item을 정확히 ${batchCount}개 생성해라.`,
                 `팩 title은 반드시 "${payload.intent.title || "Generated Data Pack"}" 로 둔다.`,
+                `이번 batch는 특히 다음 범주에서 뽑아라: ${focus}`,
                 packLanguageInstruction(payload.intent.termLanguage),
                 "term은 짧은 명사/부품명/현장 용어만 쓴다.",
                 "중복 없이, 각 줄을 '용어 | 한줄 설명' 형식으로만 답한다."
+            ].join("\n")
+        }
+    ];
+}
+
+function buildPackMakerFillMessages(payload, draft, count, repairNumber) {
+    const excludedTerms = draft.items
+        .map(item => item.term)
+        .filter(Boolean);
+    const fillIntent = { ...payload.intent, requestedCount: count };
+    const focus = packMakerBatchFocus(payload.intent, repairNumber + 3);
+
+    return [
+        {
+            role: "system",
+            content: [
+                "너는 CodeDrop PACK MAKER의 부족분 보강기다.",
+                "응답은 반드시 줄 목록만 출력한다. 설명, markdown, 코드펜스, JSON은 쓰지 않는다.",
+                "각 줄 형식은 정확히: 용어 | 한줄 설명",
+                "raw HTML은 절대 쓰지 않는다."
+            ].join("\n")
+        },
+        { role: "system", content: `이번 보강 계약:\n${packIntentMessage(fillIntent)}` },
+        { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
+        { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
+        { role: "system", content: `이번 보강의 범주 초점: ${focus}` },
+        {
+            role: "system",
+            content: [
+                "아래 term은 이미 draft에 있으므로 절대 다시 쓰지 않는다.",
+                excludedTerms.length ? excludedTerms.join(", ") : "없음",
+                "반복 term이 하나라도 있으면 그 줄은 서버에서 버려진다.",
+                "자동차 정비 요청이면 엔진/제동/조향/하체/냉각/전장/외장/소모품/센서/변속기 부품을 고르게 섞는다."
+            ].join("\n")
+        },
+        { role: "system", content: `검색 결과:\n${payload.sourceBundle}` },
+        {
+            role: "user",
+            content: [
+                `repair ${repairNumber}: 금지 목록에 없는 새 item을 정확히 ${count}개 생성해라.`,
+                `이번 repair는 특히 다음 범주에서 뽑아라: ${focus}`,
+                packLanguageInstruction(payload.intent.termLanguage),
+                "짧은 명사/부품명/현장 용어만 term으로 쓴다.",
+                "각 줄은 반드시 '용어 | 한줄 설명' 형식이다."
             ].join("\n")
         }
     ];
@@ -878,17 +957,26 @@ function draftFromPackMakerLines(answer, intent, count, fallbackSources = []) {
 
 async function generatePackMakerBatchDraft(target, payload, draft, searchResults, batchCount, batchNumber, signal, onDelta) {
     const batchMessages = buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber);
+    return generatePackMakerLineDraft(target, batchMessages, payload.intent, searchResults, batchCount, signal, onDelta);
+}
+
+async function generatePackMakerFillDraft(target, payload, draft, searchResults, count, repairNumber, signal, onDelta) {
+    const fillMessages = buildPackMakerFillMessages(payload, draft, count, repairNumber);
+    return generatePackMakerLineDraft(target, fillMessages, payload.intent, searchResults, count, signal, onDelta);
+}
+
+async function generatePackMakerLineDraft(target, messages, intent, searchResults, count, signal, onDelta) {
     const childSignal = linkedTimeoutSignal(signal, PACK_MAKER_BATCH_TIMEOUT_MS);
     let answer = "";
 
     try {
         answer = await readLearnLlmStream(
             target,
-            batchMessages,
+            messages,
             childSignal.signal,
             delta => onDelta(delta),
             {
-                maxTokens: packMakerTokenBudget(batchCount)
+                maxTokens: packMakerTokenBudget(count)
             }
         );
     } catch (err) {
@@ -904,8 +992,8 @@ async function generatePackMakerBatchDraft(target, payload, draft, searchResults
     }
 
     const parsed = extractDraftJson(answer);
-    const parsedDraft = normalizeDraftForIntent(parsed || {}, { ...payload.intent, requestedCount: batchCount }, searchResults);
-    const lineDraft = draftFromPackMakerLines(answer, payload.intent, batchCount, searchResults);
+    const parsedDraft = normalizeDraftForIntent(parsed || {}, { ...intent, requestedCount: count }, searchResults);
+    const lineDraft = draftFromPackMakerLines(answer, intent, count, searchResults);
     const bestDraft = lineDraft.items.length >= parsedDraft.items.length ? lineDraft : parsedDraft;
     return {
         answer,
@@ -958,9 +1046,30 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
         answer += `\n${result.answer || ""}`;
         const before = draft.items.length;
         draft = mergeDraftsForIntent(draft, result.draft, payload.intent);
+        const gained = draft.items.length - before;
+        const expectedGain = Math.min(remaining, batchCount);
 
-        if (draft.items.length === before) {
+        if (draft.items.length < payload.intent.requestedCount && gained < Math.max(3, Math.floor(expectedGain * 0.5))) {
             onStatus(`${draft.items.length}/${payload.intent.requestedCount} REPAIRING`);
+            const repairRemaining = payload.intent.requestedCount - draft.items.length;
+            const repairCount = Math.min(PACK_MAKER_BATCH_SIZE, repairRemaining + 8);
+            try {
+                const repair = await generatePackMakerFillDraft(
+                    target,
+                    payload,
+                    draft,
+                    searchResults,
+                    repairCount,
+                    batchNumber,
+                    signal,
+                    text => onDelta(text)
+                );
+                answer += `\n${repair.answer || ""}`;
+                draft = mergeDraftsForIntent(draft, repair.draft, payload.intent);
+            } catch (err) {
+                if (signal.aborted || err.name === "AbortError") throw err;
+                onDelta(`\n[PACK MAKER] repair ${batchNumber} failed: ${err.message || "unknown error"}\n`);
+            }
         }
     }
 

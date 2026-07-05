@@ -10,6 +10,7 @@
     "verify": "node scripts/verify_all.mjs",
     "verify:5x": "node scripts/verify_5x.mjs",
     "verify:db": "node scripts/verify_db_e2e.mjs",
+    "verify:packmaker:kugnus": "node scripts/verify_packmaker_kugnus_e2e.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=moderate",
     "release:check": "node scripts/check_release_readiness.mjs",
     "db:local:up": "docker compose -f docker-compose.local.yml up -d",
