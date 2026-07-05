@@ -123,6 +123,7 @@ const MAX_PACK_ITEM_DESC_LEN = 180;
 const MAX_PACK_SOURCES = 3;
 const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
+const PACK_FINAL_FILL_ATTEMPTS = 4;
 const PACK_MAKER_BATCH_SIZE = 25;
 const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 180_000, 180_000));
 const PACK_ADMIN_NICKNAMES = new Set(
@@ -1132,6 +1133,35 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
                 if (signal.aborted || err.name === "AbortError") throw err;
                 onDelta(`\n[PACK MAKER] repair ${batchNumber} failed: ${err.message || "unknown error"}\n`);
             }
+        }
+    }
+
+    for (let attempt = 1; attempt <= PACK_FINAL_FILL_ATTEMPTS && draft.items.length < payload.intent.requestedCount; attempt += 1) {
+        const remaining = payload.intent.requestedCount - draft.items.length;
+        const fillCount = Math.min(PACK_MAKER_BATCH_SIZE, Math.max(remaining + 12, remaining * 2));
+        onStatus(`${draft.items.length}/${payload.intent.requestedCount} FINAL FILL ${attempt}/${PACK_FINAL_FILL_ATTEMPTS}`);
+
+        try {
+            const fill = await generatePackMakerFillDraft(
+                target,
+                payload,
+                draft,
+                searchResults,
+                fillCount,
+                maxBatches + attempt,
+                signal,
+                text => onDelta(text)
+            );
+            answer += `\n${fill.answer || ""}`;
+            const before = draft.items.length;
+            draft = mergeDraftsForIntent(draft, fill.draft, payload.intent);
+            const gained = draft.items.length - before;
+            if (gained === 0) {
+                onDelta(`\n[PACK MAKER] final fill ${attempt} produced no new valid terms\n`);
+            }
+        } catch (err) {
+            if (signal.aborted || err.name === "AbortError") throw err;
+            onDelta(`\n[PACK MAKER] final fill ${attempt} failed: ${err.message || "unknown error"}\n`);
         }
     }
 

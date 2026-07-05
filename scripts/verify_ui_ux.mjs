@@ -548,6 +548,9 @@ assert(verifyAll.includes('scripts/verify_release_runtime_contract.mjs'), 'main 
 assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doctor script is missing');
 assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'package should expose the system doctor command');
 assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
+assert(packageJson.scripts?.['doctor:full'] === 'node scripts/system_doctor.mjs --deep --packmaker', 'package should expose a full system doctor command with real Pack Maker E2E');
+assert(readme.includes('npm run doctor:full -- --base-url=http://127.0.0.1:3001'), 'README should document the full system doctor release candidate command');
+assert(readme.includes('real KUGNUS Pack Maker E2E'), 'README should make clear doctor:full runs the real KUGNUS Pack Maker E2E');
 assert(releaseCheck.includes("['.env.local', '.env']"), 'release check should load the same default env stack as the server');
 assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
@@ -576,6 +579,8 @@ assert(systemDoctor.includes('function packMakerCheckDetail'), 'system doctor sh
 assert(systemDoctor.includes('summary.generated?.itemCount'), 'system doctor Pack Maker summary should include generated item count');
 assert(systemDoctor.includes('packMakerKugnusE2e'), 'system doctor should parse the Pack Maker KUGNUS verifier JSON payload');
 assert(systemDoctor.includes('PACKMAKER_KUGNUS_E2E_TIMEOUT_MS'), 'system doctor should run Pack Maker E2E with a realistic timeout');
+assert(server.includes('PACK_FINAL_FILL_ATTEMPTS'), 'Pack Maker should have a final fill loop instead of stopping after ordinary batch repairs');
+assert(server.includes('FINAL FILL'), 'Pack Maker should expose final fill status when closing a short draft');
 assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');

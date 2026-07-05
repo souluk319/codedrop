@@ -18,6 +18,7 @@ Before shipping a release candidate, verify these gates:
 npm run verify
 curl http://localhost:3001/ready
 curl http://localhost:3001/api/llm/kugnus/health
+npm run doctor:full -- --base-url=http://127.0.0.1:3001
 ```
 
 Expected:
@@ -25,6 +26,7 @@ Expected:
 - `npm run verify` passes.
 - `/ready` returns `{"server":"ok","db":"ok"}`.
 - KUGNUS health returns `{ "ok": true, ... }`.
+- `doctor:full` runs static checks, server/DB readiness, release diagnostics, and the real KUGNUS Pack Maker E2E. It may still report `BLOCKED` for release if public gateway/session/origin env is not configured.
 - Browser E2E proves Pack Maker generation, save, SELECT PACK selection, DROP play, OCP Learn chat, README, MUSIC, and console errors.
 
 ## Features
@@ -198,6 +200,7 @@ npm run verify:5x      # Repeat verification
 npm run verify:db      # Local DB E2E: register, custom pack, score, withdraw
 npm run verify:packmaker:kugnus
                        # Real KUGNUS E2E: vague prompt gate + 50 Korean auto-parts pack + save + custom leaderboard
+npm run doctor:full     # Deep system doctor plus real KUGNUS Pack Maker E2E summary
 npm run release:check  # Fail-fast release environment preflight
 npm run db:local:up    # Start local MySQL
 npm run db:local:down  # Stop local MySQL
