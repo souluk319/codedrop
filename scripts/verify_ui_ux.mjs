@@ -829,7 +829,10 @@ assert(game.includes("users.test = { id: 'local-test', nickname: 'test', passwor
 assert(game.includes('tryLocalDevLogin(nickname, password)'), 'login flow does not call local dev fallback');
 assert(game.includes('async function provisionLocalDevServerSession'), 'local test/test should try to obtain a real server token for Pack Maker');
 assert(game.includes('await provisionLocalDevServerSession(nickname, password)'), 'login flow should use local credentials to provision a server session before falling back');
-assert(game.includes("els.controls.packSelect.value = 'OC_CORE';"), 'OCP CLI Drop must force the OC_CORE pack');
+assert(game.includes('function forceOcpDropPackSync'), 'OCP CLI Drop pack sync helper is missing');
+assert(game.includes("select.value = 'OC_CORE';"), 'OCP CLI Drop must force the OC_CORE pack');
+assert(game.includes('forceOcpDropPackSync();'), 'OCP Edition entry/drop mode must sync the visible pack selector immediately');
+assert(game.includes('forceOcpDropPackSync({ notify: false })'), 'OCP game start must re-assert OC_CORE before spawning words');
 assert(game.includes('ScenarioMode.startExam()'), 'EXAM mode route is missing');
 assert(game.includes('LabMode.start(labSelect.value)'), 'LAB mode route is missing');
 assert(game.includes('Dashboard.open()'), 'dashboard route is missing');

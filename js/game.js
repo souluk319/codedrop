@@ -1096,6 +1096,22 @@ function syncPackSelector() {
     renderPackCards();
 }
 
+function forceOcpDropPackSync({ notify = true } = {}) {
+    const select = els.controls.packSelect;
+    if (!select) return;
+    const hasOcpPack = Array.from(select.options).some(option => option.value === 'OC_CORE');
+    if (!hasOcpPack) return;
+
+    const changed = select.value !== 'OC_CORE';
+    select.value = 'OC_CORE';
+    syncPackSelector();
+    closePackPopover();
+
+    if (changed && notify) {
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+}
+
 function animatePackEquip(meta, sourceEl) {
     const dock = els.controls.packConsoleDock;
     if (!dock || !document.body) return;
@@ -1961,8 +1977,7 @@ function handleStart() {
         if (isOcpEditionActive()) {
             const ocpDiff = document.getElementById('ocp-difficulty-select');
             if (ocpDiff) els.controls.diffSelect.value = ocpDiff.value;
-            els.controls.packSelect.value = 'OC_CORE';
-            syncPackSelector();
+            forceOcpDropPackSync({ notify: false });
         }
         startGame();
     }
@@ -2044,10 +2059,18 @@ function initModeControls() {
                 }
             }
         }
+
+        if (mode === 'DROP' && isOcpEditionActive()) {
+            forceOcpDropPackSync();
+        }
     }
 
     function openOcpEdition() {
-        if (isOcpEditionActive()) return;
+        if (isOcpEditionActive()) {
+            setMode('DROP');
+            forceOcpDropPackSync();
+            return;
+        }
         document.body.classList.add('ocp-edition');
         triggerEditionBurst();
         if (standardMenu) standardMenu.classList.add('hidden');
