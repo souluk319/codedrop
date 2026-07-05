@@ -29,6 +29,7 @@ const baseUrl = (valueArg.get('base-url') || process.env.CODEDROP_DOCTOR_BASE_UR
 const deep = args.has('--deep');
 const packmaker = args.has('--packmaker');
 const strict = args.has('--strict');
+const skipRelease = args.has('--skip-release');
 const timeoutMs = Math.max(2000, Math.min(Number(valueArg.get('timeout-ms') || process.env.CODEDROP_DOCTOR_TIMEOUT_MS || 10_000), 120_000));
 
 const checks = [];
@@ -269,6 +270,7 @@ function currentResult() {
         baseUrl,
         deep,
         packmaker,
+        releasePreflight: skipRelease ? 'skipped' : 'checked',
         counts: Object.fromEntries(order.map(status => [status, checks.filter(check => check.status === status).length])),
         checks
     };
@@ -335,22 +337,28 @@ try {
     addCheck('http.kugnus', 'FAIL', { error: err.name === 'AbortError' ? 'timeout' : err.message });
 }
 
-const release = command('release.check', process.execPath, ['scripts/check_release_readiness.mjs'], {
-    blockedOnFailure: true,
-    timeoutMs: 20_000,
-    env: explicitEnvFile ? { RELEASE_ENV_FILE: explicitEnvFile } : {}
-});
-const releaseSummary = summarizeReleaseCheck(release.stdout);
-addCheck('release.preflight', releaseSummary.ok ? 'PASS' : 'BLOCKED', {
-    target: releaseSummary.target || '',
-    errors: releaseSummary.errors,
-    warnings: releaseSummary.warnings,
-    nextActions: releaseSummary.nextActions,
-    elapsedMs: release.elapsedMs
-});
+if (!skipRelease) {
+    const release = command('release.check', process.execPath, ['scripts/check_release_readiness.mjs'], {
+        blockedOnFailure: true,
+        timeoutMs: 20_000,
+        env: explicitEnvFile ? { RELEASE_ENV_FILE: explicitEnvFile } : {}
+    });
+    const releaseSummary = summarizeReleaseCheck(release.stdout);
+    addCheck('release.preflight', releaseSummary.ok ? 'PASS' : 'BLOCKED', {
+        target: releaseSummary.target || '',
+        errors: releaseSummary.errors,
+        warnings: releaseSummary.warnings,
+        nextActions: releaseSummary.nextActions,
+        elapsedMs: release.elapsedMs
+    });
 
-if (strict && !releaseSummary.ok) {
-    emitAndExitIfStrict();
+    if (strict && !releaseSummary.ok) {
+        emitAndExitIfStrict();
+    }
+} else {
+    addCheck('release.preflight', 'PASS', {
+        detail: 'Skipped by --skip-release; run npm run doctor:release:full or npm run release:check before deployment.'
+    });
 }
 
 if (deep) {

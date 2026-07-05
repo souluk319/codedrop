@@ -6,8 +6,10 @@
   "main": "server.js",
   "scripts": {
     "doctor": "node scripts/system_doctor.mjs",
+    "doctor:local": "node scripts/system_doctor.mjs --skip-release",
     "doctor:deep": "node scripts/system_doctor.mjs --deep",
     "doctor:full": "node scripts/system_doctor.mjs --deep --packmaker",
+    "doctor:local:full": "node scripts/system_doctor.mjs --deep --packmaker --skip-release",
     "doctor:release": "node scripts/system_doctor.mjs --deep --strict",
     "doctor:release:full": "node scripts/system_doctor.mjs --deep --packmaker --strict",
     "start": "node server.js",
