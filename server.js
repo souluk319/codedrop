@@ -123,7 +123,8 @@ const MAX_PACK_ITEM_DESC_LEN = 180;
 const MAX_PACK_SOURCES = 3;
 const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
-const PACK_FINAL_FILL_ATTEMPTS = 4;
+const PACK_FINAL_FILL_ATTEMPTS = 2;
+const PACK_WIDE_FILL_ATTEMPTS = 2;
 const PACK_MAKER_BATCH_SIZE = 25;
 const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 180_000, 180_000));
 const PACK_ADMIN_NICKNAMES = new Set(
@@ -904,6 +905,31 @@ function packMakerBatchFocus(intent, batchNumber) {
     return groups[(Math.max(1, Number(batchNumber) || 1) - 1) % groups.length];
 }
 
+function packMakerWideFocusList(intent) {
+    const topic = `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
+    if (/(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic)) {
+        return [
+            "엔진: 실린더, 피스톤, 밸브, 점화, 흡기, 배기, 윤활",
+            "냉각/공조: 라디에이터, 워터펌프, 팬, 냉매, 히터",
+            "제동/조향: 브레이크, 캘리퍼, 로터, 조향장치, 타이로드",
+            "하체/서스펜션: 쇼크업소버, 로어암, 부싱, 베어링, 링크",
+            "구동/변속: 미션, 클러치, 드라이브샤프트, 디퍼런셜, CV 조인트",
+            "전장/센서: 배터리, 발전기, 스타터, ECU, 릴레이, 센서류",
+            "외장/실내: 범퍼, 펜더, 도어, 유리, 와이퍼, 스위치",
+            "소모품/정비: 필터, 벨트, 호스, 가스켓, 오일, 패드, 플러그"
+        ];
+    }
+
+    return [
+        "입문 핵심 용어",
+        "하위 구성요소와 세부 부품",
+        "현장에서 자주 보는 상태/오류/점검 용어",
+        "실무 도구와 절차 용어",
+        "약어, 제품명, 주변 시스템",
+        "비슷해서 헷갈리는 구분 용어"
+    ];
+}
+
 function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
     const excludedTerms = draft.items
         .map(item => item.term)
@@ -993,14 +1019,107 @@ function buildPackMakerFillMessages(payload, draft, count, repairNumber) {
     ];
 }
 
+function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
+    const excludedTerms = draft.items
+        .map(item => item.term)
+        .filter(Boolean);
+    const fillIntent = { ...payload.intent, requestedCount: count };
+    const focusList = packMakerWideFocusList(payload.intent);
+
+    return [
+        {
+            role: "system",
+            content: [
+                "너는 CodeDrop PACK MAKER의 넓은 후보 생성기다.",
+                "목표는 기존 draft에 없는 새 후보를 많이 만들어 서버가 중복 제거 후 부족분을 채우게 하는 것이다.",
+                "응답은 반드시 줄 목록만 출력한다. markdown, 코드펜스, JSON, 머리말은 쓰지 않는다.",
+                "각 줄 형식은 정확히: 용어 | 한줄 설명",
+                "설명은 짧고 구체적인 한국어 한 줄로 쓴다.",
+                "raw HTML은 절대 쓰지 않는다."
+            ].join("\n")
+        },
+        { role: "system", content: `넓은 후보 생성 계약:\n${packIntentMessage(fillIntent)}` },
+        { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
+        { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
+        { role: "system", content: `후보 범주 풀:\n- ${focusList.join("\n- ")}` },
+        {
+            role: "system",
+            content: [
+                `이미 사용한 term ${excludedTerms.length}개(절대 재사용 금지):`,
+                excludedTerms.length ? excludedTerms.join(", ") : "없음",
+                "금지 목록과 같은 term, 띄어쓰기만 다른 term, 표현만 바꾼 term은 서버에서 버려진다.",
+                "따라서 더 구체적인 하위 부품명/현장 용어/센서명/소모품명/점검 대상명으로 넓혀라."
+            ].join("\n")
+        },
+        {
+            role: "user",
+            content: [
+                `wide fill ${attempt}: 금지 목록에 없는 후보를 정확히 ${count}줄 생성해라.`,
+                "위 후보 범주 풀을 골고루 섞어라. 한 범주에 몰리지 마라.",
+                packLanguageInstruction(payload.intent.termLanguage),
+                "term은 2-5어절의 짧은 명사형이어야 한다.",
+                "각 줄은 반드시 '용어 | 한줄 설명' 형식이다."
+            ].join("\n")
+        }
+    ];
+}
+
+function buildPackMakerTermSweepMessages(payload, draft, count) {
+    const focusList = packMakerWideFocusList(payload.intent);
+    const topic = sanitizePackText(packTopicSignal(payload.intent) || payload.intent.topic || payload.message, 180);
+    const language = payload.intent.termLanguage === "korean"
+        ? "한글"
+        : (payload.intent.termLanguage === "english" ? "English" : "도메인");
+
+    return [
+        {
+            role: "user",
+            content: [
+                `${topic} 관련 ${language} 핵심 단어/용어 ${count}개를 쉼표로만 나열해.`,
+                "설명하지 마. markdown, JSON, 머리말도 쓰지 마.",
+                "중복 없이, 짧은 명사형만 써.",
+                `가능하면 다음 범주를 골고루 섞어: ${focusList.join(", ")}.`
+            ].join("\n")
+        }
+    ];
+}
+
+function splitPackMakerCandidateLines(answer) {
+    const cleaned = String(answer || "")
+        .replace(/```[\s\S]*?```/g, "")
+        .replace(/[，、；;]/g, ",");
+    const rawLines = cleaned.split(/\n+/).map(line => line.trim()).filter(Boolean);
+    const lines = [];
+
+    for (const raw of rawLines) {
+        const withoutBullet = raw
+            .replace(/^\s*(?:[-*]|\d+[.)])\s*/, "")
+            .replace(/^["'`]+|["'`]+$/g, "")
+            .trim();
+        if (!withoutBullet) continue;
+
+        if (!/[|:：-]/.test(withoutBullet) && withoutBullet.includes(",")) {
+            withoutBullet.split(",").map(part => part.trim()).filter(Boolean).forEach(part => lines.push(part));
+        } else {
+            lines.push(withoutBullet);
+        }
+    }
+
+    return lines;
+}
+
+function fallbackItemDescription(term, intent) {
+    const topic = `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
+    if (/(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic)) {
+        return `${term} 관련 점검이나 교체에서 자주 등장하는 자동차 정비 부품입니다.`;
+    }
+    return `${term} 관련 도메인에서 자주 등장하는 핵심 용어입니다.`;
+}
+
 function draftFromPackMakerLines(answer, intent, count, fallbackSources = []) {
     const items = [];
     const seen = new Set();
-    const lines = String(answer || "")
-        .replace(/```[\s\S]*?```/g, "")
-        .split(/\n+/)
-        .map(line => line.trim())
-        .filter(Boolean);
+    const lines = splitPackMakerCandidateLines(answer);
 
     for (const rawLine of lines) {
         const line = rawLine
@@ -1039,6 +1158,69 @@ async function generatePackMakerBatchDraft(target, payload, draft, searchResults
 async function generatePackMakerFillDraft(target, payload, draft, searchResults, count, repairNumber, signal, onDelta) {
     const fillMessages = buildPackMakerFillMessages(payload, draft, count, repairNumber);
     return generatePackMakerLineDraft(target, fillMessages, payload.intent, searchResults, count, signal, onDelta);
+}
+
+async function generatePackMakerWideFillDraft(target, payload, draft, searchResults, count, attempt, signal, onDelta) {
+    const fillMessages = buildPackMakerWideFillMessages(payload, draft, count, attempt);
+    return generatePackMakerLineDraft(target, fillMessages, payload.intent, searchResults, count, signal, onDelta);
+}
+
+async function generatePackMakerTermSweepDraft(target, payload, draft, searchResults, count, signal) {
+    const messages = buildPackMakerTermSweepMessages(payload, draft, count);
+    const childSignal = linkedTimeoutSignal(signal, PACK_MAKER_BATCH_TIMEOUT_MS);
+    let answer = "";
+
+    try {
+        answer = await callPackMakerLlmOnce(
+            target,
+            messages,
+            childSignal.signal,
+            { maxTokens: packMakerTokenBudget(count) }
+        );
+    } catch (err) {
+        if (signal.aborted) throw err;
+        if (childSignal.signal.aborted) {
+            const timeoutError = new Error(`KUGNUS term sweep timeout after ${Math.round(PACK_MAKER_BATCH_TIMEOUT_MS / 1000)}s`);
+            timeoutError.code = "PACK_TERM_SWEEP_TIMEOUT";
+            throw timeoutError;
+        }
+        throw err;
+    } finally {
+        childSignal.cleanup();
+    }
+
+    const items = [];
+    const seen = new Set();
+    for (const raw of splitPackMakerCandidateLines(answer)) {
+        const term = sanitizePackText(
+            raw
+                .split("|")[0]
+                .split(/\s+-\s+/)[0]
+                .split(/\s*[:：]\s*/)[0],
+            MAX_PACK_TERM_LEN
+        );
+        if (!term) continue;
+        if (payload.intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
+        if (payload.intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
+        const key = term.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({
+            term,
+            desc: fallbackItemDescription(term, payload.intent),
+            sources: searchResults
+        });
+        if (items.length >= count) break;
+    }
+
+    return {
+        answer,
+        draft: normalizeDraftForIntent({
+            title: payload.intent.title,
+            description: `${payload.intent.topic || payload.intent.title} data pack`,
+            items
+        }, { ...payload.intent, requestedCount: count }, searchResults)
+    };
 }
 
 async function generatePackMakerLineDraft(target, messages, intent, searchResults, count, signal, onDelta) {
@@ -1085,7 +1267,7 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
     }, payload.intent, searchResults);
     let answer = "";
     const plannedBatches = Math.ceil(payload.intent.requestedCount / PACK_MAKER_BATCH_SIZE);
-    const maxBatches = plannedBatches + PACK_REPAIR_ATTEMPTS + 2;
+    const maxBatches = plannedBatches + 1;
 
     for (let batchNumber = 1; batchNumber <= maxBatches && draft.items.length < payload.intent.requestedCount; batchNumber += 1) {
         const remaining = payload.intent.requestedCount - draft.items.length;
@@ -1146,6 +1328,61 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
                 if (signal.aborted || err.name === "AbortError") throw err;
                 onDelta(`\n[PACK MAKER] repair ${batchNumber} failed: ${err.message || "unknown error"}\n`);
             }
+        }
+    }
+
+    for (let attempt = 1; attempt <= PACK_WIDE_FILL_ATTEMPTS && draft.items.length < payload.intent.requestedCount; attempt += 1) {
+        const remaining = payload.intent.requestedCount - draft.items.length;
+        const candidateCount = Math.min(MAX_PACK_ITEMS, Math.max(payload.intent.requestedCount + 20, remaining * 5));
+        onStatus(`${draft.items.length}/${payload.intent.requestedCount} WIDE FILL ${attempt}/${PACK_WIDE_FILL_ATTEMPTS}`);
+
+        try {
+            const fill = await generatePackMakerWideFillDraft(
+                target,
+                payload,
+                draft,
+                searchResults,
+                candidateCount,
+                attempt,
+                signal,
+                text => onDelta(text)
+            );
+            answer += `\n${fill.answer || ""}`;
+            const before = draft.items.length;
+            draft = mergeDraftsForIntent(draft, fill.draft, payload.intent);
+            const gained = draft.items.length - before;
+            if (gained === 0) {
+                onDelta(`\n[PACK MAKER] wide fill ${attempt} produced no new valid terms\n`);
+            }
+        } catch (err) {
+            if (signal.aborted || err.name === "AbortError") throw err;
+            onDelta(`\n[PACK MAKER] wide fill ${attempt} failed: ${err.message || "unknown error"}\n`);
+        }
+    }
+
+    if (draft.items.length < payload.intent.requestedCount) {
+        const sweepCount = MAX_PACK_ITEMS;
+        onStatus(`${draft.items.length}/${payload.intent.requestedCount} TERM SWEEP`);
+
+        try {
+            const sweep = await generatePackMakerTermSweepDraft(
+                target,
+                payload,
+                draft,
+                searchResults,
+                sweepCount,
+                signal
+            );
+            answer += `\n${sweep.answer || ""}`;
+            const before = draft.items.length;
+            draft = mergeDraftsForIntent(draft, sweep.draft, payload.intent);
+            const gained = draft.items.length - before;
+            if (gained === 0) {
+                onDelta(`\n[PACK MAKER] term sweep produced no new valid terms\n`);
+            }
+        } catch (err) {
+            if (signal.aborted || err.name === "AbortError") throw err;
+            onDelta(`\n[PACK MAKER] term sweep failed: ${err.message || "unknown error"}\n`);
         }
     }
 

@@ -618,6 +618,11 @@ assert(systemDoctor.includes('packMakerKugnusE2e'), 'system doctor should parse 
 assert(systemDoctor.includes('PACKMAKER_KUGNUS_E2E_TIMEOUT_MS'), 'system doctor should run Pack Maker E2E with a realistic timeout');
 assert(server.includes('PACK_FINAL_FILL_ATTEMPTS'), 'Pack Maker should have a final fill loop instead of stopping after ordinary batch repairs');
 assert(server.includes('FINAL FILL'), 'Pack Maker should expose final fill status when closing a short draft');
+assert(server.includes('PACK_WIDE_FILL_ATTEMPTS'), 'Pack Maker should widen the candidate pool when ordinary repair loops underfill a draft');
+assert(server.includes('function buildPackMakerTermSweepMessages'), 'Pack Maker should have a simple KUGNUS term sweep for stubborn underfilled drafts');
+assert(server.includes('TERM SWEEP'), 'Pack Maker should expose term sweep status during final KUGNUS filling');
+assert(server.includes('function splitPackMakerCandidateLines'), 'Pack Maker should parse comma-separated KUGNUS term-only outputs');
+assert(server.includes('function fallbackItemDescription'), 'Pack Maker term sweep should provide descriptions for term-only candidates');
 assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
