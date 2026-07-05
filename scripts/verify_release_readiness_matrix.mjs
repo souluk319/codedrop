@@ -115,6 +115,18 @@ const cases = [
         expectError: 'OPENAI_* KUGNUS alias is incomplete; missing OPENAI_BASE_URL'
     },
     {
+        name: 'incomplete OPENAI_* KUGNUS alias is blocked even with direct fallback env',
+        env: {
+            OPENAI_BASE_URL: 'https://llm.example.com/v1',
+            OPENAI_MODEL: 'gemma4:12b-it-qat',
+            LLM_BASE_URL: 'http://100.99.152.52:11434',
+            LLM_MODEL: 'gemma4:12b-it-qat',
+            LLM_API_KEY: 'stale-direct-key'
+        },
+        expectOk: false,
+        expectError: 'OPENAI_* KUGNUS alias is incomplete; missing OPENAI_API_KEY'
+    },
+    {
         name: 'direct KUGNUS route is blocked for release',
         env: {
             KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',

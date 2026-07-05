@@ -534,6 +534,7 @@ assert(liveGatewayVerifier.includes("value('KUGNUS_BASE_URL')"), 'live gateway v
 assert(liveGatewayVerifier.includes('function observedOpenAiEnv'), 'live gateway verifier should explain why generic OPENAI_* env is or is not a KUGNUS alias');
 assert(liveGatewayVerifier.includes('not a KUGNUS gateway alias'), 'live gateway verifier should distinguish GPT fallback env from KUGNUS gateway alias env');
 assert(releaseReadinessMatrix.includes('incomplete OPENAI_* KUGNUS alias is blocked'), 'release readiness matrix should cover incomplete OPENAI_* aliases');
+assert(releaseReadinessMatrix.includes('incomplete OPENAI_* KUGNUS alias is blocked even with direct fallback env'), 'release readiness matrix should cover incomplete OPENAI_* alias plus stale direct fallback env');
 assert(releaseReadinessMatrix.includes('direct KUGNUS route is blocked for release'), 'release readiness matrix should cover direct route blocking');
 assert(releaseReadinessMatrix.includes('dedicated GPT fallback must remain mini'), 'release readiness matrix should cover dedicated GPT mini guard');
 assert(releaseReadinessMatrix.includes('generic OpenAI fallback must remain mini'), 'release readiness matrix should cover generic GPT mini guard');
