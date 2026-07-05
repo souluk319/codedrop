@@ -108,7 +108,14 @@ function checkCommon() {
     const hasExplicitGateway = has('KUGNUS_GATEWAY_BASE_URL')
         && has('KUGNUS_GATEWAY_API_KEY')
         && (has('KUGNUS_GATEWAY_MODEL') || has('KUGNUS_MODEL'));
-    const hasOpenAiAlias = has('OPENAI_API_KEY') && has('OPENAI_MODEL') && openAiAliasLooksLikeKugnus();
+    const openAiAliasIntent = (has('OPENAI_BASE_URL') || has('OPENAI_API_KEY') || has('OPENAI_MODEL')) && openAiAliasLooksLikeKugnus();
+    const openAiAliasMissing = ['OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL'].filter(name => openAiAliasIntent && !has(name));
+    const hasOpenAiAlias = openAiAliasIntent && openAiAliasMissing.length === 0;
+
+    if (openAiAliasMissing.length) {
+        errors.push(`OPENAI_* KUGNUS alias is incomplete; missing ${openAiAliasMissing.join(', ')}`);
+        addAction('Set OPENAI_BASE_URL=https://<public-gateway>/v1, OPENAI_API_KEY, and OPENAI_MODEL=gemma4:12b-it-qat, or use KUGNUS_GATEWAY_* instead.');
+    }
 
     if (!hasExplicitGateway && !hasOpenAiAlias) {
         errors.push('KUGNUS release requires KUGNUS_GATEWAY_* or OPENAI_* alias with local KUGNUS model');
@@ -129,7 +136,7 @@ function checkCommon() {
     }
 
     const hasDedicatedGptFallback = hasAny(GPT_OPENAI_KEY_NAMES);
-    const hasGenericOpenAiFallback = !hasOpenAiAlias && has('OPENAI_API_KEY');
+    const hasGenericOpenAiFallback = !openAiAliasIntent && has('OPENAI_API_KEY');
     if (!hasDedicatedGptFallback && !hasGenericOpenAiFallback) {
         warnings.push('GPT fallback API key is not configured; KUGNUS-only release is possible but fallback UX will not work');
     }

@@ -524,9 +524,13 @@ assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should lo
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
 assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https origins'), 'release check should reject localhost/private release origins');
 assert(releaseCheck.includes('function openAiAliasLooksLikeKugnus'), 'release check should distinguish KUGNUS OPENAI_* alias from GPT fallback');
+assert(releaseCheck.includes('openAiAliasMissing'), 'release check should detect incomplete OPENAI_* KUGNUS gateway aliases');
+assert(releaseCheck.includes('OPENAI_* KUGNUS alias is incomplete'), 'release check should clearly explain incomplete OPENAI_* KUGNUS aliases');
 assert(releaseCheck.includes('hasGenericOpenAiFallback'), 'release check should accept generic OPENAI_* as GPT fallback when it is not KUGNUS');
 assert(releaseCheck.includes('Generic OPENAI_MODEL fallback must stay gpt-5.4-mini'), 'release check should enforce mini-only generic GPT fallback');
 assert(systemDoctor.includes('function openAiAliasLooksLikeKugnus'), 'system doctor should share KUGNUS OPENAI_* alias detection');
+assert(systemDoctor.includes('openAiGatewayAliasMissing'), 'system doctor should detect incomplete OPENAI_* KUGNUS gateway aliases');
+assert(systemDoctor.includes('OPENAI_* KUGNUS alias incomplete'), 'system doctor should clearly report incomplete OPENAI_* KUGNUS aliases');
 assert(systemDoctor.includes("gatewayMode: explicitGatewayReady ? 'KUGNUS_GATEWAY_*' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : '')"), 'system doctor should report OPENAI_* KUGNUS gateway alias as gateway-ready');
 assert(systemDoctor.includes('expectedKugnusRoutes'), 'system doctor should know which runtime KUGNUS route the configured env expects');
 assert(systemDoctor.includes("expectedRoutes.length && !expectedRoutes.includes(body.route)"), 'system doctor should block when running server does not use configured KUGNUS gateway route');

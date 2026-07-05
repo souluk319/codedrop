@@ -117,7 +117,9 @@ async function httpJson(pathname) {
 
 function envPresence() {
     const explicitGatewayReady = Boolean(envValue('KUGNUS_GATEWAY_BASE_URL') && envValue('KUGNUS_GATEWAY_API_KEY') && (envValue('KUGNUS_GATEWAY_MODEL') || envValue('KUGNUS_MODEL')));
-    const openAiGatewayAliasReady = Boolean(envValue('OPENAI_API_KEY') && envValue('OPENAI_MODEL') && openAiAliasLooksLikeKugnus());
+    const openAiGatewayAliasIntent = Boolean((envValue('OPENAI_BASE_URL') || envValue('OPENAI_API_KEY') || envValue('OPENAI_MODEL')) && openAiAliasLooksLikeKugnus());
+    const openAiGatewayAliasMissing = ['OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL'].filter(name => openAiGatewayAliasIntent && !envValue(name));
+    const openAiGatewayAliasReady = openAiGatewayAliasIntent && openAiGatewayAliasMissing.length === 0;
     const gatewayReady = explicitGatewayReady || openAiGatewayAliasReady;
     const directReady = Boolean(envValue('LLM_BASE_URL') && envValue('LLM_MODEL'));
     const dbReady = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'].every(envValue);
@@ -133,6 +135,7 @@ function envPresence() {
         directReady,
         dbReady,
         gatewayMode: explicitGatewayReady ? 'KUGNUS_GATEWAY_*' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : ''),
+        gatewayIssue: openAiGatewayAliasMissing.length ? `OPENAI_* KUGNUS alias incomplete; missing ${openAiGatewayAliasMissing.join(', ')}` : '',
         expectedKugnusRoutes: explicitGatewayReady ? ['gateway'] : (openAiGatewayAliasReady ? ['openai-env-alias'] : []),
         hasSessionSecret: Boolean(envValue('SESSION_SECRET')),
         hasAllowedOrigins: Boolean(envValue('ALLOWED_ORIGINS')),
@@ -156,7 +159,7 @@ function summarizeReleaseCheck(stdout) {
 
 const env = envPresence();
 addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
-    detail: env.gatewayReady ? `${env.gatewayMode} present` : 'KUGNUS gateway env missing; deployment must not rely on direct LLM_BASE_URL'
+    detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS gateway env missing; deployment must not rely on direct LLM_BASE_URL')
 });
 addCheck('env.kugnus-direct-dev', env.directReady ? 'WARN' : 'PASS', {
     detail: env.directReady ? 'LLM_BASE_URL direct dev route is active' : 'No direct KUGNUS route configured'
