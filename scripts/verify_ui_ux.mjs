@@ -268,6 +268,8 @@ assert(index.includes('class="difficulty-native-select"'), 'difficulty native se
 assert(index.includes('class="difficulty-picker" data-difficulty-for="difficulty-select"'), 'standard difficulty custom picker is missing');
 assert(index.includes('class="difficulty-picker" data-difficulty-for="ocp-difficulty-select"'), 'OCP difficulty custom picker is missing');
 assert(index.includes('.difficulty-menu'), 'difficulty picker neon menu styles are missing');
+assert(index.includes('.select-group select.difficulty-native-select'), 'hidden difficulty select must override generic select width');
+assert(index.includes('clip-path: inset(50%)'), 'hidden native selects must be clipped so browser popovers cannot leak visually');
 assert(game.includes('function initDifficultyPickers()'), 'difficulty picker initializer is missing');
 assert(game.includes("select.dispatchEvent(new Event('change', { bubbles: true }))"), 'difficulty picker must dispatch native select change events');
 
