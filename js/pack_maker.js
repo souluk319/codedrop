@@ -164,6 +164,75 @@ const PackMaker = (() => {
         return hasCreateVerb && (hasPackWord || hasTermHint || hasCount);
     }
 
+    function isConnectionProbe(message) {
+        const text = escapeText(message);
+        const compact = compactPrompt(text);
+        if (!text) return false;
+
+        if (/^(되냐|돼|가능|가능해|가능한가|되나|되나요|테스트|test|status|health|ping)[?!.。]*$/i.test(compact)) {
+            return true;
+        }
+
+        const mentionsKugnus = /(kugnus|쿠그너스|home\s*ai|서버|llm|모델)/i.test(text);
+        const asksStatus = /(연결|응답|작동|상태|살아|붙|확인|테스트|가능|되|돼|online|offline|status|health|ping|check|test)/i.test(text);
+        return mentionsKugnus && asksStatus;
+    }
+
+    async function freshKugnusStatus() {
+        const helper = window.CodeDropLlmStatus;
+        if (helper && typeof helper.startKugnusHealthCheck === 'function') {
+            return helper.startKugnusHealthCheck(true);
+        }
+
+        try {
+            const res = await fetch('/api/llm/kugnus/health', { cache: 'no-store' });
+            return res.json();
+        } catch (err) {
+            return { ok: false, reason: err.message };
+        }
+    }
+
+    function connectionBriefResponse(message, status = {}) {
+        const korean = /[가-힣]/.test(message || '');
+        const ok = status && status.ok === true;
+        const route = routeDisplayLabel(status.route) || '-';
+        const provider = status.provider ? String(status.provider).toUpperCase() : '-';
+        const model = status.model || '-';
+        const reason = status.reason || (ok ? '' : 'KUGNUS health check failed');
+
+        if (korean) {
+            return [
+                `KUGNUS SERVER ${ok ? 'ONLINE' : 'OFFLINE'}입니다. 방금 health check를 다시 호출해서 확인했습니다.`,
+                '',
+                `- 상태: ${ok ? 'ONLINE' : 'OFFLINE'}`,
+                `- 경로: ${route}`,
+                `- Provider: ${provider}`,
+                `- Model: ${model}`,
+                reason ? `- 원인: ${reason}` : '',
+                '',
+                ok
+                    ? '팩 생성 요청을 넣으면 이 KUGNUS 경로로 검색 근거를 모으고 초안을 생성합니다.'
+                    : 'KUGNUS가 OFFLINE이면 팩 생성 요청 전에 GPT 5.4 MINI 전환 팝업이 뜹니다.',
+                '',
+                '예: 자동차 정비소에 취직하는데 한글 자동차부품 단어 50개로 카 파츠 팩 만들어줘'
+            ].filter(Boolean).join('\n');
+        }
+
+        return [
+            `KUGNUS SERVER is ${ok ? 'ONLINE' : 'OFFLINE'}. I just ran a fresh health check.`,
+            '',
+            `- Status: ${ok ? 'ONLINE' : 'OFFLINE'}`,
+            `- Route: ${route}`,
+            `- Provider: ${provider}`,
+            `- Model: ${model}`,
+            reason ? `- Reason: ${reason}` : '',
+            '',
+            ok
+                ? 'Pack generation requests will use this KUGNUS route for search-grounded drafting.'
+                : 'If KUGNUS stays offline, Pack Maker will offer the GPT 5.4 MINI fallback before generation.'
+        ].filter(Boolean).join('\n');
+    }
+
     function localBriefResponse(message) {
         if (/[가-힣]/.test(message || '')) {
             return [
@@ -750,16 +819,30 @@ const PackMaker = (() => {
         renderStatus(state.userToken ? engineStatus('READY') : t('packMaker.guestPreview'));
     }
 
-    function answerLocalBrief(message) {
+    async function answerLocalBrief(message) {
         ui.input.value = '';
-        const answer = localBriefResponse(message);
+        appendChat('user', message);
+
+        const pending = appendChat('assistant', '', { question: message, streaming: true });
+        let answer = '';
+
+        if (isConnectionProbe(message)) {
+            renderStatus('KUGNUS CHECKING');
+            setChatMessageContent(pending, 'KUGNUS SERVER 상태를 확인하는 중입니다...', true);
+            const status = await freshKugnusStatus();
+            updateEngineRouteStatus(status);
+            answer = connectionBriefResponse(message, status);
+            renderStatus(status.ok === true ? engineStatus('READY', status) : 'KUGNUS OFFLINE', status.ok !== true);
+        } else {
+            answer = localBriefResponse(message);
+            renderStatus('PACK BRIEF REQUIRED');
+        }
+
+        finishAssistantMessage(pending, answer, message);
         stateRef.chat.push({ role: 'user', content: message });
         stateRef.chat.push({ role: 'assistant', content: answer, question: message });
         stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
         persistChatHistory();
-        appendChat('user', message);
-        appendChat('assistant', answer, { question: message });
-        renderStatus('PACK BRIEF REQUIRED');
     }
 
     function persistDraft() {
@@ -1099,7 +1182,7 @@ const PackMaker = (() => {
     async function sendChatText(message) {
         if (stateRef.busy) return;
         if (!isLocalPackGenerationRequest(message)) {
-            answerLocalBrief(message);
+            await answerLocalBrief(message);
             return;
         }
 

@@ -1563,13 +1563,14 @@
         }
 
         #pack-maker-screen {
-            padding: clamp(20px, 3vw, 42px);
+            --pack-maker-safe-bottom: calc(var(--corner-widget-size) + var(--corner-widget-offset) + 24px);
+            padding: clamp(20px, 3vw, 42px) clamp(20px, 3vw, 42px) var(--pack-maker-safe-bottom);
             gap: 18px;
         }
 
         .pack-maker-shell {
             width: min(1320px, 94vw);
-            height: min(780px, calc(100dvh - 84px));
+            height: min(760px, calc(100dvh - var(--pack-maker-safe-bottom) - 92px));
             display: grid;
             grid-template-columns: minmax(330px, 0.9fr) minmax(520px, 1.35fr);
             gap: 18px;

@@ -602,6 +602,8 @@ assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env exa
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
+assert(index.includes('--pack-maker-safe-bottom'), 'pack maker overlay should reserve bottom space for global README/MUSIC widgets');
+assert(index.includes('100dvh - var(--pack-maker-safe-bottom)'), 'pack maker shell height should avoid the global bottom widget zone');
 const packMaker = read('js/pack_maker.js');
 assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client should call the stream endpoint');
 assert(packMaker.includes('function engineStatus'), 'pack maker status should include KUGNUS route context');
@@ -609,7 +611,11 @@ assert(index.includes('id="pack-maker-route"'), 'pack maker should show the acti
 assert(packMaker.includes('function updateEngineRouteStatus'), 'pack maker should update the visible KUGNUS route indicator');
 assert(packMaker.includes("if (value === 'direct') return 'LOCAL DIRECT';"), 'pack maker should label direct KUGNUS routing as local-only');
 assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
-assert(packMaker.includes('function answerLocalBrief'), 'pack maker should answer brief/how-to prompts locally without touching auth or KUGNUS');
+assert(packMaker.includes('function answerLocalBrief'), 'pack maker should answer brief/how-to prompts before auth or pack generation');
+assert(packMaker.includes('function isConnectionProbe'), 'pack maker should classify connection/status prompts separately from pack generation');
+assert(packMaker.includes('function freshKugnusStatus'), 'pack maker connection prompts should run a fresh KUGNUS health check');
+assert(packMaker.includes('startKugnusHealthCheck(true)'), 'pack maker connection prompts should force-refresh KUGNUS health instead of trusting stale cache');
+assert(packMaker.includes('KUGNUS SERVER ${ok ?'), 'pack maker connection prompts should report ONLINE/OFFLINE state in the chat');
 assert(packMaker.includes('PACK BRIEF REQUIRED'), 'pack maker local brief path should expose a clear non-generation status');
 assert(packMaker.includes("codedrop_pack_maker_draft_v2"), 'pack maker should not restore stale pre-release draft storage');
 assert(packMaker.includes("const SCOPED_STORAGE_VERSION = 'v3';"), 'pack maker draft/chat storage should be versioned by auth scope');
