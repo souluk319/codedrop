@@ -101,7 +101,8 @@ const expectedOrder = [
     'js/lab_mode.js',
     'js/learn_mode.js',
     'js/dashboard.js',
-    'js/pack_maker.js'
+    'js/pack_maker.js',
+    'js/keyboard_test.js'
 ];
 
 let lastIndex = -1;
