@@ -272,6 +272,7 @@ assert(index.includes('class="difficulty-picker" data-difficulty-for="ocp-diffic
 assert(index.includes('.difficulty-menu'), 'difficulty picker neon menu styles are missing');
 assert(index.includes('.select-group select.difficulty-native-select'), 'hidden difficulty select must override generic select width');
 assert(index.includes('clip-path: inset(50%)'), 'hidden native selects must be clipped so browser popovers cannot leak visually');
+assert(index.includes('display: none !important;'), 'hidden native selects must be removed from layout so browser popovers cannot open');
 assert(index.includes('opacity: 0 !important;'), 'native difficulty select should be visually invisible');
 assert(index.includes('pointer-events: none !important;'), 'native difficulty select should not receive clicks');
 const difficultyTrigger = cssBlock('.difficulty-trigger');
