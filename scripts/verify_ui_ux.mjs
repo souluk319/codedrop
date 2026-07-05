@@ -522,6 +522,7 @@ assert(fs.existsSync(path.join(root, 'scripts/verify_release_runtime_contract.mj
 const releaseReadinessMatrix = read('scripts/verify_release_readiness_matrix.mjs');
 const releaseRuntimeVerifier = read('scripts/verify_release_runtime_route.mjs');
 const releaseRuntimeContract = read('scripts/verify_release_runtime_contract.mjs');
+const readme = read('README.md');
 assert(releaseReadinessMatrix.includes('incomplete OPENAI_* KUGNUS alias is blocked'), 'release readiness matrix should cover incomplete OPENAI_* aliases');
 assert(releaseReadinessMatrix.includes('direct KUGNUS route is blocked for release'), 'release readiness matrix should cover direct route blocking');
 assert(releaseReadinessMatrix.includes('dedicated GPT fallback must remain mini'), 'release readiness matrix should cover dedicated GPT mini guard');
@@ -534,6 +535,9 @@ assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_TEST_MODE'), 'release ru
 assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_SKIP_READY_DB'), 'release runtime contract should skip DB only in explicit test mode');
 assert(releaseRuntimeContract.includes("mode: 'openai-alias'"), 'release runtime contract should verify OPENAI_* KUGNUS alias routing');
 assert(releaseRuntimeContract.includes('LLM_BASE_URL=http://100.99.152.52:11434'), 'release runtime contract should prove OPENAI_* alias wins even when direct LLM_BASE_URL remains set');
+assert(readme.includes('OPENAI_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the OpenAI-compatible KUGNUS gateway alias');
+assert(readme.includes('verify:release-runtime -- --env-file=.env.production'), 'README should document runtime route verification before release');
+assert(readme.indexOf('`OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`') < readme.indexOf('`LLM_BASE_URL` / `LLM_MODEL` direct'), 'README KUGNUS routing order should put the gateway alias before direct LLM_BASE_URL');
 assert(verifyAll.includes('scripts/verify_release_readiness_matrix.mjs'), 'main verification should exercise the release readiness matrix');
 assert(verifyAll.includes('scripts/verify_release_runtime_contract.mjs'), 'main verification should exercise the release runtime contract');
 assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doctor script is missing');

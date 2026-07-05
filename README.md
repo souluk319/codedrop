@@ -133,11 +133,19 @@ The server rejects non-mini OpenAI models for chat fallback. Keep high-end model
 The server resolves KUGNUS in this order:
 
 1. `KUGNUS_GATEWAY_BASE_URL` / `KUGNUS_GATEWAY_API_KEY` / `KUGNUS_GATEWAY_MODEL`
-2. Other KUGNUS-prefixed aliases.
-3. `LLM_BASE_URL` / `LLM_MODEL` direct Ollama-compatible local server.
-4. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` only when the model name looks like a KUGNUS/local model or `KUGNUS_USE_OPENAI_ENV=1`.
+2. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` when the model name looks like a KUGNUS/local model or `KUGNUS_USE_OPENAI_ENV=1`.
+3. Other KUGNUS-prefixed aliases.
+4. `LLM_BASE_URL` / `LLM_MODEL` direct Ollama-compatible local server.
 
-For deployment, prefer the explicit `KUGNUS_GATEWAY_*` variables.
+For deployment, prefer the explicit `KUGNUS_GATEWAY_*` variables. If you use the OpenAI-compatible gateway alias from `local-llm-lab`, keep the full trio together:
+
+```env
+OPENAI_BASE_URL=https://llm.yourdomain.com/v1
+OPENAI_API_KEY=<KUGNUS_GATEWAY_API_KEY>
+OPENAI_MODEL=gemma4:12b-it-qat
+```
+
+When that alias is complete, the server intentionally routes KUGNUS through the alias even if a local `LLM_BASE_URL` is still present. Release checks still block direct `LLM_BASE_URL`; remove it from production env after gateway verification.
 
 `npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves both explicit `KUGNUS_GATEWAY_*` configuration and the `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias path.
 
@@ -145,6 +153,7 @@ After real gateway env values are present, run a live gateway check before relea
 
 ```bash
 npm run verify:kugnus-live -- --env-file=.env.production
+npm run verify:release-runtime -- --env-file=.env.production
 ```
 
 Passing output must include:
@@ -152,10 +161,11 @@ Passing output must include:
 ```json
 {
   "kugnusGatewayLive": "ok",
-  "route": "gateway",
   "model": "gemma4:12b-it-qat"
 }
 ```
+
+`verify:release-runtime` must report `route` as `gateway` or `openai-env-alias`. If it reports `direct`, the app is still using local Ollama and is not ready for public deployment.
 
 If the app shows `KUGNUS ROUTE: DIRECT`, it is still using `LLM_BASE_URL`/direct Ollama and is not ready for public deployment.
 
