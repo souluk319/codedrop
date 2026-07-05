@@ -877,6 +877,10 @@ assert(index.includes('<base href="/games/codedrop/">'), 'deployment base href s
 assert(server.includes('const CODEDROP_BASE_PATH = "/games/codedrop";'), 'server should define the /games/codedrop deployment base path');
 assert(server.includes('app.use(`${CODEDROP_BASE_PATH}/js`'), 'server should serve JS assets under /games/codedrop');
 assert(server.includes('/^\\/games\\/codedrop(?:\\/.*)?$/'), 'server should fallback /games/codedrop routes to index.html');
+assert(readme.includes('https://www.kugnus.com/games/codedrop/'), 'README should document the public CodeDrop subpath');
+assert(readme.includes('/games/codedrop/*  -> CodeDrop backend'), 'README should document the reverse proxy path for CodeDrop');
+assert(readme.includes('/api/*             -> CodeDrop backend'), 'README should document API proxy routing for subpath deploy');
+assert(readme.includes('ALLOWED_ORIGINS') && readme.includes('https://www.kugnus.com'), 'README should document the production allowed origin for kugnus.com');
 assert(game.includes("const CODEDROP_BASE_PATH = '/games/codedrop';"), 'client router should target /games/codedrop');
 assert(game.includes('function initAppRouter()'), 'client app router initializer is missing');
 assert(game.includes("packMaker: '/pack-maker'"), 'Pack Maker should have a browser route');

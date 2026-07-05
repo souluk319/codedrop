@@ -250,6 +250,78 @@ DUCKDUCKGO_API_KEY
 `KUGNUS_GATEWAY_BASE_URL` must be the public HTTPS gateway URL, not a Tailscale,
 localhost, or direct Ollama address.
 
+### Deploy under www.kugnus.com/games/codedrop
+
+CodeDrop is prepared to live under this public path:
+
+```text
+https://www.kugnus.com/games/codedrop/
+```
+
+The app uses browser routes below that base path, for example:
+
+```text
+/games/codedrop/
+/games/codedrop/pack-maker
+/games/codedrop/key-test
+/games/codedrop/ocp
+/games/codedrop/ocp/dashboard
+/games/codedrop/ocp/scenario
+```
+
+All of those paths must serve the CodeDrop app. The backend already returns
+`index.html` for `/games/codedrop/*`, and also serves assets under
+`/games/codedrop/js`, `/games/codedrop/assets`, and `/games/codedrop/sound`.
+
+If `www.kugnus.com` is a reverse proxy in front of this Node service, route both
+the game path and API paths to the CodeDrop backend:
+
+```text
+/games/codedrop/*  -> CodeDrop backend
+/api/*             -> CodeDrop backend
+/login             -> CodeDrop backend
+/register          -> CodeDrop backend
+/withdraw          -> CodeDrop backend
+/submit            -> CodeDrop backend
+/leaderboard       -> CodeDrop backend
+/health            -> CodeDrop backend
+/ready             -> CodeDrop backend
+```
+
+Example Nginx shape:
+
+```nginx
+location ^~ /games/codedrop/ {
+    proxy_pass https://codedrop-backend.example.com;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location ~ ^/(api|login|register|withdraw|submit|leaderboard|health|ready) {
+    proxy_pass https://codedrop-backend.example.com;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Example Caddy shape:
+
+```caddyfile
+handle_path /games/codedrop/* {
+    reverse_proxy https://codedrop-backend.example.com
+}
+
+handle /api/* /login /register /withdraw /submit /leaderboard /health /ready {
+    reverse_proxy https://codedrop-backend.example.com
+}
+```
+
+For this domain, production `ALLOWED_ORIGINS` should include exactly:
+
+```text
+https://www.kugnus.com
+```
+
 Firebase migration target:
 
 ```text
