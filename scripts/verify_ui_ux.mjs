@@ -331,6 +331,7 @@ assert(game.includes('route: llmStatus.route'), 'front-end KUGNUS status snapsho
 assert(learn.includes('function chatEngineStatus'), 'learn chat status should include KUGNUS route context');
 assert(index.includes('id="learn-chat-route"'), 'learn chat should show the active KUGNUS route separately from task status');
 assert(learn.includes('function updateChatRouteStatus'), 'learn chat should update the visible KUGNUS route indicator');
+assert(learn.includes("if (value === 'direct') return 'LOCAL DIRECT';"), 'learn chat should label direct KUGNUS routing as local-only');
 assert(server.includes('normalizeOpenAiMiniModel'), 'OpenAI model ids should be normalized before use');
 assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "kugnus"'), 'server chat engine default should prefer KUGNUS SERVER');
 assert(server.includes('app.get("/api/llm/kugnus/health"'), 'KUGNUS health endpoint is missing');
@@ -591,6 +592,7 @@ assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client sho
 assert(packMaker.includes('function engineStatus'), 'pack maker status should include KUGNUS route context');
 assert(index.includes('id="pack-maker-route"'), 'pack maker should show the active KUGNUS route separately from draft status');
 assert(packMaker.includes('function updateEngineRouteStatus'), 'pack maker should update the visible KUGNUS route indicator');
+assert(packMaker.includes("if (value === 'direct') return 'LOCAL DIRECT';"), 'pack maker should label direct KUGNUS routing as local-only');
 assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
 assert(packMaker.includes('function answerLocalBrief'), 'pack maker should answer brief/how-to prompts locally without touching auth or KUGNUS');
 assert(packMaker.includes('PACK BRIEF REQUIRED'), 'pack maker local brief path should expose a clear non-generation status');

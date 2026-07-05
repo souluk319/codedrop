@@ -378,6 +378,13 @@ const LearnMode = (() => {
         return ui.chatEngine && ui.chatEngine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
     }
 
+    function routeDisplayLabel(route) {
+        const value = String(route || '').toLowerCase();
+        if (value === 'direct') return 'LOCAL DIRECT';
+        if (value === 'openai-env-alias') return 'OPENAI GATEWAY';
+        return value ? value.toUpperCase() : '';
+    }
+
     function chatRouteLabel(meta = null) {
         if (!ui.chatEngine || ui.chatEngine.value !== 'kugnus') return '';
         const route = meta && typeof meta.route === 'string' && meta.route
@@ -385,7 +392,7 @@ const LearnMode = (() => {
             : (window.CodeDropLlmStatus && typeof window.CodeDropLlmStatus.snapshot === 'function'
                 ? window.CodeDropLlmStatus.snapshot().route
                 : '');
-        return route ? ` ${route.toUpperCase()}` : '';
+        return route ? ` ${routeDisplayLabel(route)}` : '';
     }
 
     function chatEngineStatus(status, meta = null) {
@@ -416,7 +423,7 @@ const LearnMode = (() => {
             return;
         }
 
-        const route = status.route ? String(status.route).toUpperCase() : 'UNKNOWN';
+        const route = routeDisplayLabel(status.route) || 'UNKNOWN';
         const provider = status.provider ? ` · ${String(status.provider).toUpperCase()}` : '';
         ui.chatRoute.textContent = `KUGNUS ROUTE: ${route}${provider}`;
         ui.chatRoute.classList.toggle('warn', route !== 'GATEWAY');
