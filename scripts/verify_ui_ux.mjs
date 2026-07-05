@@ -28,6 +28,22 @@ function assert(condition, message) {
     if (!condition) throw new Error(message);
 }
 
+function assertUniqueIds(html) {
+    const counts = new Map();
+    for (const match of html.matchAll(/\bid="([^"]+)"/g)) {
+        const id = match[1];
+        counts.set(id, (counts.get(id) || 0) + 1);
+    }
+
+    const duplicates = [...counts.entries()]
+        .filter(([, count]) => count > 1)
+        .map(([id, count]) => `${id}:${count}`);
+
+    assert(duplicates.length === 0, `index.html should not contain duplicate ids: ${duplicates.join(', ')}`);
+}
+
+assertUniqueIds(index);
+
 function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
