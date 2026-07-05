@@ -130,6 +130,10 @@ try {
     assert(kugnusHealth.text.includes('"engine":"kugnus"'), '/api/llm/kugnus/health should identify the KUGNUS engine');
     assert(kugnusHealth.text.includes('"ok":false'), '/api/llm/kugnus/health should report offline KUGNUS as ok:false in smoke');
 
+    const prefixedKugnusHealth = await request('/games/codedrop/api/llm/kugnus/health');
+    assert(prefixedKugnusHealth.status === 200, '/games/codedrop/api/llm/kugnus/health should alias the KUGNUS health endpoint');
+    assert(prefixedKugnusHealth.text.includes('"engine":"kugnus"'), '/games/codedrop/api/llm/kugnus/health should return KUGNUS JSON');
+
     const root = await request('/');
     assert(root.status === 200 && root.text.includes('CodeDrop: Neon Cyberpunk'), '/ should serve the app shell');
     assertNoStore(root.headers, '/');
@@ -198,6 +202,9 @@ try {
     const invalidLeaderboard = await request('/leaderboard?difficulty=bogus&pack=python');
     assert(invalidLeaderboard.status === 400, 'invalid leaderboard filters should be rejected before DB access');
 
+    const prefixedInvalidLeaderboard = await request('/games/codedrop/leaderboard?difficulty=bogus&pack=python');
+    assert(prefixedInvalidLeaderboard.status === 400, '/games/codedrop/leaderboard should alias leaderboard validation');
+
     const unauthSubmit = await request('/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -242,6 +249,13 @@ try {
         body: JSON.stringify({ message: '' })
     });
     assert(emptyLearnChatStream.status === 400, '/api/learn-chat/stream should reject empty messages before LLM access');
+
+    const prefixedEmptyLearnChatStream = await request('/games/codedrop/api/learn-chat/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: '' })
+    });
+    assert(prefixedEmptyLearnChatStream.status === 400, '/games/codedrop/api/learn-chat/stream should alias learn chat validation');
 
     const invalidLearnChatStream = await request('/api/learn-chat/stream', {
         method: 'POST',

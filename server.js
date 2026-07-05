@@ -138,6 +138,26 @@ if (process.env.REQUEST_LOGS === "1") {
     });
 }
 
+const CODEDROP_PREFIXED_API_PATHS = new Set([
+    "/health",
+    "/ready",
+    "/login",
+    "/register",
+    "/withdraw",
+    "/submit",
+    "/leaderboard"
+]);
+
+app.use((req, res, next) => {
+    if (!req.url.startsWith(`${CODEDROP_BASE_PATH}/`)) return next();
+    const unprefixedUrl = req.url.slice(CODEDROP_BASE_PATH.length) || "/";
+    const pathname = unprefixedUrl.split("?")[0];
+    if (pathname.startsWith("/api/") || CODEDROP_PREFIXED_API_PATHS.has(pathname)) {
+        req.url = unprefixedUrl;
+    }
+    next();
+});
+
 // Serve index.html at root (Explicitly before static)
 app.get('/', (req, res) => {
     sendIndexHtml(res);

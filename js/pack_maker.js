@@ -4,6 +4,7 @@
  */
 
 const PackMaker = (() => {
+    const PACK_MAKER_API_BASE = (typeof window !== 'undefined' && window.CODEDROP_API_BASE) || '/games/codedrop';
     const STORAGE_KEY = 'codedrop_pack_maker_draft_v2';
     const CHAT_STORAGE_KEY = 'codedrop_pack_maker_chat_history';
     const SCOPED_STORAGE_VERSION = 'v3';
@@ -29,6 +30,10 @@ const PackMaker = (() => {
 
     function $(id) {
         return document.getElementById(id);
+    }
+
+    function apiPath(path) {
+        return `${PACK_MAKER_API_BASE}${path}`;
     }
 
     function authHeaders() {
@@ -72,11 +77,11 @@ const PackMaker = (() => {
             signal: stateRef.abort.signal,
             body: JSON.stringify(body)
         };
-        let res = await fetch('/api/pack-maker/chat/stream', options);
+        let res = await fetch(apiPath('/api/pack-maker/chat/stream'), options);
 
         if (res.status === 401) {
             if (await refreshExpiredSession()) {
-                res = await fetch('/api/pack-maker/chat/stream', {
+                res = await fetch(apiPath('/api/pack-maker/chat/stream'), {
                     ...options,
                     headers: { 'Content-Type': 'application/json', ...authHeaders() }
                 });
@@ -184,7 +189,7 @@ const PackMaker = (() => {
         }
 
         try {
-            const res = await fetch('/api/llm/kugnus/health', { cache: 'no-store' });
+            const res = await fetch(apiPath('/api/llm/kugnus/health'), { cache: 'no-store' });
             return res.json();
         } catch (err) {
             return { ok: false, reason: err.message };
@@ -769,7 +774,7 @@ const PackMaker = (() => {
             return false;
         }
 
-        const session = await fetch('/api/session', {
+        const session = await fetch(apiPath('/api/session'), {
             headers: authHeaders(),
             cache: 'no-store'
         }).catch(() => null);
@@ -1097,7 +1102,7 @@ const PackMaker = (() => {
             error.code = 'AUTH_REQUIRED';
             throw error;
         }
-        const res = await fetch(`/api/packs/${id}`, { headers: authHeaders() });
+        const res = await fetch(apiPath(`/api/packs/${id}`), { headers: authHeaders() });
         if (res.status === 401 && await refreshExpiredSession()) {
             return loadPackDetail(id);
         }
@@ -1155,13 +1160,13 @@ const PackMaker = (() => {
 
         try {
             let [mineRes, publicRes] = await Promise.all([
-                fetch('/api/packs?scope=mine', { headers: authHeaders() }),
-                fetch('/api/packs?scope=public', { headers: authHeaders() })
+                fetch(apiPath('/api/packs?scope=mine'), { headers: authHeaders() }),
+                fetch(apiPath('/api/packs?scope=public'), { headers: authHeaders() })
             ]);
             if ((mineRes.status === 401 || publicRes.status === 401) && await refreshExpiredSession()) {
                 [mineRes, publicRes] = await Promise.all([
-                    fetch('/api/packs?scope=mine', { headers: authHeaders() }),
-                    fetch('/api/packs?scope=public', { headers: authHeaders() })
+                    fetch(apiPath('/api/packs?scope=mine'), { headers: authHeaders() }),
+                    fetch(apiPath('/api/packs?scope=public'), { headers: authHeaders() })
                 ]);
             }
             if (!mineRes.ok || !publicRes.ok) throw new Error('Pack list failed');
@@ -1367,7 +1372,7 @@ const PackMaker = (() => {
 
         renderStatus(submitForReview ? 'SUBMITTING REVIEW' : 'SAVING');
         try {
-            const res = await fetch('/api/packs', {
+            const res = await fetch(apiPath('/api/packs'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ ...draft, submitForReview })

@@ -4,12 +4,12 @@
  */
 
 // --- API Config ---
-const API_BASE = "";
+const CODEDROP_BASE_PATH = (typeof window !== 'undefined' && window.CODEDROP_BASE_PATH) || '/games/codedrop';
+const API_BASE = (typeof window !== 'undefined' && window.CODEDROP_API_BASE) || CODEDROP_BASE_PATH;
 const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language';
 const APP_LANGUAGE_STORAGE_KEY = 'codedrop_language';
 const MUSIC_UI_STORAGE_KEY = 'codedrop_music_ui';
 const KUGNUS_HEALTH_TIMEOUT_MS = 12_000;
-const CODEDROP_BASE_PATH = '/games/codedrop';
 const MUSIC_FALLBACK_TRACKS = [
     'KUGNUS X AI SET',
     'SoundCloud playlist queue',

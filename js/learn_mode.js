@@ -10,6 +10,8 @@
 
 const LearnMode = (() => {
 
+    const LEARN_API_BASE = (typeof window !== 'undefined' && window.CODEDROP_API_BASE) || '/games/codedrop';
+
     const $ = (id) => document.getElementById(id);
     const ui = {};
 
@@ -1143,7 +1145,7 @@ const LearnMode = (() => {
         let finalStatus = '';
 
         try {
-            const res = await fetch('/api/learn-chat/stream', {
+            const res = await fetch(`${LEARN_API_BASE}/api/learn-chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 signal: session.chatAbort.signal,

@@ -270,34 +270,32 @@ The app uses browser routes below that base path, for example:
 ```
 
 All of those paths must serve the CodeDrop app. The backend already returns
-`index.html` for `/games/codedrop/*`, and also serves assets under
-`/games/codedrop/js`, `/games/codedrop/assets`, and `/games/codedrop/sound`.
+`index.html` for `/games/codedrop/*`, serves assets under
+`/games/codedrop/js`, `/games/codedrop/assets`, and `/games/codedrop/sound`,
+and accepts API/auth calls under the same base path so the game can coexist with
+the main `www.kugnus.com` site.
 
-If `www.kugnus.com` is a reverse proxy in front of this Node service, route both
-the game path and API paths to the CodeDrop backend:
+If `www.kugnus.com` is a reverse proxy in front of this Node service, route the
+game base path to the CodeDrop backend:
 
 ```text
-/games/codedrop/*  -> CodeDrop backend
-/api/*             -> CodeDrop backend
-/login             -> CodeDrop backend
-/register          -> CodeDrop backend
-/withdraw          -> CodeDrop backend
-/submit            -> CodeDrop backend
-/leaderboard       -> CodeDrop backend
-/health            -> CodeDrop backend
-/ready             -> CodeDrop backend
+/games/codedrop/*                  -> CodeDrop backend
+/games/codedrop/api/*              -> CodeDrop backend
+/games/codedrop/login              -> CodeDrop backend
+/games/codedrop/register           -> CodeDrop backend
+/games/codedrop/withdraw           -> CodeDrop backend
+/games/codedrop/submit             -> CodeDrop backend
+/games/codedrop/leaderboard        -> CodeDrop backend
 ```
+
+Keep the root `/health` and `/ready` endpoints available on the backend service
+for platform health checks. They do not need to be public pages on
+`www.kugnus.com`.
 
 Example Nginx shape:
 
 ```nginx
 location ^~ /games/codedrop/ {
-    proxy_pass https://codedrop-backend.example.com;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-location ~ ^/(api|login|register|withdraw|submit|leaderboard|health|ready) {
     proxy_pass https://codedrop-backend.example.com;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto $scheme;
@@ -308,10 +306,6 @@ Example Caddy shape:
 
 ```caddyfile
 handle_path /games/codedrop/* {
-    reverse_proxy https://codedrop-backend.example.com
-}
-
-handle /api/* /login /register /withdraw /submit /leaderboard /health /ready {
     reverse_proxy https://codedrop-backend.example.com
 }
 ```
