@@ -509,6 +509,13 @@ assert(localEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'loca
 assert(localEnvExample.includes('KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model');
 assert(fs.existsSync(path.join(root, 'scripts/verify_kugnus_gateway_live.mjs')), 'live KUGNUS gateway verifier script is missing');
 assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugnus_gateway_live.mjs', 'package should expose the live KUGNUS gateway verifier command');
+assert(packageJson.scripts?.['verify:release-runtime'] === 'node scripts/verify_release_runtime_route.mjs', 'package should expose release runtime route verification');
+assert(fs.existsSync(path.join(root, 'scripts/verify_release_runtime_route.mjs')), 'release runtime route verifier script is missing');
+const releaseRuntimeVerifier = read('scripts/verify_release_runtime_route.mjs');
+assert(releaseRuntimeVerifier.includes('scripts/check_release_readiness.mjs'), 'release runtime verifier should run release preflight before starting server');
+assert(releaseRuntimeVerifier.includes('/api/llm/kugnus/health'), 'release runtime verifier should probe the running server KUGNUS health endpoint');
+assert(releaseRuntimeVerifier.includes('gateway,openai-env-alias'), 'release runtime verifier should require gateway-style KUGNUS routes');
+assert(releaseRuntimeVerifier.includes('Release runtime is using the wrong KUGNUS route'), 'release runtime verifier should fail on direct KUGNUS route mismatches');
 assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doctor script is missing');
 assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'package should expose the system doctor command');
 assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
