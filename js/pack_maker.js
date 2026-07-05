@@ -289,7 +289,48 @@ const PackMaker = (() => {
         if (!ui.engine) return;
         ui.engine.value = engine === 'openai' ? 'openai' : 'kugnus';
         stateRef.engine = ui.engine.value;
+        syncEnginePicker();
         updateEngineRouteStatus();
+    }
+
+    function syncEnginePicker() {
+        if (!ui.engine) return;
+        const engine = ui.engine.value === 'openai' ? 'openai' : 'kugnus';
+        const label = engine === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
+        if (ui.engineLabel) ui.engineLabel.textContent = label;
+        if (ui.engineMenu) {
+            ui.engineMenu.querySelectorAll('[data-engine]').forEach(option => {
+                option.setAttribute('aria-selected', option.dataset.engine === engine ? 'true' : 'false');
+            });
+        }
+    }
+
+    function openEngineMenu() {
+        if (!ui.engineShell || !ui.engineMenu || !ui.engineToggle) return;
+        ui.engineShell.classList.add('open');
+        ui.engineMenu.classList.remove('hidden');
+        ui.engineToggle.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeEngineMenu() {
+        if (!ui.engineShell || !ui.engineMenu || !ui.engineToggle) return;
+        ui.engineShell.classList.remove('open');
+        ui.engineMenu.classList.add('hidden');
+        ui.engineToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleEngineMenu() {
+        if (!ui.engineMenu) return;
+        if (ui.engineMenu.classList.contains('hidden')) openEngineMenu();
+        else closeEngineMenu();
+    }
+
+    function chooseEngine(engine) {
+        if (engine !== 'openai' && engine !== 'kugnus') return;
+        ui.engine.value = engine;
+        ui.engine.dispatchEvent(new Event('change'));
+        closeEngineMenu();
+        if (ui.engineToggle) ui.engineToggle.focus();
     }
 
     async function offerKugnusFallbackIfNeeded() {
@@ -1367,6 +1408,10 @@ const PackMaker = (() => {
         ui.openBtn = $('pack-maker-btn');
         ui.closeBtn = $('pack-maker-close');
         ui.engine = $('pack-maker-engine');
+        ui.engineShell = $('pack-maker-engine-shell');
+        ui.engineToggle = $('pack-maker-engine-toggle');
+        ui.engineLabel = $('pack-maker-engine-label');
+        ui.engineMenu = $('pack-maker-engine-menu');
         ui.route = $('pack-maker-route');
         ui.form = $('pack-maker-chat-form');
         ui.input = $('pack-maker-input');
@@ -1397,6 +1442,25 @@ const PackMaker = (() => {
         ui.engine.addEventListener('change', () => {
             setEngine(ui.engine.value);
             if (!stateRef.busy) renderStatus(engineStatus('READY'));
+        });
+        if (ui.engineToggle) {
+            ui.engineToggle.addEventListener('click', event => {
+                event.stopPropagation();
+                toggleEngineMenu();
+            });
+        }
+        if (ui.engineMenu) {
+            ui.engineMenu.addEventListener('click', event => {
+                const option = event.target.closest('[data-engine]');
+                if (option) chooseEngine(option.dataset.engine);
+            });
+        }
+        document.addEventListener('click', event => {
+            if (!ui.engineShell || ui.engineShell.contains(event.target)) return;
+            closeEngineMenu();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeEngineMenu();
         });
         window.addEventListener('codedrop:llm-status', e => updateEngineRouteStatus(e.detail));
         [ui.title, ui.description].forEach(field => {

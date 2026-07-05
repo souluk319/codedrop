@@ -705,9 +705,15 @@ assert(keyboardTest.includes('window.KeyboardTest'), 'keyboard test should expos
 assert(keyboardTest.includes('MAIN_ROWS') && keyboardTest.includes('NAV_KEYS') && keyboardTest.includes('NUM_KEYS'), 'keyboard test should keep main/nav/numpad zones explicit');
 assert(index.includes('min-width: 1120px;'), 'keyboard test board should preserve a stable desktop keyboard width inside its scroll area');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
+assert(index.includes('id="pack-maker-engine-shell"'), 'pack maker should use a themed engine picker shell');
+assert(index.includes('id="pack-maker-engine-toggle"'), 'pack maker should use a themed engine picker toggle');
+assert(index.includes('id="pack-maker-engine-menu"'), 'pack maker should use a themed engine picker popover');
+assert(index.includes('#pack-maker-engine') && index.includes('pointer-events: none;'), 'pack maker native engine select should stay hidden');
 assert(index.includes('--pack-maker-safe-bottom'), 'pack maker overlay should reserve bottom space for global README/MUSIC widgets');
 assert(index.includes('100dvh - var(--pack-maker-safe-bottom)'), 'pack maker shell height should avoid the global bottom widget zone');
 assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client should call the stream endpoint');
+assert(packMaker.includes('function syncEnginePicker'), 'pack maker should sync hidden engine select with the visible picker');
+assert(packMaker.includes('function chooseEngine'), 'pack maker engine popover should update the active LLM engine');
 assert(packMaker.includes('function engineStatus'), 'pack maker status should include KUGNUS route context');
 assert(index.includes('id="pack-maker-route"'), 'pack maker should show the active KUGNUS route separately from draft status');
 assert(packMaker.includes('function updateEngineRouteStatus'), 'pack maker should update the visible KUGNUS route indicator');
