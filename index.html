@@ -1562,6 +1562,26 @@
             box-shadow: 0 0 16px var(--secondary-neon);
         }
 
+        .standard-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            width: 100%;
+        }
+
+        .keytest-entry {
+            width: 100%;
+            margin-top: 0;
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+
+        .keytest-entry:hover {
+            background: var(--success-color);
+            color: #050505;
+            box-shadow: 0 0 16px var(--success-color);
+        }
+
         #pack-maker-screen {
             --pack-maker-safe-bottom: calc(var(--corner-widget-size) + var(--corner-widget-offset) + 24px);
             padding: clamp(20px, 3vw, 42px) clamp(20px, 3vw, 42px) var(--pack-maker-safe-bottom);
@@ -1811,6 +1831,265 @@
 
         .pack-maker-footer .btn-small {
             min-width: 140px;
+        }
+
+        /* --- Keyboard Test --- */
+        #keyboard-test-screen {
+            padding: clamp(18px, 3vw, 40px);
+            justify-content: center;
+        }
+
+        .keytest-shell {
+            width: min(1480px, 96vw);
+            max-height: min(820px, calc(100dvh - 54px));
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr) auto;
+            gap: 14px;
+            padding: clamp(18px, 2vw, 28px);
+            border: 1px solid rgba(0, 243, 255, 0.42);
+            border-radius: 8px;
+            background:
+                linear-gradient(180deg, rgba(0, 243, 255, 0.08), transparent 28%),
+                rgba(5, 5, 10, 0.94);
+            box-shadow: 0 0 32px rgba(0, 243, 255, 0.18), inset 0 0 28px rgba(0, 0, 0, 0.65);
+            overflow: hidden;
+        }
+
+        .keytest-head,
+        .keytest-stats,
+        .keytest-log-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .keytest-title {
+            font-family: var(--font-display);
+            color: var(--primary-neon);
+            text-shadow: 0 0 14px var(--primary-neon);
+            font-size: clamp(1.35rem, 2.8vw, 2.4rem);
+        }
+
+        .keytest-subtitle {
+            margin-top: 4px;
+            color: #999;
+            font-size: 0.84rem;
+        }
+
+        .keytest-head-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .keytest-stats {
+            align-items: stretch;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .keytest-stat,
+        .keytest-lock {
+            min-width: 0;
+            border: 1px solid rgba(0, 243, 255, 0.22);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.035);
+            padding: 10px 12px;
+        }
+
+        .keytest-stat-label {
+            display: block;
+            color: #888;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .keytest-stat-value {
+            display: block;
+            color: #fff;
+            font-weight: 800;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.28);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .keytest-locks {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            grid-column: span 2;
+        }
+
+        .keytest-lock {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #aaa;
+            font-size: 0.78rem;
+        }
+
+        .keytest-led {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 243, 255, 0.45);
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.8);
+        }
+
+        .keytest-lock.on {
+            color: var(--success-color);
+            border-color: rgba(5, 255, 161, 0.4);
+        }
+
+        .keytest-lock.on .keytest-led {
+            background: var(--success-color);
+            box-shadow: 0 0 12px rgba(5, 255, 161, 0.8);
+        }
+
+        .keytest-board-wrap {
+            min-height: 0;
+            overflow: auto;
+            border: 1px solid rgba(0, 243, 255, 0.18);
+            border-radius: 8px;
+            padding: 14px;
+            background: rgba(0, 0, 0, 0.32);
+        }
+
+        .keytest-board {
+            min-width: 1120px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 210px 258px;
+            gap: 14px;
+            align-items: end;
+        }
+
+        .keytest-zone {
+            display: grid;
+            gap: 7px;
+        }
+
+        .keytest-row {
+            display: flex;
+            gap: 7px;
+        }
+
+        .keytest-key {
+            --key-units: 1;
+            min-width: calc(42px * var(--key-units));
+            height: 42px;
+            padding: 0 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(0, 243, 255, 0.52);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.045);
+            color: #cfd5da;
+            font-family: var(--font-code);
+            font-weight: 800;
+            font-size: 0.78rem;
+            text-align: center;
+            box-shadow: 0 0 9px rgba(0, 243, 255, 0.16), inset 0 0 14px rgba(0, 0, 0, 0.62);
+            transition: transform 0.06s ease, background 0.08s ease, color 0.08s ease, box-shadow 0.08s ease;
+        }
+
+        .keytest-key[data-wide="1.25"] { --key-units: 1.25; }
+        .keytest-key[data-wide="1.5"] { --key-units: 1.5; }
+        .keytest-key[data-wide="1.75"] { --key-units: 1.75; }
+        .keytest-key[data-wide="2"] { --key-units: 2; }
+        .keytest-key[data-wide="2.25"] { --key-units: 2.25; }
+        .keytest-key[data-wide="2.75"] { --key-units: 2.75; }
+        .keytest-key[data-wide="6.25"] { --key-units: 6.25; }
+
+        .keytest-key.pressed {
+            transform: translateY(2px) scale(0.98);
+            background: var(--primary-neon);
+            color: #031014;
+            border-color: #fff;
+            box-shadow: 0 0 22px rgba(0, 243, 255, 0.9), inset 0 0 12px rgba(255, 255, 255, 0.38);
+        }
+
+        .keytest-key.tested {
+            background: rgba(0, 243, 255, 0.18);
+            color: #f7ffff;
+            border-color: rgba(0, 243, 255, 0.86);
+            box-shadow: 0 0 14px rgba(0, 243, 255, 0.34), inset 0 0 16px rgba(0, 243, 255, 0.12);
+        }
+
+        .keytest-key.recent {
+            border-color: var(--success-color);
+            box-shadow: 0 0 16px rgba(5, 255, 161, 0.48), inset 0 0 12px rgba(5, 255, 161, 0.12);
+        }
+
+        .keytest-nav-grid,
+        .keytest-numpad-grid {
+            display: grid;
+            gap: 7px;
+        }
+
+        .keytest-nav-grid {
+            grid-template-columns: repeat(3, 58px);
+            align-content: end;
+        }
+
+        .keytest-numpad-grid {
+            grid-template-columns: repeat(4, 58px);
+            grid-auto-rows: 42px;
+        }
+
+        .keytest-numpad-grid .keytest-key,
+        .keytest-nav-grid .keytest-key {
+            min-width: 58px;
+            width: 58px;
+            height: 42px;
+        }
+
+        .keytest-key.tall {
+            height: 91px;
+            grid-row: span 2;
+        }
+
+        .keytest-key.wide2 {
+            width: 123px;
+            grid-column: span 2;
+        }
+
+        .keytest-type-panel {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.035);
+            padding: 12px;
+            min-height: 104px;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 8px;
+        }
+
+        .keytest-log-head {
+            color: #999;
+            font-size: 0.82rem;
+        }
+
+        #keytest-log {
+            user-select: text;
+            white-space: pre-wrap;
+            overflow: auto;
+            color: var(--primary-neon);
+            line-height: 1.45;
+        }
+
+        @media (max-width: 980px) {
+            .keytest-stats {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .keytest-locks {
+                grid-column: 1 / -1;
+            }
         }
 
         @media (max-width: 900px) {
@@ -2335,6 +2614,7 @@
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
         }
 
+        .difficulty-native-select,
         .pack-native-select {
             position: absolute !important;
             width: 1px !important;
@@ -2343,6 +2623,120 @@
             pointer-events: none !important;
             padding: 0 !important;
             border: 0 !important;
+        }
+
+        .difficulty-picker {
+            position: relative;
+            width: 100%;
+        }
+
+        .difficulty-trigger {
+            width: 100%;
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 11px 14px;
+            font-family: var(--font-code);
+            color: var(--text-color);
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 5px),
+                linear-gradient(135deg, rgba(0, 243, 255, 0.12), rgba(0, 0, 0, 0.9) 58%, rgba(188, 19, 254, 0.14));
+            border: 1px solid rgba(0, 243, 255, 0.58);
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            box-shadow: inset 0 0 18px rgba(0, 243, 255, 0.07), 0 0 12px rgba(0, 243, 255, 0.08);
+            transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+        }
+
+        .difficulty-trigger:hover,
+        .difficulty-trigger:focus-visible,
+        .difficulty-picker.open .difficulty-trigger {
+            border-color: var(--primary-neon);
+            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.12), 0 0 20px rgba(0, 243, 255, 0.18);
+            transform: translateY(-1px);
+            outline: none;
+        }
+
+        .difficulty-trigger-main {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 0.96rem;
+            letter-spacing: 0.5px;
+        }
+
+        .difficulty-trigger-chip {
+            flex: 0 0 auto;
+            min-width: 80px;
+            text-align: center;
+            padding: 6px 8px;
+            border: 1px solid currentColor;
+            border-radius: 999px;
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.68rem;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.44);
+        }
+
+        .difficulty-menu {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 8px);
+            z-index: 80;
+            display: grid;
+            gap: 7px;
+            padding: 8px;
+            border: 1px solid rgba(0, 243, 255, 0.7);
+            border-radius: 8px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 5px),
+                linear-gradient(180deg, rgba(5, 16, 18, 0.98), rgba(0, 0, 0, 0.96));
+            box-shadow: 0 0 28px rgba(0, 243, 255, 0.2), inset 0 0 18px rgba(0, 243, 255, 0.07);
+        }
+
+        .difficulty-menu.hidden {
+            display: none;
+        }
+
+        .difficulty-option {
+            min-height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 9px 11px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 5px;
+            color: rgba(255, 255, 255, 0.78);
+            background: rgba(0, 0, 0, 0.62);
+            font-family: var(--font-code);
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .difficulty-option:hover,
+        .difficulty-option:focus-visible,
+        .difficulty-option.active {
+            color: #001014;
+            border-color: var(--primary-neon);
+            background: linear-gradient(90deg, rgba(0, 243, 255, 0.96), rgba(0, 243, 255, 0.66));
+            box-shadow: 0 0 16px rgba(0, 243, 255, 0.3);
+            outline: none;
+        }
+
+        .difficulty-option.active::after {
+            content: "ACTIVE";
+            flex: 0 0 auto;
+            color: #001014;
+            font-family: var(--font-display);
+            font-size: 0.62rem;
+            letter-spacing: 1px;
         }
 
         .pack-selector {
@@ -4822,11 +5216,19 @@
                     <div class="standard-menu" id="standard-menu">
                         <div class="select-group" id="drop-diff-group">
                             <label>System Difficulty</label>
-                            <select id="difficulty-select">
+                            <select id="difficulty-select" class="difficulty-native-select" aria-hidden="true" tabindex="-1">
                                 <option value="EASY">EASY [SAFE_MODE]</option>
                                 <option value="NORMAL" selected>NORMAL [STANDARD]</option>
                                 <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
                             </select>
+                            <div class="difficulty-picker" data-difficulty-for="difficulty-select">
+                                <button class="difficulty-trigger" type="button" aria-haspopup="listbox"
+                                    aria-expanded="false">
+                                    <span class="difficulty-trigger-main">NORMAL [STANDARD]</span>
+                                    <span class="difficulty-trigger-chip">NORMAL</span>
+                                </button>
+                                <div class="difficulty-menu hidden" role="listbox"></div>
+                            </div>
                         </div>
                         <div class="select-group" id="drop-pack-group">
                             <label>SELECT PACK</label>
@@ -4875,7 +5277,10 @@
                             </div>
                         </div>
                         <button class="btn" id="start-btn">START CODEDROP</button>
-                        <button class="btn-small pack-maker-entry" id="pack-maker-btn" type="button">PACK MAKER</button>
+                        <div class="standard-actions">
+                            <button class="btn-small pack-maker-entry" id="pack-maker-btn" type="button">PACK MAKER</button>
+                            <button class="btn-small keytest-entry" id="keyboard-test-btn" type="button">KEY TEST</button>
+                        </div>
                     </div>
 
                     <div class="ocp-menu hidden" id="ocp-menu">
@@ -4916,11 +5321,19 @@
                         </div>
                         <div class="select-group" id="ocp-drop-group">
                             <label>CLI Drop Difficulty</label>
-                            <select id="ocp-difficulty-select">
+                            <select id="ocp-difficulty-select" class="difficulty-native-select" aria-hidden="true" tabindex="-1">
                                 <option value="EASY">EASY [SAFE_MODE]</option>
                                 <option value="NORMAL" selected>NORMAL [STANDARD]</option>
                                 <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
                             </select>
+                            <div class="difficulty-picker" data-difficulty-for="ocp-difficulty-select">
+                                <button class="difficulty-trigger" type="button" aria-haspopup="listbox"
+                                    aria-expanded="false">
+                                    <span class="difficulty-trigger-main">NORMAL [STANDARD]</span>
+                                    <span class="difficulty-trigger-chip">NORMAL</span>
+                                </button>
+                                <div class="difficulty-menu hidden" role="listbox"></div>
+                            </div>
                             <div class="mode-info">OpenShift CLI (EX280) 팩으로 고정됩니다.</div>
                         </div>
                         <div class="select-group hidden" id="scenario-select-group">
@@ -5068,6 +5481,58 @@
                     </div>
                 </div>
             </section>
+        </div>
+    </div>
+
+    <!-- Keyboard Test Screen -->
+    <div id="keyboard-test-screen" class="overlay hidden">
+        <div class="keytest-shell">
+            <div class="keytest-head">
+                <div>
+                    <div class="keytest-title" data-keytest-i18n="title">KEYBOARD TEST</div>
+                    <div class="keytest-subtitle" data-keytest-i18n="subtitle">Press any key. CodeDrop will verify input, timing, and lock states.</div>
+                </div>
+                <div class="keytest-head-actions">
+                    <button class="btn-small" id="keytest-clear" type="button">CLR</button>
+                    <button class="btn-small" id="keytest-close" type="button">HOME</button>
+                </div>
+            </div>
+
+            <div class="keytest-stats" aria-live="polite">
+                <div class="keytest-stat">
+                    <span class="keytest-stat-label" data-keytest-i18n="state">State</span>
+                    <span class="keytest-stat-value" id="keytest-state">IDLE</span>
+                </div>
+                <div class="keytest-stat">
+                    <span class="keytest-stat-label" data-keytest-i18n="count">Key Count</span>
+                    <span class="keytest-stat-value" id="keytest-count">0</span>
+                </div>
+                <div class="keytest-stat">
+                    <span class="keytest-stat-label" data-keytest-i18n="last">Last Key</span>
+                    <span class="keytest-stat-value" id="keytest-last">-</span>
+                </div>
+                <div class="keytest-stat">
+                    <span class="keytest-stat-label" data-keytest-i18n="code">Code</span>
+                    <span class="keytest-stat-value" id="keytest-code">-</span>
+                </div>
+                <div class="keytest-locks">
+                    <div class="keytest-lock" id="keytest-caps"><span>Caps</span><span class="keytest-led"></span></div>
+                    <div class="keytest-lock" id="keytest-num"><span>Num</span><span class="keytest-led"></span></div>
+                    <div class="keytest-lock" id="keytest-scroll"><span>Scroll</span><span class="keytest-led"></span></div>
+                </div>
+            </div>
+
+            <div class="keytest-board-wrap">
+                <div class="keytest-board" id="keytest-board" aria-label="Keyboard test board"></div>
+            </div>
+
+            <div class="keytest-type-panel">
+                <div class="keytest-log-head">
+                    <span data-keytest-i18n="typing">Typing</span>
+                    <span id="keytest-kpm">KPM 0</span>
+                </div>
+                <div id="keytest-log"></div>
+            </div>
         </div>
     </div>
 
@@ -5465,6 +5930,7 @@
     <script src="js/learn_mode.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/pack_maker.js"></script>
+    <script src="js/keyboard_test.js"></script>
 
 
 

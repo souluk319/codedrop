@@ -43,11 +43,11 @@ From KUGNUS/server deployment:
 
 - `KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1`
 - `KUGNUS_GATEWAY_API_KEY`
-- `KUGNUS_MODEL=gemma4:12b-it-qat`
-- `KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest`
-- `KUGNUS_EMBEDDING_DIMENSIONS=768`
-- `GPT_OPENAI_API_KEY`
-- `GPT_OPENAI_MODEL=gpt-5.4-mini`
+- `KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat`
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL=gpt-5.4-mini`
+- `EMBEDDING_MODEL=embeddinggemma:latest`
+- `EMBEDDING_DIMENSIONS=768`
 - DuckDuckGo/search API key, if Pack Maker grounding needs a paid/keyed API.
 - Admin identity list for public pack review.
 
@@ -203,7 +203,7 @@ This must not pass until all of these exist:
 - private API endpoints for `/api/llm/kugnus/health`,
   `/api/learn-chat/stream`, and `/api/pack-maker/chat/stream`
 - public `https://` KUGNUS gateway variables
-- no release use of direct `LLM_BASE_URL`
+- no browser exposure of private KUGNUS/OpenAI/DuckDuckGo keys
 
 Current Node release check remains:
 

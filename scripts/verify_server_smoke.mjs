@@ -46,11 +46,7 @@ const child = spawn(process.execPath, ['server.js'], {
         ALLOWED_ORIGINS: `${base},http://localhost:${PORT}`,
         KUGNUS_GATEWAY_BASE_URL: 'http://127.0.0.1:9/v1',
         KUGNUS_GATEWAY_API_KEY: 'smoke-test-key',
-        KUGNUS_MODEL: 'smoke-test-model',
-        LLM_ENDPOINT: '',
-        LLM_BASE_URL: '',
-        LLM_PROVIDER: 'openai',
-        LLM_MODEL: '',
+        KUGNUS_GATEWAY_MODEL: 'smoke-test-model',
         LLM_TIMEOUT_MS: '1000'
     },
     stdio: ['ignore', 'pipe', 'pipe']

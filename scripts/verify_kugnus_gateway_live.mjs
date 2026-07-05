@@ -25,8 +25,9 @@ for (let i = 2; i < process.argv.length; i++) {
 const envFile = args.get('env-file') || process.env.KUGNUS_GATEWAY_ENV_FILE || '.env';
 const envPath = path.resolve(root, envFile);
 if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath, override: false, quiet: true });
+    dotenv.config({ path: envPath, override: Boolean(args.get('env-file') || process.env.KUGNUS_GATEWAY_ENV_FILE), quiet: true });
 }
+const allowPrivate = args.get('allow-private') === '1' || process.env.KUGNUS_GATEWAY_ALLOW_PRIVATE === '1';
 
 function fail(message, extra = {}) {
     console.error(JSON.stringify({
@@ -62,59 +63,45 @@ function gatewayHost(baseUrl) {
     }
 }
 
-function openAiAliasLooksLikeKugnus() {
-    const base = value('OPENAI_BASE_URL');
-    const model = value('OPENAI_MODEL');
-    if (!base || !value('OPENAI_API_KEY') || !model) return false;
-    if (/api\.openai\.com/i.test(base)) return false;
-    return process.env.KUGNUS_USE_OPENAI_ENV === '1'
-        || /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(model);
-}
-
 function extractAnswer(data) {
     const choice = Array.isArray(data?.choices) ? data.choices[0] : null;
     return String(choice?.message?.content || choice?.text || '').trim();
 }
 
-const hasExplicitGatewayBase = Boolean(value('KUGNUS_GATEWAY_BASE_URL') || value('KUGNUS_BASE_URL') || value('KUGNUS_OPENAI_BASE_URL') || value('KUGNUS_LLM_BASE_URL'));
-const useOpenAiAlias = !hasExplicitGatewayBase && openAiAliasLooksLikeKugnus();
-const baseUrl = value('KUGNUS_GATEWAY_BASE_URL') || value('KUGNUS_BASE_URL') || value('KUGNUS_OPENAI_BASE_URL') || value('KUGNUS_LLM_BASE_URL') || (useOpenAiAlias ? value('OPENAI_BASE_URL') : '');
-const apiKey = value('KUGNUS_GATEWAY_API_KEY') || value('KUGNUS_API_KEY') || value('KUGNUS_OPENAI_API_KEY') || value('KUGNUS_LLM_API_KEY') || (useOpenAiAlias ? value('OPENAI_API_KEY') : '');
-const model = value('KUGNUS_GATEWAY_MODEL') || value('KUGNUS_MODEL') || value('KUGNUS_OPENAI_MODEL') || value('KUGNUS_LLM_MODEL') || (useOpenAiAlias ? value('OPENAI_MODEL') : '');
+const baseUrl = value('KUGNUS_GATEWAY_BASE_URL');
+const apiKey = value('KUGNUS_GATEWAY_API_KEY');
+const model = value('KUGNUS_GATEWAY_MODEL');
 const timeoutMs = Math.max(3000, Math.min(Number(args.get('timeout-ms') || process.env.KUGNUS_GATEWAY_LIVE_TIMEOUT_MS || 20_000), 60_000));
-const envStyle = useOpenAiAlias ? 'openai-env-alias' : 'kugnus-gateway';
-const expectedRuntimeRoute = useOpenAiAlias ? 'openai-env-alias' : 'gateway';
+const envStyle = 'kugnus-gateway';
+const expectedRuntimeRoute = 'gateway';
 
 function observedOpenAiEnv() {
     const openAiModel = value('OPENAI_MODEL');
     return {
-        baseUrl: value('OPENAI_BASE_URL') ? 'present' : 'missing',
         apiKey: value('OPENAI_API_KEY') ? 'present' : 'missing',
         model: openAiModel || 'missing',
-        role: openAiAliasLooksLikeKugnus()
-            ? 'KUGNUS gateway alias'
-            : 'not a KUGNUS gateway alias'
+        role: 'GPT fallback only'
     };
 }
 
 if (!baseUrl || !apiKey || !model) {
-    fail('Missing KUGNUS gateway env. Set KUGNUS_GATEWAY_* or a safe OPENAI_* alias with a local KUGNUS model.', {
+    fail('Missing KUGNUS gateway env. Set KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL.', {
         envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
         hasBaseUrl: Boolean(baseUrl),
         hasApiKey: Boolean(apiKey),
         hasModel: Boolean(model),
         acceptedEnv: [
-            'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL',
-            'OPENAI_BASE_URL + OPENAI_API_KEY + OPENAI_MODEL=gemma4:12b-it-qat'
+            'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL'
         ],
         currentOpenAiEnv: observedOpenAiEnv()
     });
 }
 
-if (!publicHttpsUrl(baseUrl)) {
+if (!allowPrivate && !publicHttpsUrl(baseUrl)) {
     fail('KUGNUS gateway live check requires a public https gateway URL, not localhost/private/direct Ollama', {
         envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
-        gatewayHost: gatewayHost(baseUrl)
+        gatewayHost: gatewayHost(baseUrl),
+        localTestHint: 'For local/Tailscale validation run with --allow-private.'
     });
 }
 
@@ -168,6 +155,7 @@ try {
         kugnusGatewayLive: 'ok',
         route: expectedRuntimeRoute,
         envStyle,
+        allowPrivate,
         gatewayHost: gatewayHost(baseUrl),
         model,
         elapsedMs: Date.now() - started,

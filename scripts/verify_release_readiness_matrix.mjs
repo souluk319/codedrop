@@ -40,28 +40,8 @@ const CLEAN_ENV_NAMES = [
     'KUGNUS_GATEWAY_BASE_URL',
     'KUGNUS_GATEWAY_API_KEY',
     'KUGNUS_GATEWAY_MODEL',
-    'KUGNUS_MODEL',
-    'KUGNUS_BASE_URL',
-    'KUGNUS_API_KEY',
-    'KUGNUS_OPENAI_BASE_URL',
-    'KUGNUS_OPENAI_API_KEY',
-    'KUGNUS_OPENAI_MODEL',
-    'KUGNUS_LLM_BASE_URL',
-    'KUGNUS_LLM_API_KEY',
-    'KUGNUS_LLM_MODEL',
-    'OPENAI_BASE_URL',
     'OPENAI_API_KEY',
     'OPENAI_MODEL',
-    'GPT_OPENAI_API_KEY',
-    'GPT_OPENAI_MODEL',
-    'GPT54_MINI_API_KEY',
-    'GPT54_MINI_MODEL',
-    'GPT5_4_MINI_API_KEY',
-    'GPT5_4_MINI_MODEL',
-    'LLM_OPENAI_API_KEY',
-    'LLM_BASE_URL',
-    'LLM_MODEL',
-    'ALLOW_DIRECT_KUGNUS',
     'DB_HOST',
     'DB_USER',
     'DB_PASSWORD',
@@ -111,58 +91,6 @@ const cases = [
         expectOk: true
     },
     {
-        name: 'KUGNUS_BASE_URL alias passes',
-        env: {
-            KUGNUS_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_API_KEY: 'kugnus-key',
-            KUGNUS_MODEL: 'gemma4:12b-it-qat'
-        },
-        expectOk: true
-    },
-    {
-        name: 'OPENAI_* KUGNUS alias passes when complete',
-        env: {
-            OPENAI_BASE_URL: 'https://llm.example.com/v1',
-            OPENAI_API_KEY: 'kugnus-key',
-            OPENAI_MODEL: 'gemma4:12b-it-qat'
-        },
-        expectOk: true,
-        expectWarning: 'GPT fallback API key is not configured'
-    },
-    {
-        name: 'incomplete OPENAI_* KUGNUS alias is blocked with exact missing key',
-        env: {
-            OPENAI_API_KEY: 'kugnus-key',
-            OPENAI_MODEL: 'gemma4:12b-it-qat'
-        },
-        expectOk: false,
-        expectError: 'OPENAI_* KUGNUS alias is incomplete; missing OPENAI_BASE_URL'
-    },
-    {
-        name: 'incomplete OPENAI_* KUGNUS alias is blocked even with direct fallback env',
-        env: {
-            OPENAI_BASE_URL: 'https://llm.example.com/v1',
-            OPENAI_MODEL: 'gemma4:12b-it-qat',
-            LLM_BASE_URL: 'http://100.99.152.52:11434',
-            LLM_MODEL: 'gemma4:12b-it-qat',
-            LLM_API_KEY: 'stale-direct-key'
-        },
-        expectOk: false,
-        expectError: 'OPENAI_* KUGNUS alias is incomplete; missing OPENAI_API_KEY'
-    },
-    {
-        name: 'direct KUGNUS route is blocked for release',
-        env: {
-            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
-            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
-            LLM_BASE_URL: 'http://100.99.152.52:11434',
-            LLM_MODEL: 'gemma4:12b-it-qat'
-        },
-        expectOk: false,
-        expectError: 'LLM_BASE_URL direct KUGNUS endpoint is local/dev only'
-    },
-    {
         name: 'private gateway URL is blocked',
         env: {
             KUGNUS_GATEWAY_BASE_URL: 'http://127.0.0.1:11434/v1',
@@ -171,18 +99,6 @@ const cases = [
         },
         expectOk: false,
         expectError: 'KUGNUS release gateway must be public https URL'
-    },
-    {
-        name: 'dedicated GPT fallback must remain mini',
-        env: {
-            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
-            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
-            GPT_OPENAI_API_KEY: 'openai-key',
-            GPT_OPENAI_MODEL: 'gpt-4o'
-        },
-        expectOk: false,
-        expectError: 'GPT fallback model must stay gpt-5.4-mini'
     },
     {
         name: 'generic OpenAI fallback must remain mini',

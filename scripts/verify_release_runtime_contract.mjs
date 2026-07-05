@@ -65,34 +65,15 @@ async function startFakeGateway() {
     };
 }
 
-function writeEnvFile(gateway, mode = 'gateway') {
+function writeEnvFile(gateway) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codedrop-release-runtime-'));
     const file = path.join(dir, '.env.release-runtime-test');
-    const kugnusEnv = mode === 'openai-alias'
-        ? [
-            `OPENAI_BASE_URL=${gateway.baseUrl}`,
-            'OPENAI_API_KEY=fake-release-runtime-key',
-            `OPENAI_MODEL=${KUGNUS_MODEL}`,
-            'LLM_BASE_URL=http://100.99.152.52:11434',
-            `LLM_MODEL=${KUGNUS_MODEL}`,
-            'LLM_API_KEY=stale-direct-key-must-not-win',
-            'LOCAL_LLM_API_KEY=stale-local-key-must-not-win'
-        ]
-        : mode === 'kugnus-base-alias'
-            ? [
-                `KUGNUS_BASE_URL=${gateway.baseUrl}`,
-                'KUGNUS_API_KEY=fake-release-runtime-key',
-                `KUGNUS_MODEL=${KUGNUS_MODEL}`
-            ]
-        : [
-            `KUGNUS_GATEWAY_BASE_URL=${gateway.baseUrl}`,
-            'KUGNUS_GATEWAY_API_KEY=fake-release-runtime-key',
-            `KUGNUS_GATEWAY_MODEL=${KUGNUS_MODEL}`
-        ];
 
     fs.writeFileSync(file, [
         'DEFAULT_CHAT_ENGINE=kugnus',
-        ...kugnusEnv,
+        `KUGNUS_GATEWAY_BASE_URL=${gateway.baseUrl}`,
+        'KUGNUS_GATEWAY_API_KEY=fake-release-runtime-key',
+        `KUGNUS_GATEWAY_MODEL=${KUGNUS_MODEL}`,
         'KUGNUS_PROVIDER=openai',
         'KUGNUS_HEALTH_TIMEOUT_MS=5000',
         'DB_HOST=release-runtime-test',
@@ -138,9 +119,7 @@ async function runVerifier(envFile, expectedRoute) {
 
 const gateway = await startFakeGateway();
 const envFiles = [
-    { mode: 'gateway', expectedRoute: 'gateway', file: writeEnvFile(gateway, 'gateway') },
-    { mode: 'kugnus-base-alias', expectedRoute: 'gateway', file: writeEnvFile(gateway, 'kugnus-base-alias') },
-    { mode: 'openai-alias', expectedRoute: 'openai-env-alias', file: writeEnvFile(gateway, 'openai-alias') }
+    { mode: 'gateway', expectedRoute: 'gateway', file: writeEnvFile(gateway) }
 ];
 
 try {
@@ -157,8 +136,6 @@ try {
         assert(data.model === KUGNUS_MODEL, `${envFile.mode}: release runtime verifier should prove KUGNUS model`);
         assert(data.testMode === true, `${envFile.mode}: contract run should be clearly marked as test mode`);
         assert(newRequests.some(req => req.auth === 'Bearer fake-release-runtime-key'), `${envFile.mode}: runtime verifier should send the KUGNUS gateway bearer key`);
-        assert(!newRequests.some(req => req.auth === 'Bearer stale-direct-key-must-not-win' || req.auth === 'Bearer stale-local-key-must-not-win'),
-            `${envFile.mode}: runtime verifier must not reuse stale direct/local KUGNUS keys`);
         assert(newRequests.every(req => req.model === KUGNUS_MODEL), `${envFile.mode}: runtime verifier should use the configured KUGNUS model`);
         results.push({ mode: envFile.mode, route: data.route, requests: newRequests.length });
     }
@@ -166,6 +143,7 @@ try {
     console.log(JSON.stringify({
         releaseRuntimeContract: 'ok',
         model: KUGNUS_MODEL,
+        envContract: 'KUGNUS_GATEWAY_* only',
         results,
         requests: gateway.requests.length
     }, null, 2));

@@ -27,7 +27,7 @@ for (let i = 2; i < process.argv.length; i++) {
 const envFile = args.get('env-file') || process.env.RELEASE_ENV_FILE || '.env.production';
 const envPath = path.resolve(root, envFile);
 const timeoutMs = Math.max(3000, Math.min(Number(args.get('timeout-ms') || process.env.RELEASE_RUNTIME_TIMEOUT_MS || 30_000), 120_000));
-const expectedRoutes = String(args.get('expect-route') || process.env.RELEASE_KUGNUS_EXPECT_ROUTE || 'gateway,openai-env-alias')
+const expectedRoutes = String(args.get('expect-route') || process.env.RELEASE_KUGNUS_EXPECT_ROUTE || 'gateway')
     .split(',')
     .map(route => route.trim())
     .filter(Boolean);

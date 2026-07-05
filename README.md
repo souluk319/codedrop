@@ -104,61 +104,50 @@ PACK_ADMIN_NICKNAMES=test
 DEFAULT_CHAT_ENGINE=kugnus
 ```
 
-Local/dev direct KUGNUS endpoint:
-
-```env
-LLM_BASE_URL=http://127.0.0.1:11434
-LLM_MODEL=gemma4:12b-it-qat
-```
-
-Do not use `LLM_BASE_URL` for release unless you intentionally set `ALLOW_DIRECT_KUGNUS=1`. Release should use the public OpenAI-compatible gateway:
+KUGNUS SERVER uses the public OpenAI-compatible gateway. CodeDrop reads only the
+canonical `KUGNUS_GATEWAY_*` variables for this path:
 
 ```env
 KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1
 KUGNUS_GATEWAY_API_KEY=<KUGNUS_GATEWAY_API_KEY>
 KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat
-KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest
-KUGNUS_EMBEDDING_DIMENSIONS=768
 ```
 
-GPT fallback variables:
+The exact KUGNUS gateway handoff template is `.env.kugnus-gateway.example`.
+
+GPT fallback is separate and mini-only:
 
 ```env
-GPT_OPENAI_BASE_URL=https://api.openai.com/v1
-GPT_OPENAI_API_KEY=<OPENAI_API_KEY>
-GPT_OPENAI_MODEL=gpt-5.4-mini
+OPENAI_API_KEY=<OPENAI_API_KEY>
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+Pack Maker search and future embedding/RAG settings:
+
+```env
+DUCKDUCKGO_API_KEY=<DUCKDUCKGO_API_KEY>
+EMBEDDING_MODEL=embeddinggemma:latest
+EMBEDDING_DIMENSIONS=768
 ```
 
 The server rejects non-mini OpenAI models for chat fallback. Keep high-end models out of this app path.
 
 ## KUGNUS Routing
 
-The server resolves KUGNUS in this order:
+The server resolves KUGNUS from exactly one contract:
+`KUGNUS_GATEWAY_BASE_URL`, `KUGNUS_GATEWAY_API_KEY`, and
+`KUGNUS_GATEWAY_MODEL`. `OPENAI_*` is GPT fallback only. Direct Ollama/private
+environment names are intentionally not part of the app contract anymore.
 
-1. `KUGNUS_GATEWAY_BASE_URL` / `KUGNUS_GATEWAY_API_KEY` / `KUGNUS_GATEWAY_MODEL`
-2. `KUGNUS_BASE_URL` / `KUGNUS_API_KEY` / `KUGNUS_MODEL` and other KUGNUS-prefixed gateway aliases.
-3. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` when the model name looks like a KUGNUS/local model or `KUGNUS_USE_OPENAI_ENV=1`.
-4. `LLM_BASE_URL` / `LLM_MODEL` direct Ollama-compatible local server.
-
-For deployment, prefer the explicit `KUGNUS_GATEWAY_*` variables. `KUGNUS_BASE_URL` / `KUGNUS_API_KEY` / `KUGNUS_MODEL` is accepted as a shorter alias. If you use the OpenAI-compatible gateway alias from `local-llm-lab`, keep the full trio together:
-
-```env
-OPENAI_BASE_URL=https://llm.yourdomain.com/v1
-OPENAI_API_KEY=<KUGNUS_GATEWAY_API_KEY>
-OPENAI_MODEL=gemma4:12b-it-qat
-```
-
-The exact handoff template is in `.env.kugnus-gateway.example`. When `OPENAI_*` points at KUGNUS, keep GPT fallback on `GPT_OPENAI_*`; otherwise the app cannot distinguish KUGNUS gateway from GPT fallback.
-
-When that alias is complete, the server intentionally routes KUGNUS through the alias even if a local `LLM_BASE_URL` is still present. Release checks still block direct `LLM_BASE_URL`; remove it from production env after gateway verification.
-
-`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, and `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias paths. You can also run that contract directly:
+`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which
+starts a fake OpenAI-compatible KUGNUS gateway and proves the explicit
+`KUGNUS_GATEWAY_*` path. You can also run that contract directly:
 
 ```bash
 npm run verify:kugnus-gateway
 ```
 
-After real gateway env values are present, run a live gateway check before release. The verifier accepts explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, or a safe `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias that does not point at `api.openai.com`:
+After real gateway env values are present, run a live gateway check before release:
 
 ```bash
 npm run verify:kugnus-live -- --env-file=.env.production
@@ -174,9 +163,7 @@ Passing output must include:
 }
 ```
 
-`verify:release-runtime` must report `route` as `gateway` or `openai-env-alias`. If it reports `direct`, the app is still using local Ollama and is not ready for public deployment.
-
-If the app shows `KUGNUS ROUTE: DIRECT`, it is still using `LLM_BASE_URL`/direct Ollama and is not ready for public deployment.
+`verify:release-runtime` must report `route` as `gateway`.
 
 ## Pack Maker QA Prompt
 
@@ -228,7 +215,7 @@ KUGNUS public gateway
 GPT mini fallback
 ```
 
-Direct `LLM_BASE_URL` KUGNUS routing is for local/dev smoke only.
+KUGNUS routing must go through the configured gateway contract.
 
 Firebase migration target:
 
@@ -258,7 +245,11 @@ To validate a filled production env file locally before entering values in the d
 RELEASE_ENV_FILE=.env.production DEPLOY_TARGET=node npm run release:check
 ```
 
-This intentionally fails if release env still uses `LLM_BASE_URL` direct local/Ollama routing instead of a public `https://` KUGNUS gateway. For a future Firebase release:
+When `RELEASE_ENV_FILE` or `--env-file` is provided, release tooling treats that
+file as authoritative and lets it override stale shell environment values. This
+keeps local/Tailscale KUGNUS settings from leaking into a production preflight.
+
+This intentionally fails if release env does not provide a public `https://` KUGNUS gateway. For a future Firebase release:
 
 ```bash
 DEPLOY_TARGET=firebase npm run release:check

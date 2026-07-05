@@ -142,10 +142,10 @@ async function verifyExplicitKugnusGateway(gateway) {
     const app = await startCodeDrop({
         KUGNUS_GATEWAY_BASE_URL: gateway.baseUrl,
         KUGNUS_GATEWAY_API_KEY: 'fake-kugnus-key',
-        KUGNUS_MODEL,
+        KUGNUS_GATEWAY_MODEL: KUGNUS_MODEL,
         KUGNUS_PROVIDER: 'openai',
-        LLM_BASE_URL: '',
-        LLM_MODEL: '',
+        OPENAI_API_KEY: 'fake-gpt-fallback-key',
+        OPENAI_MODEL: 'gpt-5.4-mini',
         LLM_PROVIDER: ''
     });
 
@@ -179,31 +179,30 @@ async function verifyExplicitKugnusGateway(gateway) {
     }
 }
 
-async function verifyOpenAiEnvAlias(gateway) {
+async function verifyOpenAiEnvDoesNotConfigureKugnus(gateway) {
     const app = await startCodeDrop({
         KUGNUS_GATEWAY_BASE_URL: '',
         KUGNUS_GATEWAY_API_KEY: '',
-        KUGNUS_MODEL: '',
+        KUGNUS_GATEWAY_MODEL: '',
         KUGNUS_PROVIDER: '',
-        LLM_BASE_URL: '',
-        LLM_MODEL: '',
         LLM_API_KEY: 'stale-direct-key-must-not-win',
         LOCAL_LLM_API_KEY: 'stale-local-key-must-not-win',
         LLM_PROVIDER: '',
-        OPENAI_BASE_URL: gateway.baseUrl,
         OPENAI_API_KEY: 'fake-openai-style-kugnus-key',
         OPENAI_MODEL: KUGNUS_MODEL
     });
 
     try {
+        const requestCountBefore = gateway.requests.length;
         const health = await requestJson(`${app.base}/api/llm/kugnus/health`);
-        assert(health.data.ok === true, 'generic OPENAI_* gateway alias should work for KUGNUS when model is local');
-        assert(health.data.provider === 'openai', 'generic OPENAI_* alias should keep OpenAI-compatible provider');
-        assert(health.data.route === 'openai-env-alias', 'generic OPENAI_* alias health should expose alias routing');
-        assert(health.data.model === KUGNUS_MODEL, 'generic OPENAI_* alias should use local KUGNUS model');
-        assert(gateway.requests.some(req => req.auth === 'Bearer fake-openai-style-kugnus-key'), 'generic OPENAI_* alias should pass its bearer key');
+        const newRequests = gateway.requests.slice(requestCountBefore);
+        assert(health.res.status === 200, 'OPENAI_* fallback-only env should return stable HTTP 200 JSON');
+        assert(health.data.ok === false, 'OPENAI_* fallback-only env must not configure KUGNUS');
+        assert(String(health.data.reason || '').includes('KUGNUS AI is not configured'),
+            `OPENAI_* fallback-only env should report missing KUGNUS gateway env, got ${health.text}`);
+        assert(newRequests.length === 0, 'OPENAI_* fallback-only env must not call the KUGNUS gateway');
         assert(!gateway.requests.some(req => req.auth === 'Bearer stale-direct-key-must-not-win' || req.auth === 'Bearer stale-local-key-must-not-win'),
-            'generic OPENAI_* alias must not reuse stale direct/local KUGNUS keys');
+            'OPENAI_* fallback-only env must not reuse stale direct/local KUGNUS keys');
     } catch (err) {
         err.message = `${err.message}\nServer output:\n${app.output()}`;
         throw err;
@@ -212,17 +211,14 @@ async function verifyOpenAiEnvAlias(gateway) {
     }
 }
 
-async function verifyIncompleteOpenAiEnvAliasDoesNotFallbackToDirect(gateway) {
+async function verifyCanonicalGatewayRequired(gateway) {
     const app = await startCodeDrop({
         KUGNUS_GATEWAY_BASE_URL: '',
         KUGNUS_GATEWAY_API_KEY: '',
-        KUGNUS_MODEL: '',
+        KUGNUS_GATEWAY_MODEL: '',
         KUGNUS_PROVIDER: '',
-        LLM_BASE_URL: gateway.baseUrl,
-        LLM_MODEL: KUGNUS_MODEL,
         LLM_API_KEY: 'stale-direct-key-must-not-win',
         LLM_PROVIDER: 'openai',
-        OPENAI_BASE_URL: gateway.baseUrl,
         OPENAI_API_KEY: '',
         OPENAI_MODEL: KUGNUS_MODEL
     });
@@ -231,40 +227,12 @@ async function verifyIncompleteOpenAiEnvAliasDoesNotFallbackToDirect(gateway) {
         const requestCountBefore = gateway.requests.length;
         const health = await requestJson(`${app.base}/api/llm/kugnus/health`);
         const newRequests = gateway.requests.slice(requestCountBefore);
-        assert(health.res.status === 200, 'incomplete OPENAI_* alias health should return stable HTTP 200 JSON');
-        assert(health.data.ok === false, 'incomplete OPENAI_* alias should not be considered healthy');
-        assert(String(health.data.reason || '').includes('OPENAI_* KUGNUS alias is incomplete; missing OPENAI_API_KEY'),
-            `incomplete OPENAI_* alias should report the missing key, got ${health.text}`);
+        assert(health.res.status === 200, 'missing canonical gateway env should return stable HTTP 200 JSON');
+        assert(health.data.ok === false, 'missing canonical gateway env should not be considered healthy');
+        assert(String(health.data.reason || '').includes('KUGNUS AI is not configured'),
+            `missing canonical gateway env should report the KUGNUS config problem, got ${health.text}`);
         assert(!newRequests.some(req => req.auth === 'Bearer stale-direct-key-must-not-win'),
-            'incomplete OPENAI_* alias must not silently fall back to stale direct/local KUGNUS keys');
-    } catch (err) {
-        err.message = `${err.message}\nServer output:\n${app.output()}`;
-        throw err;
-    } finally {
-        await app.close();
-    }
-}
-
-async function verifyKugnusBaseAlias(gateway) {
-    const app = await startCodeDrop({
-        KUGNUS_GATEWAY_BASE_URL: '',
-        KUGNUS_GATEWAY_API_KEY: '',
-        KUGNUS_BASE_URL: gateway.baseUrl,
-        KUGNUS_API_KEY: 'fake-kugnus-base-key',
-        KUGNUS_MODEL,
-        KUGNUS_PROVIDER: 'openai',
-        LLM_BASE_URL: '',
-        LLM_MODEL: '',
-        LLM_PROVIDER: ''
-    });
-
-    try {
-        const health = await requestJson(`${app.base}/api/llm/kugnus/health`);
-        assert(health.data.ok === true, 'KUGNUS_BASE_URL alias should work for KUGNUS gateway');
-        assert(health.data.provider === 'openai', 'KUGNUS_BASE_URL alias should keep OpenAI-compatible provider');
-        assert(health.data.route === 'gateway', 'KUGNUS_BASE_URL alias health should expose gateway routing');
-        assert(health.data.model === KUGNUS_MODEL, 'KUGNUS_BASE_URL alias should use KUGNUS model');
-        assert(gateway.requests.some(req => req.auth === 'Bearer fake-kugnus-base-key'), 'KUGNUS_BASE_URL alias should pass its bearer key');
+            'missing canonical gateway env must not silently fall back to stale direct/local KUGNUS keys');
     } catch (err) {
         err.message = `${err.message}\nServer output:\n${app.output()}`;
         throw err;
@@ -276,17 +244,15 @@ async function verifyKugnusBaseAlias(gateway) {
 const gateway = await startFakeGateway();
 try {
     await verifyExplicitKugnusGateway(gateway);
-    await verifyKugnusBaseAlias(gateway);
-    await verifyOpenAiEnvAlias(gateway);
-    await verifyIncompleteOpenAiEnvAliasDoesNotFallbackToDirect(gateway);
+    await verifyOpenAiEnvDoesNotConfigureKugnus(gateway);
+    await verifyCanonicalGatewayRequired(gateway);
     console.log(JSON.stringify({
         gateway: 'ok',
         model: KUGNUS_MODEL,
         requests: gateway.requests.length,
         explicitKugnusGateway: 'ok',
-        kugnusBaseAlias: 'ok',
-        openAiEnvAlias: 'ok',
-        incompleteOpenAiEnvAlias: 'blocked'
+        openAiEnvRole: 'GPT fallback only',
+        canonicalGatewayRequired: 'ok'
     }, null, 2));
 } finally {
     await gateway.close();

@@ -155,63 +155,23 @@ function envFirstEntry(names) {
 }
 
 const DUCKDUCKGO_ENV_NAMES = [
-    "DUCKDUCKGO_API_KEY",
-    "DUCKDUCKGO_KEY",
-    "DUCKDUCKGO_SEARCH_API_KEY",
-    "DUCKDUCKGO_TOKEN",
-    "DDG_API_KEY",
-    "DDG_KEY",
-    "DDG_SEARCH_API_KEY",
-    "DDG_TOKEN",
-    "DUCK_API_KEY"
-];
-
-const GPT_OPENAI_BASE_ENV_NAMES = [
-    "GPT_OPENAI_BASE_URL",
-    "GPT54_MINI_BASE_URL"
-];
-
-const GPT_OPENAI_KEY_ENV_NAMES = [
-    "GPT_OPENAI_API_KEY",
-    "GPT54_MINI_API_KEY",
-    "GPT5_4_MINI_API_KEY",
-    "LLM_OPENAI_API_KEY"
-];
-
-const GPT_OPENAI_MODEL_ENV_NAMES = [
-    "GPT_OPENAI_MODEL",
-    "GPT54_MINI_MODEL",
-    "GPT5_4_MINI_MODEL"
+    "DUCKDUCKGO_API_KEY"
 ];
 
 const GENERIC_OPENAI_KEY_ENV_NAMES = [
-    "OPENAI_API_KEY",
-    "OPENAI_KEY"
+    "OPENAI_API_KEY"
 ];
 
 const KUGNUS_BASE_ENV_NAMES = [
-    "KUGNUS_GATEWAY_BASE_URL",
-    "KUGNUS_BASE_URL",
-    "KUGNUS_OPENAI_BASE_URL",
-    "KUGNUS_LLM_BASE_URL",
-    "LLM_ENDPOINT",
-    "LLM_BASE_URL"
+    "KUGNUS_GATEWAY_BASE_URL"
 ];
 
 const KUGNUS_KEY_ENV_NAMES = [
-    "KUGNUS_GATEWAY_API_KEY",
-    "KUGNUS_API_KEY",
-    "KUGNUS_OPENAI_API_KEY",
-    "KUGNUS_LLM_API_KEY",
-    "LLM_API_KEY",
-    "LOCAL_LLM_API_KEY"
+    "KUGNUS_GATEWAY_API_KEY"
 ];
 
 const KUGNUS_MODEL_ENV_NAMES = [
-    "KUGNUS_MODEL",
-    "KUGNUS_GATEWAY_MODEL",
-    "KUGNUS_LLM_MODEL",
-    "LLM_MODEL"
+    "KUGNUS_GATEWAY_MODEL"
 ];
 
 function normalizeOpenAiMiniModel(value) {
@@ -441,45 +401,15 @@ function safeLlmTargetUrlParts(url) {
     }
 }
 
-function shouldUseOpenAiEnvForKugnus() {
-    const baseUrl = (process.env.OPENAI_BASE_URL || "").trim();
-    const model = (process.env.OPENAI_MODEL || "").trim();
-    if (envFlag(process.env.KUGNUS_USE_OPENAI_ENV)) return true;
-    if (baseUrl && !/api\.openai\.com/i.test(baseUrl)) return true;
-    if (model && !isAllowedOpenAiMiniModel(normalizeOpenAiMiniModel(model))) return true;
-    return false;
-}
-
-function openAiEnvKugnusAliasMissing() {
-    if (!shouldUseOpenAiEnvForKugnus()) return [];
-    return ["OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"]
-        .filter(name => !String(process.env[name] || "").trim());
-}
-
-function openAiEnvKugnusAliasReady() {
-    return shouldUseOpenAiEnvForKugnus() && openAiEnvKugnusAliasMissing().length === 0;
-}
-
-function kugnusRouteFromEnvName(envName, viaOpenAiAlias = false) {
-    if (viaOpenAiAlias) return "openai-env-alias";
-    if (envName === "KUGNUS_GATEWAY_BASE_URL") return "gateway";
-    if (envName === "KUGNUS_BASE_URL") return "gateway";
-    if (envName === "KUGNUS_OPENAI_BASE_URL") return "gateway";
-    if (envName === "KUGNUS_LLM_BASE_URL") return "gateway";
-    if (envName === "LLM_BASE_URL" || envName === "LLM_ENDPOINT") return "direct";
-    if (envName) return "kugnus-env";
-    return "unknown";
+function kugnusRouteFromEnvName(envName) {
+    return envName === "KUGNUS_GATEWAY_BASE_URL" ? "gateway" : "unknown";
 }
 
 function buildLlmTarget(engine = "kugnus") {
     if (engine === "openai") {
-        const genericOpenAiBelongsToKugnus = shouldUseOpenAiEnvForKugnus();
-        const genericBase = genericOpenAiBelongsToKugnus ? "" : (process.env.OPENAI_BASE_URL || "");
-        const genericModel = genericOpenAiBelongsToKugnus ? "" : (process.env.OPENAI_MODEL || "");
-        const genericKey = genericOpenAiBelongsToKugnus ? "" : envFirst(GENERIC_OPENAI_KEY_ENV_NAMES);
-        const baseUrl = (envFirst(GPT_OPENAI_BASE_ENV_NAMES) || genericBase || "https://api.openai.com/v1").trim().replace(/\/+$/, "");
-        const model = normalizeOpenAiMiniModel(envFirst(GPT_OPENAI_MODEL_ENV_NAMES) || genericModel);
-        const apiKey = envFirst(GPT_OPENAI_KEY_ENV_NAMES) || genericKey;
+        const baseUrl = "https://api.openai.com/v1";
+        const model = normalizeOpenAiMiniModel(process.env.OPENAI_MODEL || "gpt-5.4-mini");
+        const apiKey = envFirst(GENERIC_OPENAI_KEY_ENV_NAMES);
 
         if (!apiKey) {
             const err = new Error("OpenAI API key is not configured");
@@ -510,29 +440,8 @@ function buildLlmTarget(engine = "kugnus") {
     let baseUrl = baseEntry.value;
     let model = modelEntry.value;
     let apiKey = keyEntry.value;
-    let explicitProvider = process.env.KUGNUS_PROVIDER || process.env.LLM_PROVIDER || "";
+    let explicitProvider = process.env.KUGNUS_PROVIDER || "openai";
     let route = kugnusRouteFromEnvName(baseEntry.name);
-    const openAiAliasMissing = openAiEnvKugnusAliasMissing();
-
-    if (openAiAliasMissing.length && route !== "gateway") {
-        const err = new Error(`OPENAI_* KUGNUS alias is incomplete; missing ${openAiAliasMissing.join(", ")}`);
-        err.status = 503;
-        throw err;
-    }
-
-    if (openAiEnvKugnusAliasReady() && route !== "gateway") {
-        baseUrl = process.env.OPENAI_BASE_URL || "";
-        model = process.env.OPENAI_MODEL || "";
-        apiKey = process.env.OPENAI_API_KEY || apiKey || "";
-        explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
-        route = kugnusRouteFromEnvName(baseEntry.name, true);
-    } else if ((!baseUrl || !model) && shouldUseOpenAiEnvForKugnus()) {
-        baseUrl = baseUrl || process.env.OPENAI_BASE_URL || "";
-        model = model || process.env.OPENAI_MODEL || "";
-        apiKey = process.env.OPENAI_API_KEY || apiKey || "";
-        explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
-        route = kugnusRouteFromEnvName(baseEntry.name, true);
-    }
 
     baseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
     model = String(model || "").trim();
@@ -559,7 +468,7 @@ function duckDuckGoConfig() {
     return {
         provider: "duckduckgo",
         apiKey: envFirst(DUCKDUCKGO_ENV_NAMES),
-        baseUrl: envFirst(["DUCKDUCKGO_BASE_URL", "DDG_BASE_URL"]) || "https://api.duckduckgo.com"
+        baseUrl: "https://api.duckduckgo.com"
     };
 }
 

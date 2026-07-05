@@ -36,6 +36,7 @@ const I18N_TEXT = {
         'menu.close': 'CLOSE',
         'menu.startCodedrop': 'START CODEDROP',
         'menu.packMaker': 'PACK MAKER',
+        'menu.keyTest': 'KEY TEST',
         'menu.topAgents': 'TOP AGENTS',
         'menu.connecting': 'CONNECTING TO SERVER...',
         'difficulty.easy': 'EASY [SAFE_MODE]',
@@ -120,6 +121,7 @@ const I18N_TEXT = {
         'menu.close': '닫기',
         'menu.startCodedrop': 'START CODEDROP',
         'menu.packMaker': 'PACK MAKER',
+        'menu.keyTest': 'KEY TEST',
         'menu.topAgents': '상위 요원',
         'menu.connecting': '서버 연결 중...',
         'difficulty.easy': '쉬움 [안전 모드]',
@@ -315,6 +317,7 @@ const overlayChromeIds = [
     'lab-screen',
     'dashboard-screen',
     'learn-screen',
+    'keyboard-test-screen',
     'confirm-screen',
     'readme-overlay'
 ];
@@ -1240,6 +1243,128 @@ function initPackSelector() {
     syncPackSelector();
 }
 
+function difficultySelects() {
+    return Array.from(document.querySelectorAll('select.difficulty-native-select'));
+}
+
+function difficultyPickerFor(select) {
+    if (!select || !select.id) return null;
+    return document.querySelector(`.difficulty-picker[data-difficulty-for="${CSS.escape(select.id)}"]`);
+}
+
+function optionLabel(option) {
+    return option ? option.textContent.trim() : '';
+}
+
+function syncDifficultyPicker(select) {
+    const picker = difficultyPickerFor(select);
+    if (!picker) return;
+
+    const current = Array.from(select.options).find(option => option.value === select.value) || select.options[0];
+    const main = picker.querySelector('.difficulty-trigger-main');
+    const chip = picker.querySelector('.difficulty-trigger-chip');
+    const trigger = picker.querySelector('.difficulty-trigger');
+    if (main) main.textContent = optionLabel(current);
+    if (chip) chip.textContent = current ? current.value : '';
+    if (trigger) trigger.setAttribute('aria-label', optionLabel(current));
+
+    picker.querySelectorAll('.difficulty-option').forEach(button => {
+        const active = button.dataset.value === select.value;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+}
+
+function closeDifficultyPickers(except = null) {
+    document.querySelectorAll('.difficulty-picker.open').forEach(picker => {
+        if (except && picker === except) return;
+        picker.classList.remove('open');
+        const trigger = picker.querySelector('.difficulty-trigger');
+        const menu = picker.querySelector('.difficulty-menu');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        if (menu) menu.classList.add('hidden');
+    });
+}
+
+function setDifficultyPickerOpen(picker, open) {
+    if (!picker) return;
+    closeDifficultyPickers(open ? picker : null);
+    picker.classList.toggle('open', open);
+    const trigger = picker.querySelector('.difficulty-trigger');
+    const menu = picker.querySelector('.difficulty-menu');
+    if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (menu) menu.classList.toggle('hidden', !open);
+}
+
+function renderDifficultyPicker(select) {
+    const picker = difficultyPickerFor(select);
+    if (!picker) return;
+    const menu = picker.querySelector('.difficulty-menu');
+    if (!menu) return;
+
+    menu.replaceChildren();
+    Array.from(select.options).forEach(option => {
+        const button = document.createElement('button');
+        button.className = 'difficulty-option';
+        button.type = 'button';
+        button.role = 'option';
+        button.dataset.value = option.value;
+        button.textContent = optionLabel(option);
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            select.value = option.value;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            syncDifficultyPicker(select);
+            setDifficultyPickerOpen(picker, false);
+        });
+        menu.appendChild(button);
+    });
+
+    syncDifficultyPicker(select);
+}
+
+function refreshDifficultyPickers() {
+    difficultySelects().forEach(renderDifficultyPicker);
+}
+
+function initDifficultyPickers() {
+    difficultySelects().forEach(select => {
+        const picker = difficultyPickerFor(select);
+        if (!picker || picker.dataset.bound === '1') {
+            syncDifficultyPicker(select);
+            return;
+        }
+
+        picker.dataset.bound = '1';
+        const trigger = picker.querySelector('.difficulty-trigger');
+        if (trigger) {
+            trigger.addEventListener('click', event => {
+                event.stopPropagation();
+                setDifficultyPickerOpen(picker, !picker.classList.contains('open'));
+            });
+            trigger.addEventListener('keydown', event => {
+                if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setDifficultyPickerOpen(picker, true);
+                }
+            });
+        }
+
+        select.addEventListener('change', () => syncDifficultyPicker(select));
+        renderDifficultyPicker(select);
+    });
+
+    if (!document.body.dataset.difficultyPickerBound) {
+        document.body.dataset.difficultyPickerBound = '1';
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.difficulty-picker')) closeDifficultyPickers();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeDifficultyPickers();
+        });
+    }
+}
+
 window.CodeDropPackSelector = {
     refresh: syncPackSelector,
     render: renderPackCards,
@@ -1847,6 +1972,7 @@ function initModeControls() {
     };
 
     if (modeButtons.length === 0) return;
+    initDifficultyPickers();
 
     // 카테고리 옵션을 SCENARIO_PACKS에서 자동 생성
     if (typeof SCENARIO_PACKS !== 'undefined' && catSelect && catSelect.options.length === 0) {
@@ -2439,10 +2565,12 @@ function applyAppLanguage(value) {
     setText('#pack-popover-close', 'menu.close');
     setText('#start-btn', 'menu.startCodedrop');
     setText('#pack-maker-btn', 'menu.packMaker');
+    setText('#keyboard-test-btn', 'menu.keyTest');
     setText('#leaderboard-preview h3', 'menu.topAgents');
     setOptionText('#difficulty-select option[value="EASY"], #ocp-difficulty-select option[value="EASY"]', 'difficulty.easy');
     setOptionText('#difficulty-select option[value="NORMAL"], #ocp-difficulty-select option[value="NORMAL"]', 'difficulty.normal');
     setOptionText('#difficulty-select option[value="DEVELOPER"], #ocp-difficulty-select option[value="DEVELOPER"]', 'difficulty.developer');
+    refreshDifficultyPickers();
 
     setText('.ocp-title', 'ocp.title');
     setText('.ocp-subtitle', 'ocp.subtitle');
@@ -2619,11 +2747,13 @@ function init() {
             const dashboard = document.getElementById('dashboard-screen');
             const commandDialog = document.getElementById('confirm-screen');
             const packMaker = document.getElementById('pack-maker-screen');
+            const keyboardTest = document.getElementById('keyboard-test-screen');
             if (!els.screens.start.classList.contains('hidden') &&
                 els.auth.loggedInView.classList.contains('active') &&
                 (!dashboard || dashboard.classList.contains('hidden')) &&
                 (!commandDialog || commandDialog.classList.contains('hidden')) &&
                 (!packMaker || packMaker.classList.contains('hidden')) &&
+                (!keyboardTest || keyboardTest.classList.contains('hidden')) &&
                 !state.isPlaying) {
                 if (isOcpEditionActive()) {
                     handleStart();

@@ -127,7 +127,6 @@ const PackMaker = (() => {
     function routeDisplayLabel(route) {
         const value = String(route || '').toLowerCase();
         if (value === 'direct') return 'LOCAL DIRECT';
-        if (value === 'openai-env-alias') return 'OPENAI GATEWAY';
         return value ? value.toUpperCase() : '';
     }
 
@@ -322,14 +321,41 @@ const PackMaker = (() => {
 
     function normalizeChatEntries(value) {
         if (!Array.isArray(value)) return [];
-        return value
+        const entries = value
             .map(item => ({
                 role: item && item.role === 'assistant' ? 'assistant' : 'user',
                 content: typeof item?.content === 'string' ? item.content.slice(0, 5000) : '',
                 question: typeof item?.question === 'string' ? item.question.slice(0, 1200) : ''
             }))
-            .filter(item => item.content)
+            .filter(item => item.content);
+        const cleaned = [];
+        entries.forEach(item => {
+            if (isObsoleteKugnusRouteEntry(item)) {
+                const previous = cleaned[cleaned.length - 1];
+                if (previous && previous.role === 'user'
+                    && (!item.question || previous.content.trim() === item.question.trim())) {
+                    cleaned.pop();
+                }
+                return;
+            }
+            const previous = cleaned[cleaned.length - 1];
+            if (item.role === 'user' && previous && previous.role === 'user') {
+                cleaned[cleaned.length - 1] = item;
+                return;
+            }
+            cleaned.push(item);
+        });
+        return cleaned
             .slice(-CHAT_HISTORY_LIMIT);
+    }
+
+    function isObsoleteKugnusRouteEntry(item) {
+        if (!item || item.role !== 'assistant') return false;
+        const content = String(item.content || '');
+        return /\bLOCAL DIRECT\b/i.test(content)
+            || /\bOPENAI GATEWAY\b/i.test(content)
+            || /\bProvider:\s*OLLAMA\b/i.test(content)
+            || /\b경로:\s*LOCAL DIRECT\b/i.test(content);
     }
 
     function loadChatHistory() {
@@ -339,7 +365,9 @@ const PackMaker = (() => {
             return;
         }
         try {
-            stateRef.chat = normalizeChatEntries(JSON.parse(localStorage.getItem(key)));
+            const raw = JSON.parse(localStorage.getItem(key));
+            stateRef.chat = normalizeChatEntries(raw);
+            if (Array.isArray(raw) && raw.length !== stateRef.chat.length) persistChatHistory();
         } catch (e) {
             stateRef.chat = [];
         }
