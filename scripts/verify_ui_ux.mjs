@@ -514,6 +514,8 @@ assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'packag
 assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
 assert(releaseCheck.includes("['.env.local', '.env']"), 'release check should load the same default env stack as the server');
 assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
+assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
+assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https origins'), 'release check should reject localhost/private release origins');
 assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');
 assert(verifyWorkflow.includes('npm run verify:db'), 'CI workflow should run database E2E against local MySQL');
 assert(verifyWorkflow.includes('npm run doctor'), 'CI workflow should publish the system doctor report');

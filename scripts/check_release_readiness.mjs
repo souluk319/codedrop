@@ -106,6 +106,26 @@ function checkNodeRelease() {
     if (!has('SESSION_SECRET')) addAction('Set a long random SESSION_SECRET in the deployment environment.');
     if (!has('ALLOWED_ORIGINS')) addAction('Set ALLOWED_ORIGINS to the exact deployed app origin.');
 
+    if (has('SESSION_SECRET')) {
+        const secret = value('SESSION_SECRET');
+        if (secret.length < 32 || /local|dev|change|codedrop-local/i.test(secret)) {
+            errors.push('SESSION_SECRET must be a long random production secret, not a local/dev placeholder');
+            addAction('Generate a new production SESSION_SECRET with at least 32 random characters.');
+        }
+    }
+
+    if (has('ALLOWED_ORIGINS')) {
+        const origins = value('ALLOWED_ORIGINS')
+            .split(',')
+            .map(origin => origin.trim())
+            .filter(Boolean);
+        const invalidOrigins = origins.filter(origin => !publicUrlLike(origin));
+        if (invalidOrigins.length) {
+            errors.push(`ALLOWED_ORIGINS must contain only public https origins for release, got ${invalidOrigins.join(', ')}`);
+            addAction('Replace localhost/private ALLOWED_ORIGINS with the exact deployed https origin.');
+        }
+    }
+
     if (!has('PACK_ADMIN_NICKNAMES')) {
         warnings.push('PACK_ADMIN_NICKNAMES is empty; public pack review approval will be unavailable');
     }
