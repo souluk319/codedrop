@@ -1180,19 +1180,35 @@ async function selectPackFromUi(value, sourceEl = null) {
     const select = els.controls.packSelect;
     if (!select || !Array.from(select.options).some(option => option.value === value)) return;
     const sourceRect = sourceEl && sourceEl.getBoundingClientRect ? sourceEl.getBoundingClientRect() : null;
-    select.value = value;
-    const meta = packMetaForValue(value);
-    syncPackSelector();
+    const previousValue = select.value;
 
     const customPackId = customPackIdFromValue(value);
-    if (customPackId && window.PackMaker && typeof window.PackMaker.loadPackDetail === 'function' && !WORD_PACKS[value]) {
+    if (customPackId && (!Array.isArray(WORD_PACKS[value]) || WORD_PACKS[value].length === 0)) {
+        if (!window.PackMaker || typeof window.PackMaker.loadPackDetail !== 'function') {
+            select.value = previousValue;
+            syncPackSelector();
+            renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
+            return;
+        }
         try {
             await window.PackMaker.loadPackDetail(customPackId);
         } catch (error) {
+            select.value = previousValue;
+            syncPackSelector();
             renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
+            return;
+        }
+        if (!Array.isArray(WORD_PACKS[value]) || WORD_PACKS[value].length === 0) {
+            select.value = previousValue;
+            syncPackSelector();
+            renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
+            return;
         }
     }
 
+    select.value = value;
+    const meta = packMetaForValue(value);
+    syncPackSelector();
     select.dispatchEvent(new Event('change', { bubbles: true }));
     animatePackEquip(meta, sourceRect || sourceEl);
     window.setTimeout(closePackPopover, 1660);

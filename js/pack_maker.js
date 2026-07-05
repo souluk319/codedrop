@@ -1036,23 +1036,33 @@ const PackMaker = (() => {
     }
 
     function injectPack(pack) {
-        if (!pack || !Array.isArray(pack.items)) return;
+        if (!pack || !pack.id || !Array.isArray(pack.items)) return false;
+        const terms = pack.items
+            .map(item => item && String(item.term || '').trim())
+            .filter(Boolean);
+        if (!terms.length) return false;
         const key = customPackValue(pack.id);
-        WORD_PACKS[key] = pack.items.map(item => item.term);
+        WORD_PACKS[key] = terms;
         pack.items.forEach(item => {
-            WORD_DESCS[item.term] = item.desc;
+            const term = item && String(item.term || '').trim();
+            if (term) WORD_DESCS[term] = item.desc || '';
         });
+        return true;
     }
 
     async function loadPackDetail(id) {
-        if (!await ensureRemoteAuth()) return null;
+        if (!await ensureRemoteAuth()) {
+            const error = new Error('LOGIN REQUIRED');
+            error.code = 'AUTH_REQUIRED';
+            throw error;
+        }
         const res = await fetch(`/api/packs/${id}`, { headers: authHeaders() });
         if (res.status === 401 && await refreshExpiredSession()) {
             return loadPackDetail(id);
         }
         if (!res.ok) throw new Error('Pack load failed');
         const data = await res.json();
-        injectPack(data.pack);
+        if (!injectPack(data.pack)) throw new Error('Pack detail is empty');
         return data.pack;
     }
 
@@ -1323,10 +1333,18 @@ const PackMaker = (() => {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Pack save failed');
-            stateRef.draft = normalizeDraft(data.pack);
+            const savedPack = normalizeDraft({
+                ...data.pack,
+                items: Array.isArray(data.pack.items) && data.pack.items.length ? data.pack.items : draft.items
+            });
+            savedPack.id = data.pack.id;
+            savedPack.status = data.pack.status;
+            stateRef.draft = savedPack;
             stateRef.draft.id = data.pack.id;
             stateRef.draft.status = data.pack.status;
-            injectPack(data.pack);
+            if (!injectPack({ ...data.pack, items: stateRef.draft.items })) {
+                throw new Error('Saved pack has no playable items');
+            }
             await refreshPacks();
             const select = document.getElementById('pack-select');
             if (select) {
@@ -1334,6 +1352,7 @@ const PackMaker = (() => {
                 if (window.CodeDropPackSelector && typeof window.CodeDropPackSelector.refresh === 'function') {
                     window.CodeDropPackSelector.refresh();
                 }
+                select.dispatchEvent(new Event('change', { bubbles: true }));
                 fetchLeaderboard();
             }
             renderDraft();

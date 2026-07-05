@@ -726,10 +726,18 @@ function fallbackDescriptionForIntent(intent, title) {
     return `${title} - ${count} domain terms`;
 }
 
+function descriptionHasWrongTargetCount(description, intent) {
+    const target = clampPackTargetCount(intent.requestedCount);
+    const counts = [...String(description || "").matchAll(/(\d{1,3})\s*(?:개|terms?|items?|words?)/gi)]
+        .map(match => Number(match[1]))
+        .filter(Number.isFinite);
+    return counts.some(count => count !== target);
+}
+
 function cleanDescriptionForIntent(description, intent, title) {
     const clean = sanitizePackText(description, MAX_PACK_DESC_LEN);
     if (!clean) return fallbackDescriptionForIntent(intent, title);
-    if (/\bdata pack\b/i.test(clean) || /단어\s*만/.test(clean)) {
+    if (/\bdata pack\b/i.test(clean) || /단어\s*만/.test(clean) || descriptionHasWrongTargetCount(clean, intent)) {
         return fallbackDescriptionForIntent(intent, title);
     }
     return clean;
@@ -1444,6 +1452,7 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
         }
     }
 
+    draft = normalizeDraftForIntent(draft, payload.intent, searchResults);
     return { draft, answer };
 }
 

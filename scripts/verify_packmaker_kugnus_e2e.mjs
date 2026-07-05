@@ -212,6 +212,9 @@ try {
         `expected title ${EXPECTED_TITLE}, got ${generated.draft.title}`);
     assert(generated.draft.items.length === EXPECTED_COUNT,
         `expected ${EXPECTED_COUNT} items, got ${generated.draft.items.length}`);
+    const descriptionCount = String(generated.draft.description || '').match(/(\d{1,3})\s*(?:개|terms?|items?|words?)/i);
+    assert(!descriptionCount || Number(descriptionCount[1]) === EXPECTED_COUNT,
+        `draft description count should match ${EXPECTED_COUNT}: ${generated.draft.description}`);
 
     const terms = generated.draft.items.map(item => String(item.term || '').trim().toLowerCase());
     const duplicates = terms.filter((term, index) => term && terms.indexOf(term) !== index);
