@@ -246,6 +246,22 @@ That target requires `firebase.json`, `.firebaserc`, `firestore.rules`, and a Fu
 When a release preflight fails, inspect the JSON `nextActions` field first. It is
 the deployment punch list, not just a generic error dump.
 
+## System Doctor
+
+Use the doctor command when the local app feels inconsistent and you need a single evidence report:
+
+```bash
+npm run doctor
+```
+
+The output groups checks as `PASS`, `WARN`, `BLOCKED`, or `FAIL`. It reports the active KUGNUS route, DB readiness, release blockers, and whether the current environment is still using direct Ollama routing. For a heavier local sweep:
+
+```bash
+npm run doctor:deep
+```
+
+Add `-- --packmaker` only when you intentionally want the slow real KUGNUS Pack Maker 50-item E2E included.
+
 ## Product Rules
 
 See `AGENTS.md` for the working product and verification rules used during implementation.

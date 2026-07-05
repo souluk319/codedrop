@@ -506,6 +506,9 @@ assert(localEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'loca
 assert(localEnvExample.includes('KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model');
 assert(fs.existsSync(path.join(root, 'scripts/verify_kugnus_gateway_live.mjs')), 'live KUGNUS gateway verifier script is missing');
 assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugnus_gateway_live.mjs', 'package should expose the live KUGNUS gateway verifier command');
+assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doctor script is missing');
+assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'package should expose the system doctor command');
+assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
 assert(localEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'local env example should document realistic Pack Maker timeout');
 assert(localEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=90000'), 'local env example should document realistic Pack Maker batch timeout');
 assert(productionEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'production env example should document realistic Pack Maker timeout');
