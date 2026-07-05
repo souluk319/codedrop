@@ -350,6 +350,8 @@ assert(server.includes('function kugnusRouteFromEnvName'), 'KUGNUS health should
 assert(server.includes('route: target.route'), 'KUGNUS health and stream meta should expose sanitized routing type');
 assert(game.includes('route: llmStatus.route'), 'front-end KUGNUS status snapshot should preserve the current route');
 assert(learn.includes('function chatEngineStatus'), 'learn chat status should include KUGNUS route context');
+assert(learn.includes('function isObsoleteKugnusRouteEntry'), 'learn chat should clean stale pre-gateway KUGNUS route chat history');
+assert(learn.includes('previous.role === \'user\'') && learn.includes("cleaned[cleaned.length - 1] = item"), 'learn chat should collapse orphan consecutive user messages after stale route cleanup');
 assert(index.includes('id="learn-chat-route"'), 'learn chat should show the active KUGNUS route separately from task status');
 assert(learn.includes('function updateChatRouteStatus'), 'learn chat should update the visible KUGNUS route indicator');
 assert(learn.includes("if (value === 'direct') return 'LOCAL DIRECT';"), 'learn chat should label direct KUGNUS routing as local-only');
@@ -638,8 +640,11 @@ assert(index.includes('id="keyboard-test-screen"'), 'keyboard test overlay is mi
 assert(index.includes('id="keyboard-test-btn"'), 'keyboard test menu button is missing');
 assert(index.includes('id="keytest-board"'), 'keyboard test board root is missing');
 assert(index.includes('.keytest-key.pressed'), 'keyboard test pressed key styling is missing');
+assert(index.includes('.keytest-key.tested'), 'keyboard test should keep a visible state for keys that were already tested');
 assert(read('js/keyboard_test.js').includes('window.addEventListener(\'keydown\', handleKeyDown, true)'), 'keyboard test should capture keydown before global game shortcuts');
 assert(read('js/keyboard_test.js').includes('event.getModifierState'), 'keyboard test should report lock key states');
+assert(read('js/keyboard_test.js').includes("key.classList.add('pressed', 'tested')"), 'keyboard test should mark pressed keys as tested');
+assert(read('js/keyboard_test.js').includes("key.classList.remove('pressed', 'recent', 'tested')"), 'keyboard test CLR should reset tested key states');
 assert(read('js/keyboard_test.js').includes('window.KeyboardTest'), 'keyboard test should expose a small debug handle');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
 assert(index.includes('--pack-maker-safe-bottom'), 'pack maker overlay should reserve bottom space for global README/MUSIC widgets');
@@ -650,6 +655,9 @@ assert(packMaker.includes('function engineStatus'), 'pack maker status should in
 assert(index.includes('id="pack-maker-route"'), 'pack maker should show the active KUGNUS route separately from draft status');
 assert(packMaker.includes('function updateEngineRouteStatus'), 'pack maker should update the visible KUGNUS route indicator');
 assert(packMaker.includes("if (value === 'direct') return 'LOCAL DIRECT';"), 'pack maker should label direct KUGNUS routing as local-only');
+assert(packMaker.includes('function isObsoleteKugnusRouteEntry'), 'pack maker should clean stale pre-gateway KUGNUS route chat history');
+assert(packMaker.includes('previous.role === \'user\'') && packMaker.includes("cleaned[cleaned.length - 1] = item"), 'pack maker should collapse orphan consecutive user messages after stale route cleanup');
+assert(packMaker.includes('/\\bProvider:\\s*OLLAMA\\b/i'), 'pack maker should remove obsolete OLLAMA route chat entries');
 assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
 assert(packMaker.includes('function answerLocalBrief'), 'pack maker should answer brief/how-to prompts before auth or pack generation');
 assert(packMaker.includes('function isConnectionProbe'), 'pack maker should classify connection/status prompts separately from pack generation');
