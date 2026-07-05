@@ -556,6 +556,8 @@ assert(releaseReadinessMatrix.includes('incomplete OPENAI_* KUGNUS alias is bloc
 assert(releaseReadinessMatrix.includes('direct KUGNUS route is blocked for release'), 'release readiness matrix should cover direct route blocking');
 assert(releaseReadinessMatrix.includes('dedicated GPT fallback must remain mini'), 'release readiness matrix should cover dedicated GPT mini guard');
 assert(releaseReadinessMatrix.includes('generic OpenAI fallback must remain mini'), 'release readiness matrix should cover generic GPT mini guard');
+assert(releaseReadinessMatrix.includes('firebase placeholder files are blocked by contract'), 'release readiness matrix should block placeholder Firebase files');
+assert(releaseReadinessMatrix.includes('firebase release skeleton passes contract checks'), 'release readiness matrix should prove a complete Firebase skeleton can pass contract checks');
 assert(releaseRuntimeVerifier.includes('scripts/check_release_readiness.mjs'), 'release runtime verifier should run release preflight before starting server');
 assert(releaseRuntimeVerifier.includes('/api/llm/kugnus/health'), 'release runtime verifier should probe the running server KUGNUS health endpoint');
 assert(releaseRuntimeVerifier.includes('gateway,openai-env-alias'), 'release runtime verifier should require gateway-style KUGNUS routes');
