@@ -36,6 +36,18 @@ function has(name) {
     return Boolean(value(name));
 }
 
+function hasAny(names) {
+    return names.some(has);
+}
+
+function firstValue(names) {
+    for (const name of names) {
+        const current = value(name);
+        if (current) return current;
+    }
+    return '';
+}
+
 function publicUrlLike(url) {
     return /^https:\/\//i.test(url)
         && !/\/\/(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.)/i.test(url);
@@ -57,6 +69,36 @@ function hasAnyFile(files) {
     return files.some(file => fs.existsSync(path.join(root, file)));
 }
 
+const GPT_OPENAI_KEY_NAMES = [
+    'GPT_OPENAI_API_KEY',
+    'GPT54_MINI_API_KEY',
+    'GPT5_4_MINI_API_KEY',
+    'LLM_OPENAI_API_KEY'
+];
+
+const GPT_OPENAI_MODEL_NAMES = [
+    'GPT_OPENAI_MODEL',
+    'GPT54_MINI_MODEL',
+    'GPT5_4_MINI_MODEL'
+];
+
+function modelLooksLikeKugnus(model) {
+    return /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(model);
+}
+
+function openAiAliasLooksLikeKugnus() {
+    const baseUrl = value('OPENAI_BASE_URL');
+    const model = value('OPENAI_MODEL');
+    return Boolean(
+        (baseUrl && !/api\.openai\.com/i.test(baseUrl)) ||
+        (model && modelLooksLikeKugnus(model))
+    );
+}
+
+function allowedMiniModel(model) {
+    return /^gpt-?5(\.4)?-mini$/i.test(model);
+}
+
 function checkCommon() {
     const defaultEngine = value('DEFAULT_CHAT_ENGINE');
     if (defaultEngine && defaultEngine !== 'kugnus') {
@@ -66,9 +108,7 @@ function checkCommon() {
     const hasExplicitGateway = has('KUGNUS_GATEWAY_BASE_URL')
         && has('KUGNUS_GATEWAY_API_KEY')
         && (has('KUGNUS_GATEWAY_MODEL') || has('KUGNUS_MODEL'));
-    const hasOpenAiAlias = has('OPENAI_BASE_URL') && has('OPENAI_API_KEY') && has('OPENAI_MODEL')
-        && !/api\.openai\.com/i.test(value('OPENAI_BASE_URL'))
-        && /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(value('OPENAI_MODEL'));
+    const hasOpenAiAlias = has('OPENAI_API_KEY') && has('OPENAI_MODEL') && openAiAliasLooksLikeKugnus();
 
     if (!hasExplicitGateway && !hasOpenAiAlias) {
         errors.push('KUGNUS release requires KUGNUS_GATEWAY_* or OPENAI_* alias with local KUGNUS model');
@@ -88,12 +128,18 @@ function checkCommon() {
         addAction('Unset LLM_BASE_URL for release after KUGNUS_GATEWAY_* is configured.');
     }
 
-    if (!has('GPT_OPENAI_API_KEY') && !has('GPT_OPENAI_MODEL')) {
-        warnings.push('GPT fallback is not configured with GPT_OPENAI_*; KUGNUS-only release is possible but fallback UX will not work');
+    const hasDedicatedGptFallback = hasAny(GPT_OPENAI_KEY_NAMES);
+    const hasGenericOpenAiFallback = !hasOpenAiAlias && has('OPENAI_API_KEY');
+    if (!hasDedicatedGptFallback && !hasGenericOpenAiFallback) {
+        warnings.push('GPT fallback API key is not configured; KUGNUS-only release is possible but fallback UX will not work');
     }
 
-    if (has('GPT_OPENAI_MODEL') && !/^gpt-?5(\.4)?-mini$/i.test(value('GPT_OPENAI_MODEL'))) {
-        errors.push(`GPT_OPENAI_MODEL must stay mini-only, got ${value('GPT_OPENAI_MODEL')}`);
+    const dedicatedGptModel = firstValue(GPT_OPENAI_MODEL_NAMES);
+    if (dedicatedGptModel && !allowedMiniModel(dedicatedGptModel)) {
+        errors.push(`GPT fallback model must stay gpt-5.4-mini, got ${dedicatedGptModel}`);
+    }
+    if (hasGenericOpenAiFallback && has('OPENAI_MODEL') && !allowedMiniModel(value('OPENAI_MODEL'))) {
+        errors.push(`Generic OPENAI_MODEL fallback must stay gpt-5.4-mini, got ${value('OPENAI_MODEL')}`);
     }
 }
 

@@ -37,6 +37,27 @@ function envValue(name) {
     return String(process.env[name] || '').trim();
 }
 
+function hasEnv(name) {
+    return Boolean(envValue(name));
+}
+
+function hasAnyEnv(names) {
+    return names.some(hasEnv);
+}
+
+function modelLooksLikeKugnus(model) {
+    return /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(model);
+}
+
+function openAiAliasLooksLikeKugnus() {
+    const baseUrl = envValue('OPENAI_BASE_URL');
+    const model = envValue('OPENAI_MODEL');
+    return Boolean(
+        (baseUrl && !/api\.openai\.com/i.test(baseUrl)) ||
+        (model && modelLooksLikeKugnus(model))
+    );
+}
+
 function addCheck(name, status, detail = {}) {
     checks.push({ name, status, ...detail });
 }
@@ -95,17 +116,28 @@ async function httpJson(pathname) {
 }
 
 function envPresence() {
-    const gatewayReady = Boolean(envValue('KUGNUS_GATEWAY_BASE_URL') && envValue('KUGNUS_GATEWAY_API_KEY') && (envValue('KUGNUS_GATEWAY_MODEL') || envValue('KUGNUS_MODEL')));
+    const explicitGatewayReady = Boolean(envValue('KUGNUS_GATEWAY_BASE_URL') && envValue('KUGNUS_GATEWAY_API_KEY') && (envValue('KUGNUS_GATEWAY_MODEL') || envValue('KUGNUS_MODEL')));
+    const openAiGatewayAliasReady = Boolean(envValue('OPENAI_API_KEY') && envValue('OPENAI_MODEL') && openAiAliasLooksLikeKugnus());
+    const gatewayReady = explicitGatewayReady || openAiGatewayAliasReady;
     const directReady = Boolean(envValue('LLM_BASE_URL') && envValue('LLM_MODEL'));
     const dbReady = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'].every(envValue);
+    const dedicatedGptFallback = hasAnyEnv([
+        'GPT_OPENAI_API_KEY',
+        'GPT54_MINI_API_KEY',
+        'GPT5_4_MINI_API_KEY',
+        'LLM_OPENAI_API_KEY'
+    ]);
+    const genericOpenAiFallback = Boolean(envValue('OPENAI_API_KEY') && !openAiGatewayAliasReady);
     return {
         gatewayReady,
         directReady,
         dbReady,
+        gatewayMode: explicitGatewayReady ? 'KUGNUS_GATEWAY_*' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : ''),
+        expectedKugnusRoutes: explicitGatewayReady ? ['gateway'] : (openAiGatewayAliasReady ? ['openai-env-alias'] : []),
         hasSessionSecret: Boolean(envValue('SESSION_SECRET')),
         hasAllowedOrigins: Boolean(envValue('ALLOWED_ORIGINS')),
         hasDuckDuckGo: Boolean(envValue('DUCKDUCKGO_API_KEY') || envValue('DDG_API_KEY')),
-        hasGptFallback: Boolean((envValue('GPT_OPENAI_API_KEY') || envValue('OPENAI_API_KEY')) && (envValue('GPT_OPENAI_MODEL') || envValue('OPENAI_MODEL')))
+        hasGptFallback: dedicatedGptFallback || genericOpenAiFallback
     };
 }
 
@@ -124,7 +156,7 @@ function summarizeReleaseCheck(stdout) {
 
 const env = envPresence();
 addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
-    detail: env.gatewayReady ? 'KUGNUS_GATEWAY_* present' : 'KUGNUS_GATEWAY_* missing; deployment must not rely on direct LLM_BASE_URL'
+    detail: env.gatewayReady ? `${env.gatewayMode} present` : 'KUGNUS gateway env missing; deployment must not rely on direct LLM_BASE_URL'
 });
 addCheck('env.kugnus-direct-dev', env.directReady ? 'WARN' : 'PASS', {
     detail: env.directReady ? 'LLM_BASE_URL direct dev route is active' : 'No direct KUGNUS route configured'
@@ -152,13 +184,16 @@ try {
     const kugnus = await httpJson('/api/llm/kugnus/health');
     const body = kugnus.body || {};
     let status = body.ok === true ? 'PASS' : 'FAIL';
-    if (body.ok === true && body.route !== 'gateway') status = 'WARN';
+    const expectedRoutes = env.expectedKugnusRoutes || [];
+    if (body.ok === true && expectedRoutes.length && !expectedRoutes.includes(body.route)) status = 'BLOCKED';
+    else if (body.ok === true && body.route !== 'gateway' && body.route !== 'openai-env-alias') status = 'WARN';
     addCheck('http.kugnus', status, {
         statusCode: kugnus.status,
         ok: body.ok,
         provider: body.provider || '',
         route: body.route || '',
         model: body.model || '',
+        expectedRoutes,
         reason: body.reason || ''
     });
 } catch (err) {
