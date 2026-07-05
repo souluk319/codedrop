@@ -2278,13 +2278,6 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
     const engine = normalizeChatEngine(req.body?.engine);
     if (!engine) return res.status(400).json({ error: "Invalid LLM engine" });
 
-    let target;
-    try {
-        target = buildLlmTarget(engine);
-    } catch (err) {
-        return res.status(err.status || 400).json({ error: err.message });
-    }
-
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PACK_MAKER_TIMEOUT_MS);
     let finished = false;
@@ -2300,25 +2293,31 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
     res.setHeader("X-Accel-Buffering", "no");
     if (typeof res.flushHeaders === "function") res.flushHeaders();
 
-    writeNdjson(res, "meta", {
-        provider: target.provider,
-        model: target.model,
-        engine: target.engine,
-        route: target.route,
-        label: target.label
-    });
-
     try {
         const intent = extractPackIntent(message);
         if (!isPackGenerationRequest(message, intent)) {
             const answer = packMakerBriefResponse(message);
             finished = true;
+            writeNdjson(res, "meta", {
+                engine,
+                route: "not-needed",
+                label: engine === "openai" ? "GPT 5.4 mini" : "KUGNUS SERVER"
+            });
             writeNdjson(res, "status", { text: "PACK BRIEF REQUIRED" });
             writeNdjson(res, "delta", { text: answer });
             writeNdjson(res, "done", { answer });
             if (!res.writableEnded && !res.destroyed) res.end();
             return;
         }
+
+        const target = buildLlmTarget(engine);
+        writeNdjson(res, "meta", {
+            provider: target.provider,
+            model: target.model,
+            engine: target.engine,
+            route: target.route,
+            label: target.label
+        });
 
         writeNdjson(res, "status", {
             text: `TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS`

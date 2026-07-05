@@ -54,7 +54,16 @@ const child = spawn(process.execPath, ['server.js'], {
     env: {
         ...process.env,
         PORT: String(port),
-        REQUEST_LOGS: '0'
+        REQUEST_LOGS: '0',
+        KUGNUS_GATEWAY_BASE_URL: '',
+        KUGNUS_BASE_URL: '',
+        KUGNUS_OPENAI_BASE_URL: '',
+        KUGNUS_LLM_BASE_URL: '',
+        LLM_BASE_URL: '',
+        LLM_ENDPOINT: '',
+        OPENAI_BASE_URL: '',
+        OPENAI_API_KEY: '',
+        OPENAI_MODEL: ''
     },
     stdio: ['ignore', 'pipe', 'pipe']
 });
@@ -83,6 +92,18 @@ try {
         Authorization: `Bearer ${issuedToken}`,
         'Content-Type': 'application/json'
     };
+
+    const packMakerBrief = await request(base, '/api/pack-maker/chat/stream', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ message: '되냐', engine: 'kugnus' })
+    });
+    assert(packMakerBrief.status === 200, `pack maker brief should not require LLM target config: ${packMakerBrief.status} ${packMakerBrief.text}`);
+    assert(packMakerBrief.text.includes('"event":"meta"') && packMakerBrief.text.includes('"route":"not-needed"'),
+        `pack maker brief should explain that no LLM route was needed: ${packMakerBrief.text}`);
+    assert(packMakerBrief.text.includes('PACK BRIEF REQUIRED'), `pack maker brief should return the brief status: ${packMakerBrief.text}`);
+    assert(!packMakerBrief.text.includes('"event":"search"'), `pack maker brief should not run search: ${packMakerBrief.text}`);
+    assert(!packMakerBrief.text.includes('"event":"error"'), `pack maker brief should not fail as generation: ${packMakerBrief.text}`);
 
     const savePack = await request(base, '/api/packs', {
         method: 'POST',
@@ -169,6 +190,7 @@ try {
         packId,
         checks: [
             'register',
+            'pack maker brief without LLM target',
             'custom pack save',
             'custom score',
             'custom leaderboard',

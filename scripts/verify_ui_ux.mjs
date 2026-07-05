@@ -15,6 +15,7 @@ const productionEnvExample = read('.env.production.example');
 const kugnusGatewayEnvExample = read('.env.kugnus-gateway.example');
 const verifyWorkflow = read('.github/workflows/verify.yml');
 const verifyAll = read('scripts/verify_all.mjs');
+const verifyDb = read('scripts/verify_db_e2e.mjs');
 const releaseCheck = read('scripts/check_release_readiness.mjs');
 const systemDoctor = read('scripts/system_doctor.mjs');
 const kugnusGatewayContract = read('scripts/verify_kugnus_gateway_contract.mjs');
@@ -746,6 +747,8 @@ assert(!game.includes('user_id: state.userId'), 'score submit should not trust c
 assert(game.includes('Authorization'), 'authenticated API calls should send a bearer token');
 assert(packMaker.includes("e.key === 'Enter' && !e.shiftKey"), 'pack maker chat textarea should send on Enter and keep Shift+Enter for newlines');
 assert(packMaker.includes('ui.form.requestSubmit()'), 'pack maker Enter shortcut should submit through the form handler');
+assert(server.includes('route: "not-needed"'), 'pack maker brief/status questions should not require or pretend to use an LLM route');
+assert(verifyDb.includes('pack maker brief without LLM target'), 'DB E2E should prove Pack Maker brief questions do not require KUGNUS target config');
 assert(server.includes('const MAX_SUBMITTED_SCORE = 25000;'), 'server should reject implausible forged leaderboard scores');
 assert(!server.includes('DB 체크 임시 비활성화'), 'server readiness comments should not claim DB checks are disabled');
 assert(server.includes('SELECT id, nickname FROM users WHERE id = ? LIMIT 1'), 'auth middleware should verify that bearer-token users still exist');
