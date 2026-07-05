@@ -666,6 +666,8 @@ assert(systemDoctor.includes("expectedRoutes.length && !expectedRoutes.includes(
 assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');
 assert(verifyWorkflow.includes('npm run verify:db'), 'CI workflow should run database E2E against local MySQL');
 assert(verifyWorkflow.includes('npm run doctor'), 'CI workflow should publish the system doctor report');
+assert(verifyWorkflow.includes('actions/checkout@v7'), 'CI checkout action should use a Node 24-ready major');
+assert(verifyWorkflow.includes('actions/setup-node@v6'), 'CI setup-node action should use a Node 24-ready major');
 assert(localEnvExample.includes('PACK_MAKER_TIMEOUT_MS=600000'), 'local env example should allow realistic KUGNUS Pack Maker completion time');
 assert(localEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=180000'), 'local env example should document realistic Pack Maker batch timeout');
 assert(productionEnvExample.includes('PACK_MAKER_TIMEOUT_MS=600000'), 'production env example should allow realistic KUGNUS Pack Maker completion time');
