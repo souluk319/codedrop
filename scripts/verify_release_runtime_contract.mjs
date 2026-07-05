@@ -65,14 +65,26 @@ async function startFakeGateway() {
     };
 }
 
-function writeEnvFile(gateway) {
+function writeEnvFile(gateway, mode = 'gateway') {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codedrop-release-runtime-'));
     const file = path.join(dir, '.env.release-runtime-test');
+    const kugnusEnv = mode === 'openai-alias'
+        ? [
+            `OPENAI_BASE_URL=${gateway.baseUrl}`,
+            'OPENAI_API_KEY=fake-release-runtime-key',
+            `OPENAI_MODEL=${KUGNUS_MODEL}`,
+            'LLM_BASE_URL=http://100.99.152.52:11434',
+            `LLM_MODEL=${KUGNUS_MODEL}`
+        ]
+        : [
+            `KUGNUS_GATEWAY_BASE_URL=${gateway.baseUrl}`,
+            'KUGNUS_GATEWAY_API_KEY=fake-release-runtime-key',
+            `KUGNUS_GATEWAY_MODEL=${KUGNUS_MODEL}`
+        ];
+
     fs.writeFileSync(file, [
         'DEFAULT_CHAT_ENGINE=kugnus',
-        `KUGNUS_GATEWAY_BASE_URL=${gateway.baseUrl}`,
-        'KUGNUS_GATEWAY_API_KEY=fake-release-runtime-key',
-        `KUGNUS_GATEWAY_MODEL=${KUGNUS_MODEL}`,
+        ...kugnusEnv,
         'KUGNUS_PROVIDER=openai',
         'KUGNUS_HEALTH_TIMEOUT_MS=5000',
         'DB_HOST=release-runtime-test',
@@ -86,13 +98,13 @@ function writeEnvFile(gateway) {
     return file;
 }
 
-async function runVerifier(envFile) {
+async function runVerifier(envFile, expectedRoute) {
     const child = spawn(process.execPath, [
         'scripts/verify_release_runtime_route.mjs',
         '--env-file',
         envFile,
         '--expect-route',
-        'gateway',
+        expectedRoute,
         '--timeout-ms',
         '30000'
     ], {
@@ -117,28 +129,36 @@ async function runVerifier(envFile) {
 }
 
 const gateway = await startFakeGateway();
-const envFile = writeEnvFile(gateway);
+const envFiles = [
+    { mode: 'gateway', expectedRoute: 'gateway', file: writeEnvFile(gateway, 'gateway') },
+    { mode: 'openai-alias', expectedRoute: 'openai-env-alias', file: writeEnvFile(gateway, 'openai-alias') }
+];
 
 try {
-    const result = await runVerifier(envFile);
-    assert(result.status === 0, `release runtime verifier should pass in contract mode\nrequests:${JSON.stringify(gateway.requests)}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
-    const data = JSON.parse(result.stdout);
-    assert(data.releaseRuntimeRoute === 'ok', 'release runtime verifier should emit ok JSON');
-    assert(data.route === 'gateway', 'release runtime verifier should prove gateway route');
-    assert(data.provider === 'openai', 'release runtime verifier should prove OpenAI-compatible provider');
-    assert(data.model === KUGNUS_MODEL, 'release runtime verifier should prove KUGNUS model');
-    assert(data.testMode === true, 'contract run should be clearly marked as test mode');
-    assert(gateway.requests.some(req => req.auth === 'Bearer fake-release-runtime-key'), 'runtime verifier should send the KUGNUS gateway bearer key');
-    assert(gateway.requests.every(req => req.model === KUGNUS_MODEL), 'runtime verifier should use the configured KUGNUS model');
+    const results = [];
+    for (const envFile of envFiles) {
+        const requestCountBefore = gateway.requests.length;
+        const result = await runVerifier(envFile.file, envFile.expectedRoute);
+        assert(result.status === 0, `release runtime verifier should pass for ${envFile.mode}\nrequests:${JSON.stringify(gateway.requests)}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`);
+        const data = JSON.parse(result.stdout);
+        const newRequests = gateway.requests.slice(requestCountBefore);
+        assert(data.releaseRuntimeRoute === 'ok', `${envFile.mode}: release runtime verifier should emit ok JSON`);
+        assert(data.route === envFile.expectedRoute, `${envFile.mode}: expected route ${envFile.expectedRoute}, got ${data.route}`);
+        assert(data.provider === 'openai', `${envFile.mode}: release runtime verifier should prove OpenAI-compatible provider`);
+        assert(data.model === KUGNUS_MODEL, `${envFile.mode}: release runtime verifier should prove KUGNUS model`);
+        assert(data.testMode === true, `${envFile.mode}: contract run should be clearly marked as test mode`);
+        assert(newRequests.some(req => req.auth === 'Bearer fake-release-runtime-key'), `${envFile.mode}: runtime verifier should send the KUGNUS gateway bearer key`);
+        assert(newRequests.every(req => req.model === KUGNUS_MODEL), `${envFile.mode}: runtime verifier should use the configured KUGNUS model`);
+        results.push({ mode: envFile.mode, route: data.route, requests: newRequests.length });
+    }
 
     console.log(JSON.stringify({
         releaseRuntimeContract: 'ok',
-        route: data.route,
-        provider: data.provider,
-        model: data.model,
+        model: KUGNUS_MODEL,
+        results,
         requests: gateway.requests.length
     }, null, 2));
 } finally {
     await gateway.close();
-    fs.rmSync(path.dirname(envFile), { recursive: true, force: true });
+    envFiles.forEach(envFile => fs.rmSync(path.dirname(envFile.file), { recursive: true, force: true }));
 }

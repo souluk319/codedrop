@@ -428,6 +428,12 @@ function shouldUseOpenAiEnvForKugnus() {
     return false;
 }
 
+function openAiEnvKugnusAliasReady() {
+    return shouldUseOpenAiEnvForKugnus()
+        && Boolean((process.env.OPENAI_BASE_URL || "").trim())
+        && Boolean((process.env.OPENAI_MODEL || "").trim());
+}
+
 function kugnusRouteFromEnvName(envName, viaOpenAiAlias = false) {
     if (viaOpenAiAlias) return "openai-env-alias";
     if (envName === "KUGNUS_GATEWAY_BASE_URL") return "gateway";
@@ -479,7 +485,13 @@ function buildLlmTarget(engine = "kugnus") {
     let explicitProvider = process.env.KUGNUS_PROVIDER || process.env.LLM_PROVIDER || "";
     let route = kugnusRouteFromEnvName(baseEntry.name);
 
-    if ((!baseUrl || !model) && shouldUseOpenAiEnvForKugnus()) {
+    if (openAiEnvKugnusAliasReady() && route !== "gateway") {
+        baseUrl = process.env.OPENAI_BASE_URL || "";
+        model = process.env.OPENAI_MODEL || "";
+        apiKey = apiKey || process.env.OPENAI_API_KEY || "";
+        explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
+        route = kugnusRouteFromEnvName(baseEntry.name, true);
+    } else if ((!baseUrl || !model) && shouldUseOpenAiEnvForKugnus()) {
         baseUrl = baseUrl || process.env.OPENAI_BASE_URL || "";
         model = model || process.env.OPENAI_MODEL || "";
         apiKey = apiKey || process.env.OPENAI_API_KEY || "";
