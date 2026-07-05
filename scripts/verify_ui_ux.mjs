@@ -572,6 +572,9 @@ assert(productionEnvExample.includes('PACK_MAKER_TIMEOUT_MS=600000'), 'productio
 assert(productionEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=180000'), 'production env example should document realistic Pack Maker batch timeout');
 assert(packageJson.scripts?.['verify:packmaker:kugnus'] === 'node scripts/verify_packmaker_kugnus_e2e.mjs', 'package should expose the real KUGNUS Pack Maker E2E command');
 assert(systemDoctor.includes('function commandCheckDetail'), 'system doctor should include failed command output in reports');
+assert(systemDoctor.includes('function packMakerCheckDetail'), 'system doctor should summarize successful Pack Maker KUGNUS E2E evidence');
+assert(systemDoctor.includes('summary.generated?.itemCount'), 'system doctor Pack Maker summary should include generated item count');
+assert(systemDoctor.includes('packMakerKugnusE2e'), 'system doctor should parse the Pack Maker KUGNUS verifier JSON payload');
 assert(systemDoctor.includes('PACKMAKER_KUGNUS_E2E_TIMEOUT_MS'), 'system doctor should run Pack Maker E2E with a realistic timeout');
 assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');

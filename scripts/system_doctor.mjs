@@ -103,6 +103,38 @@ function commandCheckDetail(result) {
     return detail;
 }
 
+function parseLastJsonObject(text) {
+    const value = String(text || '').trim();
+    const end = value.lastIndexOf('}');
+    if (end < 0) return null;
+
+    for (let start = value.lastIndexOf('{', end); start >= 0; start = value.lastIndexOf('{', start - 1)) {
+        const parsed = parseJson(value.slice(start, end + 1));
+        if (parsed) return parsed;
+    }
+
+    return null;
+}
+
+function packMakerCheckDetail(result) {
+    const detail = commandCheckDetail(result);
+    const summary = parseLastJsonObject(result.stdout);
+    if (summary?.packMakerKugnusE2e === 'ok') {
+        detail.summary = {
+            packId: summary.packId,
+            route: summary.health?.route || summary.generated?.route || '',
+            model: summary.health?.model || '',
+            title: summary.generated?.title || '',
+            itemCount: summary.generated?.itemCount,
+            duplicates: summary.generated?.duplicates,
+            koreanRatio: summary.generated?.koreanRatio,
+            seconds: summary.generated?.seconds,
+            checks: Array.isArray(summary.checks) ? summary.checks : []
+        };
+    }
+    return detail;
+}
+
 async function httpJson(pathname) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -252,7 +284,7 @@ if (packmaker) {
             PACKMAKER_KUGNUS_E2E_TIMEOUT_MS: '600000'
         }
     });
-    addCheck('npm.verify-packmaker-kugnus', pm.status, commandCheckDetail(pm));
+    addCheck('npm.verify-packmaker-kugnus', pm.status, packMakerCheckDetail(pm));
 }
 
 const order = ['FAIL', 'BLOCKED', 'WARN', 'PASS'];
