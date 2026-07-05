@@ -113,6 +113,35 @@ try {
     issuedToken = owner.token;
     const authHeaders = owner.headers;
 
+    const duplicateRegister = await request(base, '/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, password: `${password}x` })
+    });
+    assert(duplicateRegister.status === 409, `duplicate nickname should be rejected: ${duplicateRegister.status} ${duplicateRegister.text}`);
+
+    const invalidRegister = await request(base, '/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname: 'no', password })
+    });
+    assert(invalidRegister.status === 400, `invalid nickname should be rejected: ${invalidRegister.status} ${invalidRegister.text}`);
+
+    const loginOk = await request(base, '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, password })
+    });
+    assert(loginOk.status === 200 && loginOk.body.token && loginOk.body.nickname === nickname,
+        `login should return a fresh token and nickname: ${loginOk.status} ${loginOk.text}`);
+
+    const loginWrong = await request(base, '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, password: `${password}wrong` })
+    });
+    assert(loginWrong.status === 401, `wrong password should be rejected: ${loginWrong.status} ${loginWrong.text}`);
+
     const packMakerBrief = await request(base, '/api/pack-maker/chat/stream', {
         method: 'POST',
         headers: authHeaders,
@@ -299,6 +328,30 @@ try {
     assert(!customAfterRows.some(row => row.score === 222),
         'official score leaked into the custom pack leaderboard');
 
+    const forgedHugeScore = await request(base, '/submit', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ score: 25001, wpm: 11, accuracy: 91, difficulty: 'normal', pack: 'python' })
+    });
+    assert(forgedHugeScore.status === 400, `official score should reject values above MAX_SUBMITTED_SCORE: ${forgedHugeScore.status} ${forgedHugeScore.text}`);
+
+    const invalidOfficialAccuracy = await request(base, '/submit', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ score: 222, wpm: 11, accuracy: 101, difficulty: 'normal', pack: 'python' })
+    });
+    assert(invalidOfficialAccuracy.status === 400, `official score should reject impossible accuracy: ${invalidOfficialAccuracy.status} ${invalidOfficialAccuracy.text}`);
+
+    const invalidOfficialPack = await request(base, '/submit', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ score: 222, wpm: 11, accuracy: 91, difficulty: 'normal', pack: 'PACK_1' })
+    });
+    assert(invalidOfficialPack.status === 400, `official score should reject custom pack ids on /submit: ${invalidOfficialPack.status} ${invalidOfficialPack.text}`);
+
+    const invalidOfficialFilter = await request(base, '/leaderboard?difficulty=normal&pack=PACK_1');
+    assert(invalidOfficialFilter.status === 400, `official leaderboard should reject custom pack ids: ${invalidOfficialFilter.status} ${invalidOfficialFilter.text}`);
+
     await withdrawAccount(base, owner);
 
     const oldSession = await request(base, '/api/session', {
@@ -318,6 +371,10 @@ try {
         packId,
         checks: [
             'register',
+            'duplicate register rejected',
+            'invalid register rejected',
+            'login success',
+            'wrong login rejected',
             'pack maker brief without LLM target',
             'custom pack save',
             'mine list shape',
@@ -333,6 +390,8 @@ try {
             'approved public pack score by another user',
             'custom score excluded from official leaderboard',
             'official score excluded from custom leaderboard',
+            'official score validation rejects forged values',
+            'official leaderboard rejects custom pack ids',
             'withdraw custom cleanup',
             'old token revoked'
         ]
