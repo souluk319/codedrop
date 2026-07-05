@@ -16,6 +16,7 @@ const verifyWorkflow = read('.github/workflows/verify.yml');
 const verifyAll = read('scripts/verify_all.mjs');
 const releaseCheck = read('scripts/check_release_readiness.mjs');
 const systemDoctor = read('scripts/system_doctor.mjs');
+const kugnusGatewayContract = read('scripts/verify_kugnus_gateway_contract.mjs');
 const packageJson = JSON.parse(read('package.json'));
 
 function read(file) {
@@ -544,6 +545,9 @@ assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_SKIP_READY_DB'), 'releas
 assert(releaseRuntimeContract.includes("mode: 'openai-alias'"), 'release runtime contract should verify OPENAI_* KUGNUS alias routing');
 assert(releaseRuntimeContract.includes("mode: 'kugnus-base-alias'"), 'release runtime contract should verify KUGNUS_BASE_URL alias routing');
 assert(releaseRuntimeContract.includes('LLM_BASE_URL=http://100.99.152.52:11434'), 'release runtime contract should prove OPENAI_* alias wins even when direct LLM_BASE_URL remains set');
+assert(releaseRuntimeContract.includes('stale-direct-key-must-not-win'), 'release runtime contract should prove OPENAI_* alias does not reuse stale direct/local keys');
+assert(kugnusGatewayContract.includes('stale-direct-key-must-not-win'), 'KUGNUS gateway contract should prove OPENAI_* alias keeps its own bearer key');
+assert(server.includes('apiKey = process.env.OPENAI_API_KEY || apiKey || "";'), 'OPENAI_* KUGNUS alias should prefer OPENAI_API_KEY over stale direct/local keys');
 assert(readme.includes('OPENAI_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the OpenAI-compatible KUGNUS gateway alias');
 assert(readme.includes('verify:release-runtime -- --env-file=.env.production'), 'README should document runtime route verification before release');
 assert(readme.indexOf('`OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`') < readme.indexOf('`LLM_BASE_URL` / `LLM_MODEL` direct'), 'README KUGNUS routing order should put the gateway alias before direct LLM_BASE_URL');

@@ -187,6 +187,8 @@ async function verifyOpenAiEnvAlias(gateway) {
         KUGNUS_PROVIDER: '',
         LLM_BASE_URL: '',
         LLM_MODEL: '',
+        LLM_API_KEY: 'stale-direct-key-must-not-win',
+        LOCAL_LLM_API_KEY: 'stale-local-key-must-not-win',
         LLM_PROVIDER: '',
         OPENAI_BASE_URL: gateway.baseUrl,
         OPENAI_API_KEY: 'fake-openai-style-kugnus-key',
@@ -200,6 +202,8 @@ async function verifyOpenAiEnvAlias(gateway) {
         assert(health.data.route === 'openai-env-alias', 'generic OPENAI_* alias health should expose alias routing');
         assert(health.data.model === KUGNUS_MODEL, 'generic OPENAI_* alias should use local KUGNUS model');
         assert(gateway.requests.some(req => req.auth === 'Bearer fake-openai-style-kugnus-key'), 'generic OPENAI_* alias should pass its bearer key');
+        assert(!gateway.requests.some(req => req.auth === 'Bearer stale-direct-key-must-not-win' || req.auth === 'Bearer stale-local-key-must-not-win'),
+            'generic OPENAI_* alias must not reuse stale direct/local KUGNUS keys');
     } catch (err) {
         err.message = `${err.message}\nServer output:\n${app.output()}`;
         throw err;

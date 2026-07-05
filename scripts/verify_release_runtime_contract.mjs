@@ -74,7 +74,9 @@ function writeEnvFile(gateway, mode = 'gateway') {
             'OPENAI_API_KEY=fake-release-runtime-key',
             `OPENAI_MODEL=${KUGNUS_MODEL}`,
             'LLM_BASE_URL=http://100.99.152.52:11434',
-            `LLM_MODEL=${KUGNUS_MODEL}`
+            `LLM_MODEL=${KUGNUS_MODEL}`,
+            'LLM_API_KEY=stale-direct-key-must-not-win',
+            'LOCAL_LLM_API_KEY=stale-local-key-must-not-win'
         ]
         : mode === 'kugnus-base-alias'
             ? [
@@ -155,6 +157,8 @@ try {
         assert(data.model === KUGNUS_MODEL, `${envFile.mode}: release runtime verifier should prove KUGNUS model`);
         assert(data.testMode === true, `${envFile.mode}: contract run should be clearly marked as test mode`);
         assert(newRequests.some(req => req.auth === 'Bearer fake-release-runtime-key'), `${envFile.mode}: runtime verifier should send the KUGNUS gateway bearer key`);
+        assert(!newRequests.some(req => req.auth === 'Bearer stale-direct-key-must-not-win' || req.auth === 'Bearer stale-local-key-must-not-win'),
+            `${envFile.mode}: runtime verifier must not reuse stale direct/local KUGNUS keys`);
         assert(newRequests.every(req => req.model === KUGNUS_MODEL), `${envFile.mode}: runtime verifier should use the configured KUGNUS model`);
         results.push({ mode: envFile.mode, route: data.route, requests: newRequests.length });
     }

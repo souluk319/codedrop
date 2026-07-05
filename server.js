@@ -508,13 +508,13 @@ function buildLlmTarget(engine = "kugnus") {
     if (openAiEnvKugnusAliasReady() && route !== "gateway") {
         baseUrl = process.env.OPENAI_BASE_URL || "";
         model = process.env.OPENAI_MODEL || "";
-        apiKey = apiKey || process.env.OPENAI_API_KEY || "";
+        apiKey = process.env.OPENAI_API_KEY || apiKey || "";
         explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
         route = kugnusRouteFromEnvName(baseEntry.name, true);
     } else if ((!baseUrl || !model) && shouldUseOpenAiEnvForKugnus()) {
         baseUrl = baseUrl || process.env.OPENAI_BASE_URL || "";
         model = model || process.env.OPENAI_MODEL || "";
-        apiKey = apiKey || process.env.OPENAI_API_KEY || "";
+        apiKey = process.env.OPENAI_API_KEY || apiKey || "";
         explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
         route = kugnusRouteFromEnvName(baseEntry.name, true);
     }
