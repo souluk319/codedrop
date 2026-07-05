@@ -287,6 +287,39 @@ function summarizeReleaseCheck(stdout) {
     };
 }
 
+const order = ['FAIL', 'BLOCKED', 'WARN', 'PASS'];
+
+function currentOverall() {
+    return checks.some(check => check.status === 'FAIL')
+        ? 'FAIL'
+        : checks.some(check => check.status === 'BLOCKED')
+            ? 'BLOCKED'
+            : checks.some(check => check.status === 'WARN')
+                ? 'WARN'
+                : 'PASS';
+}
+
+function currentResult() {
+    const overall = currentOverall();
+    return {
+        codedropDoctor: overall,
+        envFile: envPaths.length ? envPaths.map(file => path.relative(root, file) || file).join(',') : '(process env only)',
+        baseUrl,
+        deep,
+        packmaker,
+        counts: Object.fromEntries(order.map(status => [status, checks.filter(check => check.status === status).length])),
+        checks
+    };
+}
+
+function emitAndExitIfStrict() {
+    const result = currentResult();
+    console.log(JSON.stringify(result, null, 2));
+    if (strict && (result.codedropDoctor === 'FAIL' || result.codedropDoctor === 'BLOCKED')) {
+        process.exit(result.codedropDoctor === 'FAIL' ? 1 : 2);
+    }
+}
+
 const env = envPresence();
 addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
     detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS release gateway missing; direct LLM_BASE_URL is dev-only'),
@@ -360,6 +393,10 @@ addCheck('release.preflight', releaseSummary.ok ? 'PASS' : 'BLOCKED', {
     elapsedMs: release.elapsedMs
 });
 
+if (strict && !releaseSummary.ok) {
+    emitAndExitIfStrict();
+}
+
 if (deep) {
     const verify = command('npm.verify', 'npm', ['run', 'verify'], { timeoutMs: 60_000 });
     addCheck('npm.verify', verify.status, commandCheckDetail(verify));
@@ -384,29 +421,4 @@ if (packmaker) {
     addCheck('npm.verify-packmaker-kugnus', pm.status, packMakerCheckDetail(pm));
 }
 
-const order = ['FAIL', 'BLOCKED', 'WARN', 'PASS'];
-const overall = checks.some(check => check.status === 'FAIL')
-    ? 'FAIL'
-    : checks.some(check => check.status === 'BLOCKED')
-        ? 'BLOCKED'
-        : checks.some(check => check.status === 'WARN')
-            ? 'WARN'
-            : 'PASS';
-
-const counts = Object.fromEntries(order.map(status => [status, checks.filter(check => check.status === status).length]));
-
-const result = {
-    codedropDoctor: overall,
-    envFile: envPaths.length ? envPaths.map(file => path.relative(root, file) || file).join(',') : '(process env only)',
-    baseUrl,
-    deep,
-    packmaker,
-    counts,
-    checks
-};
-
-console.log(JSON.stringify(result, null, 2));
-
-if (strict && (overall === 'FAIL' || overall === 'BLOCKED')) {
-    process.exit(overall === 'FAIL' ? 1 : 2);
-}
+emitAndExitIfStrict();

@@ -587,7 +587,7 @@ assert(readme.includes('npm run doctor:full -- --base-url=http://127.0.0.1:3001'
 assert(readme.includes('real KUGNUS Pack Maker E2E'), 'README should make clear doctor:full runs the real KUGNUS Pack Maker E2E');
 assert(readme.includes('npm run doctor:release -- --base-url=<deployed-or-local-url> --env-file=<release-env-file>'), 'README should document the fail-fast release doctor command');
 assert(readme.includes('doctor:release:full'), 'README should document the fail-fast release doctor with Pack Maker E2E');
-assert(systemDoctor.includes("if (strict && (overall === 'FAIL' || overall === 'BLOCKED'))"), 'system doctor strict mode should fail on FAIL or BLOCKED release states');
+assert(systemDoctor.includes("if (strict && (result.codedropDoctor === 'FAIL' || result.codedropDoctor === 'BLOCKED'))"), 'system doctor strict mode should fail on FAIL or BLOCKED release states');
 assert(releaseCheck.includes("['.env.local', '.env']"), 'release check should load the same default env stack as the server');
 assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
@@ -603,6 +603,7 @@ assert(releaseCheck.includes('Firebase API layer must expose required private en
 assert(systemDoctor.includes('function openAiAliasLooksLikeKugnus'), 'system doctor should share KUGNUS OPENAI_* alias detection');
 assert(systemDoctor.includes('openAiGatewayAliasMissing'), 'system doctor should detect incomplete OPENAI_* KUGNUS gateway aliases');
 assert(systemDoctor.includes('OPENAI_* KUGNUS alias incomplete'), 'system doctor should clearly report incomplete OPENAI_* KUGNUS aliases');
+assert(systemDoctor.includes('if (strict && !releaseSummary.ok)'), 'strict release doctor should stop before slow/mutating checks when release preflight is blocked');
 assert(systemDoctor.includes("gatewayMode: explicitGatewayReady ? 'KUGNUS gateway env' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : '')"), 'system doctor should report KUGNUS and OPENAI gateway aliases as gateway-ready');
 assert(systemDoctor.includes('expectedKugnusRoutes'), 'system doctor should know which runtime KUGNUS route the configured env expects');
 assert(systemDoctor.includes("expectedRoutes.length && !expectedRoutes.includes(body.route)"), 'system doctor should block when running server does not use configured KUGNUS gateway route');

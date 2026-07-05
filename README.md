@@ -210,7 +210,7 @@ npm run verify:packmaker:kugnus
 npm run doctor:full     # Deep system doctor plus real KUGNUS Pack Maker E2E summary
 npm run doctor:release  # Fail-fast doctor for release gates; exits non-zero on FAIL/BLOCKED
 npm run doctor:release:full
-                       # Fail-fast doctor plus slow real KUGNUS Pack Maker E2E
+                       # Fail-fast release gate; runs slow Pack Maker E2E only after preflight passes
 npm run release:check  # Fail-fast release environment preflight
 npm run db:local:up    # Start local MySQL
 npm run db:local:down  # Stop local MySQL
@@ -293,6 +293,7 @@ npm run doctor:release:full -- --base-url=http://127.0.0.1:3001 --env-file=.env.
 ```
 
 `doctor:release` fails the command when the app is still using local direct KUGNUS, missing the public gateway, missing production session/origin values, or running a server route that does not match the configured release route.
+Strict release doctor stops at a blocked release preflight before running slow or mutating local E2E checks, so the first failing deployment condition stays visible.
 
 ## Product Rules
 
