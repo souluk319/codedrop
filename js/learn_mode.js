@@ -238,6 +238,7 @@ const LearnMode = (() => {
         ui.chatEngineToggle = $('learn-chat-engine-toggle');
         ui.chatEngineLabel = $('learn-chat-engine-label');
         ui.chatEngineMenu = $('learn-chat-engine-menu');
+        ui.chatRoute = $('learn-chat-route');
         ui.chatStatus = $('learn-chat-status');
         ui.chatContext = $('learn-chat-context');
         ui.chatLog = $('learn-chat-log');
@@ -306,7 +307,7 @@ const LearnMode = (() => {
         ui.chatEngine.addEventListener('change', () => {
             chatEngineOverride = ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus';
             syncChatEngineUi();
-            ui.chatStatus.textContent = `${chatEngineLabel()} READY`;
+            ui.chatStatus.textContent = chatEngineStatus('READY');
         });
         ui.chatEngineToggle.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -324,6 +325,7 @@ const LearnMode = (() => {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeChatEngineMenu();
         });
+        window.addEventListener('codedrop:llm-status', e => updateChatRouteStatus(e.detail));
         ui.chatInput.addEventListener('keydown', (e) => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -376,12 +378,57 @@ const LearnMode = (() => {
         return ui.chatEngine && ui.chatEngine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
     }
 
+    function chatRouteLabel(meta = null) {
+        if (!ui.chatEngine || ui.chatEngine.value !== 'kugnus') return '';
+        const route = meta && typeof meta.route === 'string' && meta.route
+            ? meta.route
+            : (window.CodeDropLlmStatus && typeof window.CodeDropLlmStatus.snapshot === 'function'
+                ? window.CodeDropLlmStatus.snapshot().route
+                : '');
+        return route ? ` ${route.toUpperCase()}` : '';
+    }
+
+    function chatEngineStatus(status, meta = null) {
+        return `${chatEngineLabel()}${chatRouteLabel(meta)} ${status}`;
+    }
+
+    function updateChatRouteStatus(meta = null) {
+        if (!ui.chatRoute) return;
+        ui.chatRoute.classList.remove('warn', 'danger');
+        if (!ui.chatEngine || ui.chatEngine.value === 'openai') {
+            ui.chatRoute.textContent = 'FALLBACK ROUTE: GPT 5.4 MINI';
+            ui.chatRoute.classList.add('warn');
+            return;
+        }
+
+        const snapshot = window.CodeDropLlmStatus && typeof window.CodeDropLlmStatus.snapshot === 'function'
+            ? window.CodeDropLlmStatus.snapshot()
+            : {};
+        const status = meta || snapshot;
+        if (status.checking) {
+            ui.chatRoute.textContent = 'KUGNUS ROUTE: CHECKING';
+            ui.chatRoute.classList.add('warn');
+            return;
+        }
+        if (status.ok === false) {
+            ui.chatRoute.textContent = `KUGNUS ROUTE: OFFLINE${status.reason ? ` · ${status.reason}` : ''}`;
+            ui.chatRoute.classList.add('danger');
+            return;
+        }
+
+        const route = status.route ? String(status.route).toUpperCase() : 'UNKNOWN';
+        const provider = status.provider ? ` · ${String(status.provider).toUpperCase()}` : '';
+        ui.chatRoute.textContent = `KUGNUS ROUTE: ${route}${provider}`;
+        ui.chatRoute.classList.toggle('warn', route !== 'GATEWAY');
+    }
+
     function syncChatEngineUi() {
         if (!ui.chatEngine) return;
         const engine = ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus';
         ui.chatEngine.value = engine;
         if (ui.chatTitle) ui.chatTitle.textContent = `ASK TO ${chatTitleLabel()}`;
         if (ui.chatEngineLabel) ui.chatEngineLabel.textContent = chatEngineLabel();
+        updateChatRouteStatus();
         if (ui.chatEngineMenu) {
             ui.chatEngineMenu.querySelectorAll('[data-engine]').forEach(option => {
                 const selected = option.dataset.engine === engine;
@@ -430,7 +477,7 @@ const LearnMode = (() => {
         ui.chatEngine.value = 'openai';
         chatEngineOverride = 'openai';
         syncChatEngineUi();
-        ui.chatStatus.textContent = `${chatEngineLabel()} READY`;
+        ui.chatStatus.textContent = chatEngineStatus('READY');
         return true;
     }
 
@@ -440,7 +487,7 @@ const LearnMode = (() => {
         ui.chatSend.disabled = false;
         ui.chatSend.textContent = busy ? 'STOP' : 'ASK';
         ui.chatSend.classList.toggle('stop', busy);
-        ui.chatStatus.textContent = busy ? `${chatEngineLabel()} THINKING` : `${chatEngineLabel()} READY`;
+        ui.chatStatus.textContent = busy ? chatEngineStatus('THINKING') : chatEngineStatus('READY');
     }
 
     function chatStorageKey() {
@@ -892,13 +939,13 @@ const LearnMode = (() => {
         persistChatHistory();
         renderChatHistory();
         ui.chatInput.value = '';
-        ui.chatStatus.textContent = `${chatEngineLabel()} READY`;
+        ui.chatStatus.textContent = chatEngineStatus('READY');
         if (shouldFocus) ui.chatInput.focus();
     }
 
     function renderChatHistory() {
         session.chatAutoStick = true;
-        ui.chatStatus.textContent = `${chatEngineLabel()} READY`;
+        ui.chatStatus.textContent = chatEngineStatus('READY');
         ui.chatLog.replaceChildren();
         appendChat('system', `${chatEngineLabel()}가 현재 레슨 화면을 같이 보고 답합니다. 막히는 명령, 플래그, 왜 쓰는지 물어보세요.`);
         session.chat.forEach(entry => appendChat(entry.role, entry.content, { question: entry.question || '' }));
@@ -993,7 +1040,7 @@ const LearnMode = (() => {
     function stopChat() {
         session.chatStoppedByUser = true;
         if (session.chatAbort) session.chatAbort.abort();
-        ui.chatStatus.textContent = `${chatEngineLabel()} STOPPING`;
+        ui.chatStatus.textContent = chatEngineStatus('STOPPING');
     }
 
     async function readChatStream(res, onEvent) {
@@ -1080,7 +1127,8 @@ const LearnMode = (() => {
 
             await readChatStream(res, evt => {
                 if (evt.event === 'meta') {
-                    ui.chatStatus.textContent = `${chatEngineLabel()} STREAMING`;
+                    ui.chatStatus.textContent = chatEngineStatus('STREAMING', evt);
+                    updateChatRouteStatus(evt);
                     return;
                 }
                 if (evt.event === 'delta') {
@@ -1105,10 +1153,10 @@ const LearnMode = (() => {
         } catch (err) {
             if (err.name === 'AbortError' && session.chatStoppedByUser) {
                 stopAssistantMessage(pending);
-                finalStatus = `${chatEngineLabel()} STOPPED`;
+                finalStatus = chatEngineStatus('STOPPED');
             } else {
                 failAssistantMessage(pending, err.message, message);
-                finalStatus = `${chatEngineLabel()} OFFLINE`;
+                finalStatus = chatEngineStatus('OFFLINE');
             }
         } finally {
             if (session.chatActiveMessage === pending) session.chatActiveMessage = null;

@@ -124,10 +124,55 @@ const PackMaker = (() => {
         return ui.engine && ui.engine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
     }
 
+    function engineRouteLabel(meta = null) {
+        if (!ui.engine || ui.engine.value !== 'kugnus') return '';
+        const route = meta && typeof meta.route === 'string' && meta.route
+            ? meta.route
+            : (window.CodeDropLlmStatus && typeof window.CodeDropLlmStatus.snapshot === 'function'
+                ? window.CodeDropLlmStatus.snapshot().route
+                : '');
+        return route ? ` ${route.toUpperCase()}` : '';
+    }
+
+    function engineStatus(status, meta = null) {
+        return `${engineLabel()}${engineRouteLabel(meta)} ${status}`;
+    }
+
+    function updateEngineRouteStatus(meta = null) {
+        if (!ui.route) return;
+        ui.route.classList.remove('warn', 'danger');
+        if (!ui.engine || ui.engine.value === 'openai') {
+            ui.route.textContent = 'FALLBACK ROUTE: GPT 5.4 MINI';
+            ui.route.classList.add('warn');
+            return;
+        }
+
+        const snapshot = window.CodeDropLlmStatus && typeof window.CodeDropLlmStatus.snapshot === 'function'
+            ? window.CodeDropLlmStatus.snapshot()
+            : {};
+        const status = meta || snapshot;
+        if (status.checking) {
+            ui.route.textContent = 'KUGNUS ROUTE: CHECKING';
+            ui.route.classList.add('warn');
+            return;
+        }
+        if (status.ok === false) {
+            ui.route.textContent = `KUGNUS ROUTE: OFFLINE${status.reason ? ` · ${status.reason}` : ''}`;
+            ui.route.classList.add('danger');
+            return;
+        }
+
+        const route = status.route ? String(status.route).toUpperCase() : 'UNKNOWN';
+        const provider = status.provider ? ` · ${String(status.provider).toUpperCase()}` : '';
+        ui.route.textContent = `KUGNUS ROUTE: ${route}${provider}`;
+        ui.route.classList.toggle('warn', route !== 'GATEWAY');
+    }
+
     function setEngine(engine) {
         if (!ui.engine) return;
         ui.engine.value = engine === 'openai' ? 'openai' : 'kugnus';
         stateRef.engine = ui.engine.value;
+        updateEngineRouteStatus();
     }
 
     async function offerKugnusFallbackIfNeeded() {
@@ -139,7 +184,7 @@ const PackMaker = (() => {
         if (!shouldSwitch) return false;
 
         setEngine('openai');
-        renderStatus(`${engineLabel()} READY`);
+        renderStatus(engineStatus('READY'));
         return true;
     }
 
@@ -653,7 +698,7 @@ const PackMaker = (() => {
         stateRef.chat = [];
         persistChatHistory();
         renderChatHistory();
-        renderStatus(state.userToken ? `${engineLabel()} READY` : t('packMaker.guestPreview'));
+        renderStatus(state.userToken ? engineStatus('READY') : t('packMaker.guestPreview'));
     }
 
     function persistDraft() {
@@ -926,6 +971,7 @@ const PackMaker = (() => {
         ui.screen.classList.remove('hidden');
         syncOverlayChrome();
         setEngine(preferredEngine());
+        updateEngineRouteStatus();
         refreshPacks();
         renderDraft({ updateStatus: Boolean(state.userToken) });
         if (state.userToken) {
@@ -949,7 +995,7 @@ const PackMaker = (() => {
     function stopChat() {
         stateRef.stopByUser = true;
         if (stateRef.abort) stateRef.abort.abort();
-        renderStatus(`${engineLabel()} STOPPING`);
+        renderStatus(engineStatus('STOPPING'));
     }
 
     async function readStream(res, onEvent) {
@@ -1031,7 +1077,8 @@ const PackMaker = (() => {
 
             await readStream(res, evt => {
                 if (evt.event === 'meta') {
-                    renderStatus(`${engineLabel()} STREAMING`);
+                    renderStatus(engineStatus('STREAMING', evt));
+                    updateEngineRouteStatus(evt);
                     return;
                 }
                 if (evt.event === 'status') {
@@ -1066,7 +1113,7 @@ const PackMaker = (() => {
         } catch (err) {
             if (err.name === 'AbortError' && stateRef.stopByUser) {
                 stopAssistantMessage(pending);
-                renderStatus(`${engineLabel()} STOPPED`);
+                renderStatus(engineStatus('STOPPED'));
             } else if (err.code === 'AUTH_REQUIRED') {
                 discardAssistantMessage(pending);
                 await showRemoteLoginRequired();
@@ -1128,6 +1175,7 @@ const PackMaker = (() => {
         ui.openBtn = $('pack-maker-btn');
         ui.closeBtn = $('pack-maker-close');
         ui.engine = $('pack-maker-engine');
+        ui.route = $('pack-maker-route');
         ui.form = $('pack-maker-chat-form');
         ui.input = $('pack-maker-input');
         ui.send = $('pack-maker-send');
@@ -1156,8 +1204,9 @@ const PackMaker = (() => {
         });
         ui.engine.addEventListener('change', () => {
             setEngine(ui.engine.value);
-            if (!stateRef.busy) renderStatus(`${engineLabel()} READY`);
+            if (!stateRef.busy) renderStatus(engineStatus('READY'));
         });
+        window.addEventListener('codedrop:llm-status', e => updateEngineRouteStatus(e.detail));
         [ui.title, ui.description].forEach(field => {
             field.addEventListener('input', () => renderStatus('UNSAVED DRAFT'));
         });

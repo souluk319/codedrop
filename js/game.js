@@ -332,6 +332,9 @@ const llmStatus = {
     checking: false,
     ok: null,
     reason: '',
+    provider: '',
+    route: '',
+    model: '',
     promise: null,
     promptedScopes: new Set(),
     fallbackScopes: new Set()
@@ -475,7 +478,10 @@ function publishLlmStatus() {
             checked: llmStatus.checked,
             checking: llmStatus.checking,
             ok: llmStatus.ok,
-            reason: llmStatus.reason
+            reason: llmStatus.reason,
+            provider: llmStatus.provider,
+            route: llmStatus.route,
+            model: llmStatus.model
         }
     }));
 }
@@ -487,6 +493,9 @@ function startKugnusHealthCheck(force = false) {
     llmStatus.checking = true;
     llmStatus.ok = null;
     llmStatus.reason = '';
+    llmStatus.provider = '';
+    llmStatus.route = '';
+    llmStatus.model = '';
     publishLlmStatus();
 
     const controller = new AbortController();
@@ -502,9 +511,15 @@ function startKugnusHealthCheck(force = false) {
             llmStatus.checking = false;
             llmStatus.ok = data.ok === true;
             llmStatus.reason = data.reason || '';
+            llmStatus.provider = data.provider || '';
+            llmStatus.route = data.route || '';
+            llmStatus.model = data.model || '';
             return {
                 ok: llmStatus.ok,
                 reason: llmStatus.reason,
+                provider: llmStatus.provider,
+                route: llmStatus.route,
+                model: llmStatus.model,
                 engine: 'kugnus',
                 label: 'KUGNUS SERVER'
             };
@@ -514,6 +529,9 @@ function startKugnusHealthCheck(force = false) {
             llmStatus.checking = false;
             llmStatus.ok = false;
             llmStatus.reason = err.name === 'AbortError' ? 'KUGNUS health timeout' : err.message;
+            llmStatus.provider = '';
+            llmStatus.route = '';
+            llmStatus.model = '';
             return {
                 ok: false,
                 reason: llmStatus.reason,
@@ -568,7 +586,10 @@ window.CodeDropLlmStatus = {
             checked: llmStatus.checked,
             checking: llmStatus.checking,
             ok: llmStatus.ok,
-            reason: llmStatus.reason
+            reason: llmStatus.reason,
+            provider: llmStatus.provider,
+            route: llmStatus.route,
+            model: llmStatus.model
         };
     }
 };

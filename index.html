@@ -1610,6 +1610,27 @@
             margin-top: 6px;
         }
 
+        .llm-route-status {
+            margin-top: 8px;
+            font-family: var(--font-code);
+            font-size: 0.68rem;
+            line-height: 1.35;
+            letter-spacing: 1.2px;
+            color: rgba(0, 243, 255, 0.78);
+            text-transform: uppercase;
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.28);
+        }
+
+        .llm-route-status.warn {
+            color: rgba(255, 190, 0, 0.9);
+            text-shadow: 0 0 8px rgba(255, 190, 0, 0.32);
+        }
+
+        .llm-route-status.danger {
+            color: var(--danger-color);
+            text-shadow: 0 0 8px var(--danger-color);
+        }
+
         #pack-maker-status.danger {
             color: var(--danger-color);
             text-shadow: 0 0 8px var(--danger-color);
@@ -5008,6 +5029,7 @@
                     </select>
                     <button class="btn-small" id="pack-maker-clear" type="button">CLR</button>
                 </div>
+                <div class="llm-route-status" id="pack-maker-route">KUGNUS ROUTE: CHECKING</div>
                 <div class="pack-maker-chat-wrap">
                     <div class="pack-maker-chat-log" id="pack-maker-chat-log"></div>
                     <button class="learn-chat-bottom hidden" id="pack-maker-chat-bottom" type="button">↓ NEW</button>
@@ -5209,6 +5231,7 @@
                         <option value="kugnus" selected>KUGNUS SERVER</option>
                         <option value="openai">GPT 5.4 MINI</option>
                     </select>
+                    <div class="llm-route-status" id="learn-chat-route">KUGNUS ROUTE: CHECKING</div>
                     <div class="learn-chat-status" id="learn-chat-status">KUGNUS SERVER READY</div>
                 </div>
                 <button class="btn-small" id="learn-chat-clear" type="button">CLR</button>

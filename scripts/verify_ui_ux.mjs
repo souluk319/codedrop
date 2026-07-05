@@ -320,6 +320,10 @@ assert(server.includes('GPT_OPENAI_MODEL'), 'learn chat proxy should support a G
 assert(server.includes('shouldUseOpenAiEnvForKugnus'), 'KUGNUS gateway should support OpenAI-compatible env aliases safely');
 assert(server.includes('function kugnusRouteFromEnvName'), 'KUGNUS health should identify whether it uses gateway, direct, or OpenAI env alias routing');
 assert(server.includes('route: target.route'), 'KUGNUS health and stream meta should expose sanitized routing type');
+assert(game.includes('route: llmStatus.route'), 'front-end KUGNUS status snapshot should preserve the current route');
+assert(learn.includes('function chatEngineStatus'), 'learn chat status should include KUGNUS route context');
+assert(index.includes('id="learn-chat-route"'), 'learn chat should show the active KUGNUS route separately from task status');
+assert(learn.includes('function updateChatRouteStatus'), 'learn chat should update the visible KUGNUS route indicator');
 assert(server.includes('normalizeOpenAiMiniModel'), 'OpenAI model ids should be normalized before use');
 assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "kugnus"'), 'server chat engine default should prefer KUGNUS SERVER');
 assert(server.includes('app.get("/api/llm/kugnus/health"'), 'KUGNUS health endpoint is missing');
@@ -511,6 +515,9 @@ assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker s
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
 const packMaker = read('js/pack_maker.js');
 assert(packMaker.includes('/api/pack-maker/chat/stream'), 'pack maker client should call the stream endpoint');
+assert(packMaker.includes('function engineStatus'), 'pack maker status should include KUGNUS route context');
+assert(index.includes('id="pack-maker-route"'), 'pack maker should show the active KUGNUS route separately from draft status');
+assert(packMaker.includes('function updateEngineRouteStatus'), 'pack maker should update the visible KUGNUS route indicator');
 assert(packMaker.includes("codedrop_pack_maker_draft_v2"), 'pack maker should not restore stale pre-release draft storage');
 assert(packMaker.includes("const SCOPED_STORAGE_VERSION = 'v3';"), 'pack maker draft/chat storage should be versioned by auth scope');
 assert(packMaker.includes('function storageScope()'), 'pack maker should compute a user-scoped local storage key');
