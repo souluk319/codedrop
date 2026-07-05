@@ -113,7 +113,7 @@ Do not use `LLM_BASE_URL` for release unless you intentionally set `ALLOW_DIRECT
 ```env
 KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1
 KUGNUS_GATEWAY_API_KEY=<KUGNUS_GATEWAY_API_KEY>
-KUGNUS_MODEL=gemma4:12b-it-qat
+KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat
 KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest
 KUGNUS_EMBEDDING_DIMENSIONS=768
 ```
@@ -132,7 +132,7 @@ The server rejects non-mini OpenAI models for chat fallback. Keep high-end model
 
 The server resolves KUGNUS in this order:
 
-1. `KUGNUS_GATEWAY_BASE_URL` / `KUGNUS_GATEWAY_API_KEY` / `KUGNUS_MODEL`
+1. `KUGNUS_GATEWAY_BASE_URL` / `KUGNUS_GATEWAY_API_KEY` / `KUGNUS_GATEWAY_MODEL`
 2. Other KUGNUS-prefixed aliases.
 3. `LLM_BASE_URL` / `LLM_MODEL` direct Ollama-compatible local server.
 4. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` only when the model name looks like a KUGNUS/local model or `KUGNUS_USE_OPENAI_ENV=1`.

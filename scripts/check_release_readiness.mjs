@@ -60,14 +60,16 @@ function checkCommon() {
         errors.push(`DEFAULT_CHAT_ENGINE must be kugnus for release, got ${defaultEngine}`);
     }
 
-    const hasExplicitGateway = has('KUGNUS_GATEWAY_BASE_URL') && has('KUGNUS_GATEWAY_API_KEY') && has('KUGNUS_MODEL');
+    const hasExplicitGateway = has('KUGNUS_GATEWAY_BASE_URL')
+        && has('KUGNUS_GATEWAY_API_KEY')
+        && (has('KUGNUS_GATEWAY_MODEL') || has('KUGNUS_MODEL'));
     const hasOpenAiAlias = has('OPENAI_BASE_URL') && has('OPENAI_API_KEY') && has('OPENAI_MODEL')
         && !/api\.openai\.com/i.test(value('OPENAI_BASE_URL'))
         && /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(value('OPENAI_MODEL'));
 
     if (!hasExplicitGateway && !hasOpenAiAlias) {
         errors.push('KUGNUS release requires KUGNUS_GATEWAY_* or OPENAI_* alias with local KUGNUS model');
-        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_MODEL=gemma4:12b-it-qat in the deployment environment.');
+        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat in the deployment environment.');
     }
 
     const gatewayBase = value('KUGNUS_GATEWAY_BASE_URL') || (hasOpenAiAlias ? value('OPENAI_BASE_URL') : '');

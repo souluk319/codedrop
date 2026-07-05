@@ -312,7 +312,7 @@ assert(learn.includes('persistChatHistory()'), 'learn chat should persist lesson
 assert(!/innerHTML\s*=\s*(markdown|answer|text|data\.answer)/.test(learn), 'markdown/chat answers must not be assigned through raw innerHTML');
 assert(server.includes('KUGNUS_GATEWAY_BASE_URL'), 'KUGNUS SERVER should prefer the public gateway base URL');
 assert(server.includes('KUGNUS_GATEWAY_API_KEY'), 'KUGNUS SERVER should read the public gateway API key');
-assert(server.includes('KUGNUS_MODEL'), 'KUGNUS SERVER should read the gateway model id');
+assert(server.includes('KUGNUS_GATEWAY_MODEL'), 'KUGNUS SERVER should read the gateway model id');
 assert(server.includes('"LLM_BASE_URL"'), 'learn chat proxy should keep legacy LLM_BASE_URL compatibility');
 assert(server.includes('"LLM_MODEL"'), 'learn chat proxy should keep legacy LLM_MODEL compatibility');
 assert(server.includes('GPT_OPENAI_API_KEY'), 'learn chat proxy should support a GPT-specific mini fallback API key');
@@ -498,7 +498,7 @@ assert(localEnvExample.includes('DB_SSL=false'), 'local env example should disab
 assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=kugnus'), 'local env example should default chat to KUGNUS SERVER');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), 'local env example should document the KUGNUS gateway base URL');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), 'local env example should document the KUGNUS gateway API key');
-assert(localEnvExample.includes('KUGNUS_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS chat model');
+assert(localEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS gateway chat model');
 assert(localEnvExample.includes('KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model');
 assert(localEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'local env example should document realistic Pack Maker timeout');
 assert(localEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=90000'), 'local env example should document realistic Pack Maker batch timeout');
