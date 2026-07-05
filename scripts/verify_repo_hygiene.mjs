@@ -51,6 +51,20 @@ function scan(files, checks) {
 }
 
 const files = gitFiles();
+
+const staleScratchScripts = files.filter(file => (
+    file.startsWith('scripts/') &&
+    (
+        file.endsWith('.py') ||
+        /(^|\/)(fix|restore|cleanup|clean|move|extract|update|remove|polish|nuclear|revert|add|bold|find)_/i.test(file) ||
+        /\/(?:db_add_password|verify_db)\.js$/i.test(file)
+    )
+));
+assert(
+    staleScratchScripts.length === 0,
+    `one-off repair scripts must live under legacy/scripts, not production scripts:\n${staleScratchScripts.join('\n')}`
+);
+
 const trackedEnvFiles = files.filter(file => file === '.env' || /^\.env\.(?!.*\.example$)/.test(file));
 assert(
     trackedEnvFiles.length === 0,
