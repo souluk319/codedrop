@@ -956,6 +956,8 @@ assert(productionEnvExample.includes('NODE_ENV=production'), '.env.production.ex
 assert(productionEnvExample.includes('SESSION_SECRET='), '.env.production.example should require a session secret');
 assert(productionEnvExample.includes('npm run release:secret'), '.env.production.example should point to the session secret generator');
 assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://'), '.env.production.example should require public allowed origins');
+assert(productionEnvExample.includes('https://www.kugnus.com/games/codedrop/'), '.env.production.example should document the kugnus.com CodeDrop subpath');
+assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://www.kugnus.com'), '.env.production.example should use the kugnus.com production origin');
 assert(productionEnvExample.includes('DB_SSL=true'), '.env.production.example should default production DB SSL on');
 assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.production.example should require the public KUGNUS gateway URL');
 assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
