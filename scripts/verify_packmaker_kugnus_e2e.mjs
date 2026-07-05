@@ -100,6 +100,7 @@ async function packMakerStream(base, token, message) {
     let draft = null;
     let done = false;
     let deltaChars = 0;
+    let route = '';
 
     try {
         const res = await fetch(`${base}/api/pack-maker/chat/stream`, {
@@ -122,7 +123,9 @@ async function packMakerStream(base, token, message) {
             events.push(evt);
             if (evt.event === 'meta') {
                 assert(evt.engine === 'kugnus', `expected KUGNUS engine, got ${evt.engine}`);
-                console.log(`[packmaker] meta provider=${evt.provider || '-'} model=${evt.model || '-'} engine=${evt.engine}`);
+                assert(typeof evt.route === 'string' && evt.route.length > 0, 'KUGNUS stream meta should expose route');
+                route = evt.route;
+                console.log(`[packmaker] meta provider=${evt.provider || '-'} route=${evt.route || '-'} model=${evt.model || '-'} engine=${evt.engine}`);
             }
             if (evt.event === 'status') {
                 console.log(`[packmaker] ${Math.round((Date.now() - started) / 1000)}s status=${evt.text || ''}`);
@@ -147,6 +150,7 @@ async function packMakerStream(base, token, message) {
             seconds: Math.round((Date.now() - started) / 1000),
             events,
             draft,
+            route,
             deltaChars
         };
     } finally {
@@ -175,6 +179,8 @@ try {
     const health = await requestJson(base, '/api/llm/kugnus/health');
     assert(health.status === 200 && health.body.ok === true,
         `KUGNUS health failed: ${health.status} ${health.text}`);
+    assert(typeof health.body.route === 'string' && health.body.route.length > 0,
+        `KUGNUS health did not expose route: ${health.text}`);
 
     const suffix = Date.now().toString(36).slice(-7);
     const nickname = `qa_pm_${suffix}`.slice(0, 16);
@@ -245,6 +251,7 @@ try {
         packId,
         health: {
             provider: health.body.provider,
+            route: health.body.route,
             model: health.body.model
         },
         briefEvents,
@@ -252,6 +259,7 @@ try {
             seconds: generated.seconds,
             title: generated.draft.title,
             itemCount: generated.draft.items.length,
+            route: generated.route,
             duplicates: duplicates.length,
             koreanRatio: koreanRatio(generated.draft.items),
             deltaChars: generated.deltaChars

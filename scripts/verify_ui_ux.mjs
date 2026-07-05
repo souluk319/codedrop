@@ -318,6 +318,8 @@ assert(server.includes('"LLM_MODEL"'), 'learn chat proxy should keep legacy LLM_
 assert(server.includes('GPT_OPENAI_API_KEY'), 'learn chat proxy should support a GPT-specific mini fallback API key');
 assert(server.includes('GPT_OPENAI_MODEL'), 'learn chat proxy should support a GPT-specific mini fallback model override');
 assert(server.includes('shouldUseOpenAiEnvForKugnus'), 'KUGNUS gateway should support OpenAI-compatible env aliases safely');
+assert(server.includes('function kugnusRouteFromEnvName'), 'KUGNUS health should identify whether it uses gateway, direct, or OpenAI env alias routing');
+assert(server.includes('route: target.route'), 'KUGNUS health and stream meta should expose sanitized routing type');
 assert(server.includes('normalizeOpenAiMiniModel'), 'OpenAI model ids should be normalized before use');
 assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "kugnus"'), 'server chat engine default should prefer KUGNUS SERVER');
 assert(server.includes('app.get("/api/llm/kugnus/health"'), 'KUGNUS health endpoint is missing');

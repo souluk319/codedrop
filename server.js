@@ -124,6 +124,14 @@ function envFirst(names) {
     return "";
 }
 
+function envFirstEntry(names) {
+    for (const name of names) {
+        const value = process.env[name];
+        if (typeof value === "string" && value.trim()) return { name, value: value.trim() };
+    }
+    return { name: "", value: "" };
+}
+
 const DUCKDUCKGO_ENV_NAMES = [
     "DUCKDUCKGO_API_KEY",
     "DUCKDUCKGO_KEY",
@@ -410,6 +418,15 @@ function shouldUseOpenAiEnvForKugnus() {
     return false;
 }
 
+function kugnusRouteFromEnvName(envName, viaOpenAiAlias = false) {
+    if (viaOpenAiAlias) return "openai-env-alias";
+    if (envName === "KUGNUS_GATEWAY_BASE_URL") return "gateway";
+    if (envName === "KUGNUS_OPENAI_BASE_URL") return "gateway";
+    if (envName === "LLM_BASE_URL" || envName === "LLM_ENDPOINT") return "direct";
+    if (envName) return "kugnus-env";
+    return "unknown";
+}
+
 function buildLlmTarget(engine = "kugnus") {
     if (engine === "openai") {
         const genericOpenAiBelongsToKugnus = shouldUseOpenAiEnvForKugnus();
@@ -443,16 +460,21 @@ function buildLlmTarget(engine = "kugnus") {
         };
     }
 
-    let baseUrl = envFirst(KUGNUS_BASE_ENV_NAMES);
-    let model = envFirst(KUGNUS_MODEL_ENV_NAMES);
-    let apiKey = envFirst(KUGNUS_KEY_ENV_NAMES);
+    const baseEntry = envFirstEntry(KUGNUS_BASE_ENV_NAMES);
+    const modelEntry = envFirstEntry(KUGNUS_MODEL_ENV_NAMES);
+    const keyEntry = envFirstEntry(KUGNUS_KEY_ENV_NAMES);
+    let baseUrl = baseEntry.value;
+    let model = modelEntry.value;
+    let apiKey = keyEntry.value;
     let explicitProvider = process.env.KUGNUS_PROVIDER || process.env.LLM_PROVIDER || "";
+    let route = kugnusRouteFromEnvName(baseEntry.name);
 
     if ((!baseUrl || !model) && shouldUseOpenAiEnvForKugnus()) {
         baseUrl = baseUrl || process.env.OPENAI_BASE_URL || "";
         model = model || process.env.OPENAI_MODEL || "";
         apiKey = apiKey || process.env.OPENAI_API_KEY || "";
         explicitProvider = explicitProvider || process.env.KUGNUS_OPENAI_PROVIDER || "openai";
+        route = kugnusRouteFromEnvName(baseEntry.name, true);
     }
 
     baseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
@@ -469,6 +491,7 @@ function buildLlmTarget(engine = "kugnus") {
         engine: "kugnus",
         label: "KUGNUS SERVER",
         provider,
+        route,
         url: chatCompletionsUrl(baseUrl, provider),
         model,
         apiKey
@@ -1778,6 +1801,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
                 engine: "kugnus",
                 label: "KUGNUS SERVER",
                 provider: target.provider,
+                route: target.route,
                 model: target.model,
                 reason: response.ok && !hasModel ? `Model not found: ${target.model}` : ""
             });
@@ -1798,6 +1822,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
                 ok: false,
                 engine: "kugnus",
                 label: "KUGNUS SERVER",
+                route: target.route,
                 reason: `KUGNUS request failed (${response.status})`
             });
         }
@@ -1815,6 +1840,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
             engine: "kugnus",
             label: "KUGNUS SERVER",
             provider: target.provider,
+            route: target.route,
             model: target.model,
             reason: answer || text.trim() ? "" : "Empty KUGNUS response"
         });
@@ -1887,6 +1913,7 @@ app.post("/api/learn-chat/stream", rateLimit("learn-chat-stream", 40, 60_000), a
         provider: target.provider,
         model: target.model,
         engine: target.engine,
+        route: target.route,
         label: target.label
     });
 
@@ -1953,6 +1980,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
         provider: target.provider,
         model: target.model,
         engine: target.engine,
+        route: target.route,
         label: target.label
     });
 

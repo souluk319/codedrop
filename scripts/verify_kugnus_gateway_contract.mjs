@@ -154,6 +154,7 @@ async function verifyExplicitKugnusGateway(gateway) {
         assert(health.res.status === 200, 'KUGNUS health should return HTTP 200');
         assert(health.data.ok === true, 'KUGNUS gateway health should be ok:true');
         assert(health.data.provider === 'openai', 'KUGNUS gateway should be treated as OpenAI-compatible');
+        assert(health.data.route === 'gateway', 'KUGNUS gateway health should expose gateway routing');
         assert(health.data.model === KUGNUS_MODEL, 'KUGNUS gateway should use the configured model');
 
         const stream = await fetch(`${app.base}/api/learn-chat/stream`, {
@@ -196,6 +197,7 @@ async function verifyOpenAiEnvAlias(gateway) {
         const health = await requestJson(`${app.base}/api/llm/kugnus/health`);
         assert(health.data.ok === true, 'generic OPENAI_* gateway alias should work for KUGNUS when model is local');
         assert(health.data.provider === 'openai', 'generic OPENAI_* alias should keep OpenAI-compatible provider');
+        assert(health.data.route === 'openai-env-alias', 'generic OPENAI_* alias health should expose alias routing');
         assert(health.data.model === KUGNUS_MODEL, 'generic OPENAI_* alias should use local KUGNUS model');
         assert(gateway.requests.some(req => req.auth === 'Bearer fake-openai-style-kugnus-key'), 'generic OPENAI_* alias should pass its bearer key');
     } catch (err) {
