@@ -519,10 +519,15 @@ assert(packageJson.scripts?.['verify:release-runtime-contract'] === 'node script
 assert(fs.existsSync(path.join(root, 'scripts/verify_release_readiness_matrix.mjs')), 'release readiness matrix verifier script is missing');
 assert(fs.existsSync(path.join(root, 'scripts/verify_release_runtime_route.mjs')), 'release runtime route verifier script is missing');
 assert(fs.existsSync(path.join(root, 'scripts/verify_release_runtime_contract.mjs')), 'release runtime contract verifier script is missing');
+const liveGatewayVerifier = read('scripts/verify_kugnus_gateway_live.mjs');
 const releaseReadinessMatrix = read('scripts/verify_release_readiness_matrix.mjs');
 const releaseRuntimeVerifier = read('scripts/verify_release_runtime_route.mjs');
 const releaseRuntimeContract = read('scripts/verify_release_runtime_contract.mjs');
 const readme = read('README.md');
+assert(liveGatewayVerifier.includes("const envStyle = useOpenAiAlias ? 'openai-env-alias' : 'kugnus-gateway';"), 'live gateway verifier should report whether explicit gateway or OPENAI alias env is active');
+assert(liveGatewayVerifier.includes("const expectedRuntimeRoute = useOpenAiAlias ? 'openai-env-alias' : 'gateway';"), 'live gateway verifier should print the runtime route expected from the selected env style');
+assert(liveGatewayVerifier.includes('function observedOpenAiEnv'), 'live gateway verifier should explain why generic OPENAI_* env is or is not a KUGNUS alias');
+assert(liveGatewayVerifier.includes('not a KUGNUS gateway alias'), 'live gateway verifier should distinguish GPT fallback env from KUGNUS gateway alias env');
 assert(releaseReadinessMatrix.includes('incomplete OPENAI_* KUGNUS alias is blocked'), 'release readiness matrix should cover incomplete OPENAI_* aliases');
 assert(releaseReadinessMatrix.includes('direct KUGNUS route is blocked for release'), 'release readiness matrix should cover direct route blocking');
 assert(releaseReadinessMatrix.includes('dedicated GPT fallback must remain mini'), 'release readiness matrix should cover dedicated GPT mini guard');

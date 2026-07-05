@@ -81,13 +81,32 @@ const baseUrl = value('KUGNUS_GATEWAY_BASE_URL') || value('KUGNUS_OPENAI_BASE_UR
 const apiKey = value('KUGNUS_GATEWAY_API_KEY') || value('KUGNUS_OPENAI_API_KEY') || (useOpenAiAlias ? value('OPENAI_API_KEY') : '');
 const model = value('KUGNUS_GATEWAY_MODEL') || value('KUGNUS_MODEL') || value('KUGNUS_OPENAI_MODEL') || (useOpenAiAlias ? value('OPENAI_MODEL') : '');
 const timeoutMs = Math.max(3000, Math.min(Number(args.get('timeout-ms') || process.env.KUGNUS_GATEWAY_LIVE_TIMEOUT_MS || 20_000), 60_000));
+const envStyle = useOpenAiAlias ? 'openai-env-alias' : 'kugnus-gateway';
+const expectedRuntimeRoute = useOpenAiAlias ? 'openai-env-alias' : 'gateway';
+
+function observedOpenAiEnv() {
+    const openAiModel = value('OPENAI_MODEL');
+    return {
+        baseUrl: value('OPENAI_BASE_URL') ? 'present' : 'missing',
+        apiKey: value('OPENAI_API_KEY') ? 'present' : 'missing',
+        model: openAiModel || 'missing',
+        role: openAiAliasLooksLikeKugnus()
+            ? 'KUGNUS gateway alias'
+            : 'not a KUGNUS gateway alias'
+    };
+}
 
 if (!baseUrl || !apiKey || !model) {
     fail('Missing KUGNUS gateway env. Set KUGNUS_GATEWAY_* or a safe OPENAI_* alias with a local KUGNUS model.', {
         envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
         hasBaseUrl: Boolean(baseUrl),
         hasApiKey: Boolean(apiKey),
-        hasModel: Boolean(model)
+        hasModel: Boolean(model),
+        acceptedEnv: [
+            'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL',
+            'OPENAI_BASE_URL + OPENAI_API_KEY + OPENAI_MODEL=gemma4:12b-it-qat'
+        ],
+        currentOpenAiEnv: observedOpenAiEnv()
     });
 }
 
@@ -146,8 +165,8 @@ try {
 
     console.log(JSON.stringify({
         kugnusGatewayLive: 'ok',
-        route: 'gateway',
-        envStyle: useOpenAiAlias ? 'openai-env-alias' : 'kugnus-gateway',
+        route: expectedRuntimeRoute,
+        envStyle,
         gatewayHost: gatewayHost(baseUrl),
         model,
         elapsedMs: Date.now() - started,
