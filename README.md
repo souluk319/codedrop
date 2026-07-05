@@ -141,6 +141,24 @@ For deployment, prefer the explicit `KUGNUS_GATEWAY_*` variables.
 
 `npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves both explicit `KUGNUS_GATEWAY_*` configuration and the `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias path.
 
+After real gateway env values are present, run a live gateway check before release. The verifier accepts the explicit `KUGNUS_GATEWAY_*` variables, or a safe `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias that does not point at `api.openai.com`:
+
+```bash
+npm run verify:kugnus-live -- --env-file=.env.production
+```
+
+Passing output must include:
+
+```json
+{
+  "kugnusGatewayLive": "ok",
+  "route": "gateway",
+  "model": "gemma4:12b-it-qat"
+}
+```
+
+If the app shows `KUGNUS ROUTE: DIRECT`, it is still using `LLM_BASE_URL`/direct Ollama and is not ready for public deployment.
+
 ## Pack Maker QA Prompt
 
 Baseline prompt:

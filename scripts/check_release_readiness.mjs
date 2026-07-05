@@ -70,12 +70,14 @@ function checkCommon() {
     if (!hasExplicitGateway && !hasOpenAiAlias) {
         errors.push('KUGNUS release requires KUGNUS_GATEWAY_* or OPENAI_* alias with local KUGNUS model');
         addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat in the deployment environment.');
+        addAction('After setting gateway env, run npm run verify:kugnus-live -- --env-file=<release-env-file> and require route=gateway.');
     }
 
     const gatewayBase = value('KUGNUS_GATEWAY_BASE_URL') || (hasOpenAiAlias ? value('OPENAI_BASE_URL') : '');
     if (gatewayBase && !publicUrlLike(gatewayBase)) {
         errors.push(`KUGNUS release gateway must be public https URL, got ${gatewayBase}`);
         addAction('Use the public KUGNUS gateway URL for release; do not deploy localhost, private IP, Tailscale, or direct Ollama URLs.');
+        addAction('After setting gateway env, run npm run verify:kugnus-live -- --env-file=<release-env-file> and require route=gateway.');
     }
 
     if (has('LLM_BASE_URL') && process.env.ALLOW_DIRECT_KUGNUS !== '1') {
