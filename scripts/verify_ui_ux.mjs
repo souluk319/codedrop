@@ -553,8 +553,13 @@ assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doct
 assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'package should expose the system doctor command');
 assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
 assert(packageJson.scripts?.['doctor:full'] === 'node scripts/system_doctor.mjs --deep --packmaker', 'package should expose a full system doctor command with real Pack Maker E2E');
+assert(packageJson.scripts?.['doctor:release'] === 'node scripts/system_doctor.mjs --deep --strict', 'package should expose a fail-fast release doctor command');
+assert(packageJson.scripts?.['doctor:release:full'] === 'node scripts/system_doctor.mjs --deep --packmaker --strict', 'package should expose a fail-fast release doctor with real Pack Maker E2E');
 assert(readme.includes('npm run doctor:full -- --base-url=http://127.0.0.1:3001'), 'README should document the full system doctor release candidate command');
 assert(readme.includes('real KUGNUS Pack Maker E2E'), 'README should make clear doctor:full runs the real KUGNUS Pack Maker E2E');
+assert(readme.includes('npm run doctor:release -- --base-url=<deployed-or-local-url> --env-file=<release-env-file>'), 'README should document the fail-fast release doctor command');
+assert(readme.includes('doctor:release:full'), 'README should document the fail-fast release doctor with Pack Maker E2E');
+assert(systemDoctor.includes("if (strict && (overall === 'FAIL' || overall === 'BLOCKED'))"), 'system doctor strict mode should fail on FAIL or BLOCKED release states');
 assert(releaseCheck.includes("['.env.local', '.env']"), 'release check should load the same default env stack as the server');
 assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');

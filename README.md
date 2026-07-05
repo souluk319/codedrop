@@ -28,6 +28,7 @@ Expected:
 - KUGNUS health returns `{ "ok": true, ... }`.
 - `doctor:full` runs static checks, server/DB readiness, release diagnostics, and the real KUGNUS Pack Maker E2E. It may still report `BLOCKED` for release if public gateway/session/origin env is not configured.
 - Browser E2E proves Pack Maker generation, save, SELECT PACK selection, DROP play, OCP Learn chat, README, MUSIC, and console errors.
+- Use `npm run doctor:release -- --base-url=<deployed-or-local-url> --env-file=<release-env-file>` as the fail-fast release gate. It exits non-zero on `FAIL` or `BLOCKED`.
 
 ## Features
 
@@ -201,6 +202,9 @@ npm run verify:db      # Local DB E2E: register, custom pack, score, withdraw
 npm run verify:packmaker:kugnus
                        # Real KUGNUS E2E: vague prompt gate + 50 Korean auto-parts pack + save + custom leaderboard
 npm run doctor:full     # Deep system doctor plus real KUGNUS Pack Maker E2E summary
+npm run doctor:release  # Fail-fast doctor for release gates; exits non-zero on FAIL/BLOCKED
+npm run doctor:release:full
+                       # Fail-fast doctor plus slow real KUGNUS Pack Maker E2E
 npm run release:check  # Fail-fast release environment preflight
 npm run db:local:up    # Start local MySQL
 npm run db:local:down  # Stop local MySQL
@@ -274,6 +278,15 @@ npm run doctor:deep
 ```
 
 Add `-- --packmaker` only when you intentionally want the slow real KUGNUS Pack Maker 50-item E2E included.
+
+For release candidates, use the strict variants so `BLOCKED` cannot be missed:
+
+```bash
+npm run doctor:release -- --base-url=http://127.0.0.1:3001 --env-file=.env.production
+npm run doctor:release:full -- --base-url=http://127.0.0.1:3001 --env-file=.env.production
+```
+
+`doctor:release` fails the command when the app is still using local direct KUGNUS, missing the public gateway, missing production session/origin values, or running a server route that does not match the configured release route.
 
 ## Product Rules
 

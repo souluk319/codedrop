@@ -8,6 +8,8 @@
     "doctor": "node scripts/system_doctor.mjs",
     "doctor:deep": "node scripts/system_doctor.mjs --deep",
     "doctor:full": "node scripts/system_doctor.mjs --deep --packmaker",
+    "doctor:release": "node scripts/system_doctor.mjs --deep --strict",
+    "doctor:release:full": "node scripts/system_doctor.mjs --deep --packmaker --strict",
     "start": "node server.js",
     "test": "npm run verify",
     "verify": "node scripts/verify_all.mjs",
