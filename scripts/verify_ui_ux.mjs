@@ -759,6 +759,9 @@ assert(index.includes('data-readme-lang="ko"'), 'system manual Korean toggle is 
 assert(index.includes('시스템 매뉴얼'), 'system manual should include Korean copy');
 assert(index.includes('https://www.kugnus.com'), 'system manual contact should include www.kugnus.com');
 assert(index.includes('mailto:kugnus@cywell.co.kr'), 'system manual email should link to kugnus@cywell.co.kr');
+assert(index.includes('href="https://github.com/souluk319" target="_blank" rel="noopener noreferrer"'), 'system manual GitHub external link should use noopener noreferrer');
+assert(index.includes('href="https://www.kugnus.com" target="_blank" rel="noopener noreferrer"'), 'system manual website external link should use noopener noreferrer');
+assert(index.includes('href="https://kugnus.tistory.com" target="_blank" rel="noopener noreferrer"'), 'system manual blog external link should use noopener noreferrer');
 const readmeBox = cssBlock('#readme-box', block => block.includes('width: min(640px'));
 assert(readmeBox.includes('box-sizing: border-box;'), 'README modal width should include padding to prevent language overflow');
 assert(readmeBox.includes('width: min(640px, calc(100vw - 48px)) !important;'), 'README modal should use one stable width for EN/KOR');
