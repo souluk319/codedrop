@@ -79,6 +79,7 @@
     const els = {};
     const state = {
         open: false,
+        startWasHidden: false,
         count: 0,
         firstAt: 0,
         lastAt: 0,
@@ -239,6 +240,9 @@
     function open() {
         buildBoard();
         state.open = true;
+        const startScreen = document.getElementById('start-screen');
+        state.startWasHidden = Boolean(startScreen?.classList.contains('hidden'));
+        startScreen?.classList.add('hidden');
         els.screen.classList.remove('hidden');
         applyLanguage();
         window.syncCodeDropChrome?.();
@@ -250,6 +254,8 @@
         state.pressed.clear();
         document.querySelectorAll('.keytest-key.pressed').forEach(key => key.classList.remove('pressed'));
         els.screen.classList.add('hidden');
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen && !state.startWasHidden) startScreen.classList.remove('hidden');
         window.syncCodeDropChrome?.();
     }
 
