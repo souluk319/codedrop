@@ -93,7 +93,7 @@ const MAX_SUBMITTED_SCORE = 25000;
 const MAX_CHAT_MESSAGE_LEN = 1200;
 const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
-const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 300_000, 600_000));
+const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 600_000, 600_000));
 const KUGNUS_HEALTH_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.KUGNUS_HEALTH_TIMEOUT_MS) || 12_000, 30_000));
 const CHAT_ENGINES = new Set(["kugnus", "openai"]);
 const PACK_STATUSES = new Set(["draft", "pending", "approved", "rejected"]);
@@ -107,7 +107,7 @@ const MAX_PACK_SOURCES = 3;
 const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
 const PACK_MAKER_BATCH_SIZE = 25;
-const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 90_000, 180_000));
+const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 180_000, 180_000));
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
         .split(",")

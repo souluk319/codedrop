@@ -67,6 +67,21 @@ function parseJson(text) {
     }
 }
 
+function tailText(text, max = 5000) {
+    const value = String(text || '').trim();
+    return value.length > max ? value.slice(-max) : value;
+}
+
+function commandCheckDetail(result) {
+    const detail = { elapsedMs: result.elapsedMs };
+    if (result.status !== 'PASS') {
+        detail.exitCode = result.exitCode;
+        detail.stdout = tailText(result.stdout);
+        detail.stderr = tailText(result.stderr);
+    }
+    return detail;
+}
+
 async function httpJson(pathname) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -166,18 +181,25 @@ addCheck('release.preflight', releaseSummary.ok ? 'PASS' : 'BLOCKED', {
 
 if (deep) {
     const verify = command('npm.verify', 'npm', ['run', 'verify'], { timeoutMs: 60_000 });
-    addCheck('npm.verify', verify.status, { elapsedMs: verify.elapsedMs });
+    addCheck('npm.verify', verify.status, commandCheckDetail(verify));
 
     const db = command('npm.verify-db', 'npm', ['run', 'verify:db'], { timeoutMs: 60_000 });
-    addCheck('npm.verify-db', db.status, { elapsedMs: db.elapsedMs });
+    addCheck('npm.verify-db', db.status, commandCheckDetail(db));
 
     const audit = command('npm.audit-prod', 'npm', ['run', 'audit:prod'], { timeoutMs: 60_000 });
-    addCheck('npm.audit-prod', audit.status, { elapsedMs: audit.elapsedMs });
+    addCheck('npm.audit-prod', audit.status, commandCheckDetail(audit));
 }
 
 if (packmaker) {
-    const pm = command('npm.verify-packmaker-kugnus', 'npm', ['run', 'verify:packmaker:kugnus'], { timeoutMs: 420_000 });
-    addCheck('npm.verify-packmaker-kugnus', pm.status, { elapsedMs: pm.elapsedMs });
+    const pm = command('npm.verify-packmaker-kugnus', 'npm', ['run', 'verify:packmaker:kugnus'], {
+        timeoutMs: 720_000,
+        env: {
+            PACK_MAKER_TIMEOUT_MS: '600000',
+            PACK_MAKER_BATCH_TIMEOUT_MS: '180000',
+            PACKMAKER_KUGNUS_E2E_TIMEOUT_MS: '600000'
+        }
+    });
+    addCheck('npm.verify-packmaker-kugnus', pm.status, commandCheckDetail(pm));
 }
 
 const order = ['FAIL', 'BLOCKED', 'WARN', 'PASS'];

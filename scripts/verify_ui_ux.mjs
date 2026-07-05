@@ -478,8 +478,8 @@ assert(server.includes('PACK BRIEF REQUIRED'), 'pack maker should answer vague p
 assert(server.includes('requestedCount'), 'pack maker should track the requested item count');
 assert(server.includes('packMakerTokenBudget'), 'pack maker should scale LLM token budget from target item count');
 assert(server.includes('PACK_MAKER_BATCH_TIMEOUT_MS'), 'pack maker should bound each LLM batch so requests do not hang indefinitely');
-assert(server.includes('300_000'), 'pack maker should allow realistic KUGNUS 50-item drafts to run long enough');
-assert(server.includes('90_000'), 'pack maker batch timeout should allow Gemma-class batches enough time');
+assert(server.includes('600_000'), 'pack maker should allow realistic KUGNUS 50-item drafts to run long enough');
+assert(server.includes('180_000'), 'pack maker batch timeout should allow Gemma-class batches enough time');
 assert(server.includes('linkedTimeoutSignal'), 'pack maker should link per-batch timeout to client aborts');
 assert(server.includes('readLearnLlmStream('), 'pack maker batch generation should stream LLM deltas instead of hiding work until the end');
 assert(server.includes('function buildPackMakerFillMessages'), 'pack maker should have a dedicated missing-item repair prompt');
@@ -519,11 +519,13 @@ assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https ori
 assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');
 assert(verifyWorkflow.includes('npm run verify:db'), 'CI workflow should run database E2E against local MySQL');
 assert(verifyWorkflow.includes('npm run doctor'), 'CI workflow should publish the system doctor report');
-assert(localEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'local env example should document realistic Pack Maker timeout');
-assert(localEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=90000'), 'local env example should document realistic Pack Maker batch timeout');
-assert(productionEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'production env example should document realistic Pack Maker timeout');
-assert(productionEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=90000'), 'production env example should document realistic Pack Maker batch timeout');
+assert(localEnvExample.includes('PACK_MAKER_TIMEOUT_MS=600000'), 'local env example should allow realistic KUGNUS Pack Maker completion time');
+assert(localEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=180000'), 'local env example should document realistic Pack Maker batch timeout');
+assert(productionEnvExample.includes('PACK_MAKER_TIMEOUT_MS=600000'), 'production env example should allow realistic KUGNUS Pack Maker completion time');
+assert(productionEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=180000'), 'production env example should document realistic Pack Maker batch timeout');
 assert(packageJson.scripts?.['verify:packmaker:kugnus'] === 'node scripts/verify_packmaker_kugnus_e2e.mjs', 'package should expose the real KUGNUS Pack Maker E2E command');
+assert(systemDoctor.includes('function commandCheckDetail'), 'system doctor should include failed command output in reports');
+assert(systemDoctor.includes('PACKMAKER_KUGNUS_E2E_TIMEOUT_MS'), 'system doctor should run Pack Maker E2E with a realistic timeout');
 assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
