@@ -125,8 +125,11 @@ const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
 const PACK_FINAL_FILL_ATTEMPTS = 2;
 const PACK_WIDE_FILL_ATTEMPTS = 2;
+const PACK_MICRO_SWEEP_ATTEMPTS = 4;
 const PACK_MAKER_BATCH_SIZE = 25;
 const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 180_000, 180_000));
+const PACK_MAKER_TEMPERATURE = Math.max(0.1, Math.min(Number(process.env.PACK_MAKER_TEMPERATURE) || 0.65, 1.2));
+const PACK_MAKER_SWEEP_TEMPERATURE = Math.max(PACK_MAKER_TEMPERATURE, Math.min(Number(process.env.PACK_MAKER_SWEEP_TEMPERATURE) || 0.85, 1.3));
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
         .split(",")
@@ -1067,6 +1070,9 @@ function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
 function buildPackMakerTermSweepMessages(payload, draft, count) {
     const focusList = packMakerWideFocusList(payload.intent);
     const topic = sanitizePackText(packTopicSignal(payload.intent) || payload.intent.topic || payload.message, 180);
+    const excludedTerms = draft.items
+        .map(item => item.term)
+        .filter(Boolean);
     const language = payload.intent.termLanguage === "korean"
         ? "한글"
         : (payload.intent.termLanguage === "english" ? "English" : "도메인");
@@ -1076,9 +1082,36 @@ function buildPackMakerTermSweepMessages(payload, draft, count) {
             role: "user",
             content: [
                 `${topic} 관련 ${language} 핵심 단어/용어 ${count}개를 쉼표로만 나열해.`,
+                `이미 사용한 단어는 절대 다시 쓰지 마: ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}.`,
                 "설명하지 마. markdown, JSON, 머리말도 쓰지 마.",
                 "중복 없이, 짧은 명사형만 써.",
                 `가능하면 다음 범주를 골고루 섞어: ${focusList.join(", ")}.`
+            ].join("\n")
+        }
+    ];
+}
+
+function buildPackMakerMicroSweepMessages(payload, draft, count, attempt) {
+    const focusList = packMakerWideFocusList(payload.intent);
+    const focus = focusList[(Math.max(1, Number(attempt) || 1) - 1) % focusList.length];
+    const topic = sanitizePackText(packTopicSignal(payload.intent) || payload.intent.topic || payload.message, 180);
+    const excludedTerms = draft.items
+        .map(item => item.term)
+        .filter(Boolean);
+    const language = payload.intent.termLanguage === "korean"
+        ? "한글"
+        : (payload.intent.termLanguage === "english" ? "English" : "도메인");
+
+    return [
+        {
+            role: "user",
+            content: [
+                `${topic} 관련 ${language} 새 단어/용어 후보 ${count}개를 쉼표로만 나열해.`,
+                `이번에는 이 범주에서만 골라: ${focus}.`,
+                `이미 사용한 단어는 절대 다시 쓰지 마: ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}.`,
+                "상위어를 반복하지 말고 더 구체적인 하위 부품명, 센서명, 소모품명, 점검 대상명을 써.",
+                "설명하지 마. markdown, JSON, 머리말도 쓰지 마.",
+                "중복 없이, 짧은 명사형만 써."
             ].join("\n")
         }
     ];
@@ -1175,13 +1208,71 @@ async function generatePackMakerTermSweepDraft(target, payload, draft, searchRes
             target,
             messages,
             childSignal.signal,
-            { maxTokens: packMakerTokenBudget(count) }
+            { maxTokens: packMakerTokenBudget(count), temperature: PACK_MAKER_SWEEP_TEMPERATURE }
         );
     } catch (err) {
         if (signal.aborted) throw err;
         if (childSignal.signal.aborted) {
             const timeoutError = new Error(`KUGNUS term sweep timeout after ${Math.round(PACK_MAKER_BATCH_TIMEOUT_MS / 1000)}s`);
             timeoutError.code = "PACK_TERM_SWEEP_TIMEOUT";
+            throw timeoutError;
+        }
+        throw err;
+    } finally {
+        childSignal.cleanup();
+    }
+
+    const items = [];
+    const seen = new Set();
+    for (const raw of splitPackMakerCandidateLines(answer)) {
+        const term = sanitizePackText(
+            raw
+                .split("|")[0]
+                .split(/\s+-\s+/)[0]
+                .split(/\s*[:：]\s*/)[0],
+            MAX_PACK_TERM_LEN
+        );
+        if (!term) continue;
+        if (payload.intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
+        if (payload.intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
+        const key = term.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({
+            term,
+            desc: fallbackItemDescription(term, payload.intent),
+            sources: searchResults
+        });
+        if (items.length >= count) break;
+    }
+
+    return {
+        answer,
+        draft: normalizeDraftForIntent({
+            title: payload.intent.title,
+            description: `${payload.intent.topic || payload.intent.title} data pack`,
+            items
+        }, { ...payload.intent, requestedCount: count }, searchResults)
+    };
+}
+
+async function generatePackMakerMicroSweepDraft(target, payload, draft, searchResults, count, attempt, signal) {
+    const messages = buildPackMakerMicroSweepMessages(payload, draft, count, attempt);
+    const childSignal = linkedTimeoutSignal(signal, PACK_MAKER_BATCH_TIMEOUT_MS);
+    let answer = "";
+
+    try {
+        answer = await callPackMakerLlmOnce(
+            target,
+            messages,
+            childSignal.signal,
+            { maxTokens: packMakerTokenBudget(count), temperature: PACK_MAKER_SWEEP_TEMPERATURE }
+        );
+    } catch (err) {
+        if (signal.aborted) throw err;
+        if (childSignal.signal.aborted) {
+            const timeoutError = new Error(`KUGNUS micro sweep timeout after ${Math.round(PACK_MAKER_BATCH_TIMEOUT_MS / 1000)}s`);
+            timeoutError.code = "PACK_MICRO_SWEEP_TIMEOUT";
             throw timeoutError;
         }
         throw err;
@@ -1234,7 +1325,8 @@ async function generatePackMakerLineDraft(target, messages, intent, searchResult
             childSignal.signal,
             delta => onDelta(delta),
             {
-                maxTokens: packMakerTokenBudget(count)
+                maxTokens: packMakerTokenBudget(count),
+                temperature: PACK_MAKER_TEMPERATURE
             }
         );
     } catch (err) {
@@ -1357,6 +1449,34 @@ async function generatePackMakerDraftInBatches(target, payload, searchResults, s
         } catch (err) {
             if (signal.aborted || err.name === "AbortError") throw err;
             onDelta(`\n[PACK MAKER] wide fill ${attempt} failed: ${err.message || "unknown error"}\n`);
+        }
+    }
+
+    for (let attempt = 1; attempt <= PACK_MICRO_SWEEP_ATTEMPTS && draft.items.length < payload.intent.requestedCount; attempt += 1) {
+        const remaining = payload.intent.requestedCount - draft.items.length;
+        const candidateCount = Math.min(30, Math.max(12, remaining * 3));
+        onStatus(`${draft.items.length}/${payload.intent.requestedCount} MICRO SWEEP ${attempt}/${PACK_MICRO_SWEEP_ATTEMPTS}`);
+
+        try {
+            const sweep = await generatePackMakerMicroSweepDraft(
+                target,
+                payload,
+                draft,
+                searchResults,
+                candidateCount,
+                attempt,
+                signal
+            );
+            answer += `\n${sweep.answer || ""}`;
+            const before = draft.items.length;
+            draft = mergeDraftsForIntent(draft, sweep.draft, payload.intent);
+            const gained = draft.items.length - before;
+            if (gained === 0) {
+                onDelta(`\n[PACK MAKER] micro sweep ${attempt} produced no new valid terms\n`);
+            }
+        } catch (err) {
+            if (signal.aborted || err.name === "AbortError") throw err;
+            onDelta(`\n[PACK MAKER] micro sweep ${attempt} failed: ${err.message || "unknown error"}\n`);
         }
     }
 
@@ -1758,6 +1878,7 @@ function llmHeaders(target) {
 
 function llmPayload(target, messages, stream = false, options = {}) {
     const maxTokens = Number(options.maxTokens) || 700;
+    const temperature = Number.isFinite(Number(options.temperature)) ? Number(options.temperature) : 0.2;
     if (target.provider === "ollama") {
         return {
             model: target.model,
@@ -1765,7 +1886,7 @@ function llmPayload(target, messages, stream = false, options = {}) {
             stream,
             ...(options.format ? { format: options.format } : {}),
             options: {
-                temperature: 0.2,
+                temperature,
                 num_predict: maxTokens
             }
         };
@@ -1783,7 +1904,7 @@ function llmPayload(target, messages, stream = false, options = {}) {
     return {
         model: target.model,
         messages,
-        temperature: 0.2,
+        temperature,
         max_tokens: maxTokens,
         stream
     };

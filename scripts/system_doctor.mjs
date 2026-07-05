@@ -321,6 +321,7 @@ function emitAndExitIfStrict() {
 }
 
 const env = envPresence();
+let runtimeHealthOk = false;
 addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
     detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS release gateway missing; direct LLM_BASE_URL is dev-only'),
     acceptedEnv: [
@@ -346,6 +347,7 @@ addCheck('env.duckduckgo', env.hasDuckDuckGo ? 'PASS' : 'WARN', {
 
 try {
     const health = await httpJson('/health');
+    runtimeHealthOk = health.ok;
     addCheck('http.health', health.ok ? 'PASS' : 'FAIL', { statusCode: health.status, body: health.body || health.text });
 } catch (err) {
     addCheck('http.health', 'FAIL', { error: err.name === 'AbortError' ? 'timeout' : err.message });
@@ -408,7 +410,13 @@ if (deep) {
     addCheck('npm.audit-prod', audit.status, commandCheckDetail(audit));
 }
 
-if (packmaker) {
+if (packmaker && !runtimeHealthOk) {
+    addCheck('npm.verify-packmaker-kugnus', 'BLOCKED', {
+        detail: 'Skipped because the configured app base URL is not reachable',
+        baseUrl,
+        nextAction: 'Start the app server, confirm /health is reachable, then rerun doctor:full.'
+    });
+} else if (packmaker) {
     const pm = await commandStreaming('npm.verify-packmaker-kugnus', 'npm', ['run', 'verify:packmaker:kugnus'], {
         timeoutMs: 720_000,
         mirrorPackMakerProgress: true,

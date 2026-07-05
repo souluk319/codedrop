@@ -625,11 +625,17 @@ assert(systemDoctor.includes('mirrorPackMakerProgress'), 'system doctor should m
 assert(systemDoctor.includes('summary.generated?.itemCount'), 'system doctor Pack Maker summary should include generated item count');
 assert(systemDoctor.includes('packMakerKugnusE2e'), 'system doctor should parse the Pack Maker KUGNUS verifier JSON payload');
 assert(systemDoctor.includes('PACKMAKER_KUGNUS_E2E_TIMEOUT_MS'), 'system doctor should run Pack Maker E2E with a realistic timeout');
+assert(systemDoctor.includes('let runtimeHealthOk = false'), 'system doctor should track whether the configured app server is actually reachable');
+assert(systemDoctor.includes('Skipped because the configured app base URL is not reachable'), 'system doctor should not run isolated Pack Maker E2E when the app server is down');
 assert(server.includes('PACK_FINAL_FILL_ATTEMPTS'), 'Pack Maker should have a final fill loop instead of stopping after ordinary batch repairs');
 assert(server.includes('FINAL FILL'), 'Pack Maker should expose final fill status when closing a short draft');
 assert(server.includes('PACK_WIDE_FILL_ATTEMPTS'), 'Pack Maker should widen the candidate pool when ordinary repair loops underfill a draft');
+assert(server.includes('PACK_MICRO_SWEEP_ATTEMPTS'), 'Pack Maker should have small-count micro sweeps for the stubborn final missing terms');
 assert(server.includes('function buildPackMakerTermSweepMessages'), 'Pack Maker should have a simple KUGNUS term sweep for stubborn underfilled drafts');
 assert(server.includes('TERM SWEEP'), 'Pack Maker should expose term sweep status during final KUGNUS filling');
+assert(server.includes('MICRO SWEEP'), 'Pack Maker should expose micro sweep status before broad final fallback');
+assert(server.includes('이미 사용한 단어는 절대 다시 쓰지 마'), 'Pack Maker term sweep should pass existing terms to avoid repeat-heavy outputs');
+assert(server.includes('PACK_MAKER_SWEEP_TEMPERATURE'), 'Pack Maker term sweep should use a higher temperature to diversify final candidates');
 assert(server.includes('function splitPackMakerCandidateLines'), 'Pack Maker should parse comma-separated KUGNUS term-only outputs');
 assert(server.includes('function fallbackItemDescription'), 'Pack Maker term sweep should provide descriptions for term-only candidates');
 assert(localEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
