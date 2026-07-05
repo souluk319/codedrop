@@ -20,6 +20,7 @@ const checks = [
     ['node', ['scripts/test_study_content.mjs']],
     ['node', ['scripts/verify_ui_ux.mjs']],
     ['node', ['scripts/verify_kugnus_gateway_contract.mjs']],
+    ['node', ['scripts/verify_release_readiness_matrix.mjs']],
     ['node', ['scripts/verify_release_runtime_contract.mjs']],
     ['node', ['scripts/verify_server_smoke.mjs']]
 ];
