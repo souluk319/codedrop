@@ -683,11 +683,21 @@ assert(index.includes('id="keyboard-test-btn"'), 'keyboard test menu button is m
 assert(index.includes('id="keytest-board"'), 'keyboard test board root is missing');
 assert(index.includes('.keytest-key.pressed'), 'keyboard test pressed key styling is missing');
 assert(index.includes('.keytest-key.tested'), 'keyboard test should keep a visible state for keys that were already tested');
-assert(read('js/keyboard_test.js').includes('window.addEventListener(\'keydown\', handleKeyDown, true)'), 'keyboard test should capture keydown before global game shortcuts');
-assert(read('js/keyboard_test.js').includes('event.getModifierState'), 'keyboard test should report lock key states');
-assert(read('js/keyboard_test.js').includes("key.classList.add('pressed', 'tested')"), 'keyboard test should mark pressed keys as tested');
-assert(read('js/keyboard_test.js').includes("key.classList.remove('pressed', 'recent', 'tested')"), 'keyboard test CLR should reset tested key states');
-assert(read('js/keyboard_test.js').includes('window.KeyboardTest'), 'keyboard test should expose a small debug handle');
+const keyboardTest = read('js/keyboard_test.js');
+assert(keyboardTest.includes('window.addEventListener(\'keydown\', handleKeyDown, true)'), 'keyboard test should capture keydown before global game shortcuts');
+assert(keyboardTest.includes('window.addEventListener(\'keyup\', handleKeyUp, true)'), 'keyboard test should capture keyup before global game shortcuts');
+assert(keyboardTest.includes('event.preventDefault();') && keyboardTest.includes('event.stopPropagation();'), 'keyboard test should isolate captured keystrokes from game shortcuts');
+assert(keyboardTest.includes('event.getModifierState'), 'keyboard test should report lock key states');
+assert(keyboardTest.includes("key.classList.add('pressed', 'tested')"), 'keyboard test should mark pressed keys as tested');
+assert(keyboardTest.includes("key.classList.remove('pressed', 'recent', 'tested')"), 'keyboard test CLR should reset tested key states');
+assert(keyboardTest.includes('window.KeyboardTest'), 'keyboard test should expose a small debug handle');
+[
+    'Escape', 'F12', 'Backspace', 'Tab', 'CapsLock', 'Enter', 'ShiftLeft',
+    'ShiftRight', 'ControlLeft', 'ControlRight', 'Space', 'ArrowUp',
+    'ArrowDown', 'ArrowLeft', 'ArrowRight', 'NumLock', 'NumpadEnter'
+].forEach(code => assert(keyboardTest.includes(`'${code}'`), `keyboard test is missing key code ${code}`));
+assert(keyboardTest.includes('MAIN_ROWS') && keyboardTest.includes('NAV_KEYS') && keyboardTest.includes('NUM_KEYS'), 'keyboard test should keep main/nav/numpad zones explicit');
+assert(index.includes('min-width: 1120px;'), 'keyboard test board should preserve a stable desktop keyboard width inside its scroll area');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
 assert(index.includes('--pack-maker-safe-bottom'), 'pack maker overlay should reserve bottom space for global README/MUSIC widgets');
 assert(index.includes('100dvh - var(--pack-maker-safe-bottom)'), 'pack maker shell height should avoid the global bottom widget zone');
