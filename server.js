@@ -12,6 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set("etag", false);
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ||
     "http://localhost:3001,http://127.0.0.1:3001,https://codedrop-se9n.onrender.com")
     .split(",")
@@ -42,7 +43,7 @@ function preventStaleUiCache(res) {
 
 function sendNoStoreFile(res, filePath, onError) {
     preventStaleUiCache(res);
-    res.sendFile(filePath, onError);
+    res.sendFile(filePath, { cacheControl: false, lastModified: false }, onError);
 }
 
 if (process.env.REQUEST_LOGS === "1") {

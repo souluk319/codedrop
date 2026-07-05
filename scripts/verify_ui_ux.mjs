@@ -686,10 +686,14 @@ assert(server.includes('DELETE FROM custom_packs WHERE owner_id = ?'), 'withdraw
 assert(server.includes('function rateLimit('), 'auth and score endpoints should have basic rate limiting');
 assert(server.includes('process.env.REQUEST_LOGS === "1"'), 'request logging should be opt-in for quieter local/dev runs');
 assert(!server.includes('Serving index.html from:'), 'root route should not log a debug-only file path on every load');
+assert(server.includes('app.set("etag", false);'), 'server should disable ETags for actively changing HTML/UI responses');
 assert(server.includes('function preventStaleUiCache'), 'server should define a no-store policy for fast-changing UI files');
 assert(server.includes('sendNoStoreFile(res, indexPath'), 'index.html should be served with no-store cache headers');
+assert(server.includes('{ cacheControl: false, lastModified: false }'), 'HTML sendFile should not attach stale validators during QA');
 assert(server.includes('setHeaders: preventStaleUiCache'), 'JS assets should be served with no-store cache headers to avoid stale Pack Maker logic');
 assert(server.includes('etag: false') && server.includes('lastModified: false'), 'JS static assets should not rely on stale validators during active QA');
+assert(systemDoctor.includes('acceptedEnv'), 'system doctor should explain both accepted KUGNUS gateway env shapes');
+assert(systemDoctor.includes('GPT fallback, not KUGNUS gateway'), 'system doctor should distinguish GPT fallback env from KUGNUS gateway env');
 assert(localEnvExample.includes('SESSION_SECRET='), '.env.local.example should document SESSION_SECRET for stable sessions');
 assert(localEnvExample.includes('ALLOWED_ORIGINS='), '.env.local.example should document ALLOWED_ORIGINS for release preflight');
 assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example should document pack admin configuration');

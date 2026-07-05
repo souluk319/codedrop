@@ -136,6 +136,9 @@ function envPresence() {
         dbReady,
         gatewayMode: explicitGatewayReady ? 'KUGNUS_GATEWAY_*' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : ''),
         gatewayIssue: openAiGatewayAliasMissing.length ? `OPENAI_* KUGNUS alias incomplete; missing ${openAiGatewayAliasMissing.join(', ')}` : '',
+        openAiBaseConfigured: Boolean(envValue('OPENAI_BASE_URL')),
+        openAiKeyConfigured: Boolean(envValue('OPENAI_API_KEY')),
+        openAiModel: envValue('OPENAI_MODEL'),
         expectedKugnusRoutes: explicitGatewayReady ? ['gateway'] : (openAiGatewayAliasReady ? ['openai-env-alias'] : []),
         hasSessionSecret: Boolean(envValue('SESSION_SECRET')),
         hasAllowedOrigins: Boolean(envValue('ALLOWED_ORIGINS')),
@@ -159,7 +162,19 @@ function summarizeReleaseCheck(stdout) {
 
 const env = envPresence();
 addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
-    detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS gateway env missing; deployment must not rely on direct LLM_BASE_URL')
+    detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS release gateway missing; direct LLM_BASE_URL is dev-only'),
+    acceptedEnv: [
+        'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL',
+        'OPENAI_BASE_URL + OPENAI_API_KEY + OPENAI_MODEL pointing at the public KUGNUS gateway'
+    ],
+    currentOpenAiEnv: {
+        baseUrl: env.openAiBaseConfigured ? 'present' : 'missing',
+        apiKey: env.openAiKeyConfigured ? 'present' : 'missing',
+        model: env.openAiModel || 'missing',
+        role: env.openAiModel && !modelLooksLikeKugnus(env.openAiModel)
+            ? 'GPT fallback, not KUGNUS gateway'
+            : 'KUGNUS gateway candidate'
+    }
 });
 addCheck('env.kugnus-direct-dev', env.directReady ? 'WARN' : 'PASS', {
     detail: env.directReady ? 'LLM_BASE_URL direct dev route is active' : 'No direct KUGNUS route configured'
