@@ -857,6 +857,10 @@ assert(systemDoctor.includes('GPT fallback only'), 'system doctor should disting
 assert(packageJson.scripts['release:secret'] === 'node scripts/generate_session_secret.mjs', 'package scripts should expose release:secret');
 assert(fs.existsSync(path.join(root, 'scripts/generate_session_secret.mjs')), 'release secret generator should exist');
 assert(releaseCheck.includes('npm run release:secret'), 'release check should direct operators to the session secret generator');
+assert(verifyWorkflow.includes('scripts/ci_fake_kugnus_gateway.mjs'), 'CI should start a fake KUGNUS gateway for strict local doctor');
+assert(verifyWorkflow.includes('KUGNUS_GATEWAY_BASE_URL=http://127.0.0.1:18790/v1'), 'CI env should point the app at the fake KUGNUS gateway');
+assert(verifyWorkflow.includes('npm run doctor:local -- --base-url=http://127.0.0.1:3001 --strict'), 'CI doctor should run local mode with strict BLOCKED/FAIL handling');
+assert(fs.existsSync(path.join(root, 'scripts/ci_fake_kugnus_gateway.mjs')), 'CI fake KUGNUS gateway script should exist');
 assert(localEnvExample.includes('SESSION_SECRET='), '.env.local.example should document SESSION_SECRET for stable sessions');
 assert(localEnvExample.includes('ALLOWED_ORIGINS='), '.env.local.example should document ALLOWED_ORIGINS for release preflight');
 assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example should document pack admin configuration');
