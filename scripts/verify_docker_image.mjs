@@ -20,6 +20,40 @@ function run(command, args, options = {}) {
     return result.stdout || '';
 }
 
+function runCapture(command, args) {
+    return run(command, args, { capture: true });
+}
+
+function runCaptureAllow(command, args, allowedStatuses = [0]) {
+    const result = spawnSync(command, args, {
+        encoding: 'utf8',
+        stdio: 'pipe'
+    });
+    if (!allowedStatuses.includes(result.status)) {
+        const detail = [
+            result.stdout?.trim(),
+            result.stderr?.trim()
+        ].filter(Boolean).join('\n');
+        throw new Error(`${command} ${args.join(' ')} failed${detail ? `\n${detail}` : ''}`);
+    }
+    return result.stdout || '';
+}
+
+function runWithRetry(command, args, attempts = 2) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            return run(command, args);
+        } catch (error) {
+            lastError = error;
+            if (attempt < attempts) {
+                console.error(`${command} ${args.join(' ')} failed; retrying once.`);
+            }
+        }
+    }
+    throw lastError;
+}
+
 function findFreePort() {
     return new Promise((resolve, reject) => {
         const server = net.createServer();
@@ -50,7 +84,50 @@ async function waitForHealth(port) {
 }
 
 try {
-    run('docker', ['build', '-t', image, '.']);
+    runWithRetry('docker', ['build', '-t', image, '.']);
+
+    const envFiles = runCapture('docker', [
+        'run',
+        '--rm',
+        image,
+        'find',
+        '.',
+        '-maxdepth',
+        '2',
+        '-type',
+        'f',
+        '(',
+        '-name',
+        '.env',
+        '-o',
+        '-name',
+        '.env.local',
+        '-o',
+        '-name',
+        '.env.production',
+        ')',
+        '-print'
+    ]).trim();
+    if (envFiles) {
+        throw new Error(`Docker image contains private env files:\n${envFiles}`);
+    }
+
+    const privateGatewayHits = runCaptureAllow('docker', [
+        'run',
+        '--rm',
+        image,
+        'grep',
+        '-R',
+        '-n',
+        '-E',
+        '100\\.99\\.|sk-[A-Za-z0-9_-]{16,}',
+        '.',
+        '--exclude-dir=node_modules'
+    ], [0, 1]).trim();
+    if (privateGatewayHits) {
+        throw new Error(`Docker image contains private gateway or secret-like content:\n${privateGatewayHits}`);
+    }
+
     const port = await findFreePort();
     containerId = run('docker', [
         'run',

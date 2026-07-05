@@ -629,6 +629,9 @@ assert(releaseRuntimeContract.includes("mode: 'gateway'"), 'release runtime cont
 assert(releaseRuntimeContract.includes("envContract: 'KUGNUS_GATEWAY_* only'"), 'release runtime contract should state the canonical KUGNUS env contract');
 assert(dockerImageVerifier.includes("docker', ['build'"), 'Docker verifier should build the production image');
 assert(dockerImageVerifier.includes('/health'), 'Docker verifier should probe the container health endpoint');
+assert(dockerImageVerifier.includes('.env.production'), 'Docker verifier should reject private production env files in the image');
+assert(dockerImageVerifier.includes('100\\\\.99\\\\.'), 'Docker verifier should reject private Tailscale gateway addresses in the image');
+assert(dockerImageVerifier.includes('sk-[A-Za-z0-9_-]{16,}'), 'Docker verifier should reject secret-like OpenAI keys in the image');
 assert(kugnusGatewayContract.includes('verifyOpenAiEnvDoesNotConfigureKugnus'), 'KUGNUS gateway contract should prove OPENAI_* remains GPT fallback only');
 assert(kugnusGatewayContract.includes('verifyCanonicalGatewayRequired'), 'KUGNUS gateway contract should require canonical KUGNUS gateway env');
 assert(readme.includes('KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the canonical KUGNUS gateway base URL');
