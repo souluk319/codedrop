@@ -11,13 +11,87 @@ dotenv.config({ path: [".env.local", ".env"], quiet: true });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
+function csvValues(value) {
+    return String(value || "")
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean);
+}
+
+function privateHostname(hostname) {
+    const host = String(hostname || "").toLowerCase();
+    return host === "localhost"
+        || host.endsWith(".local")
+        || /^127\./.test(host)
+        || /^0\./.test(host)
+        || /^10\./.test(host)
+        || /^192\.168\./.test(host)
+        || /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+        || /^100\./.test(host);
+}
+
+function publicHttpsUrlLike(value) {
+    try {
+        const parsed = new URL(String(value || "").trim());
+        return parsed.protocol === "https:" && !privateHostname(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
+
+function validateProductionConfig() {
+    if (!IS_PRODUCTION) return [];
+
+    const errors = [];
+    const sessionSecret = String(process.env.SESSION_SECRET || "").trim();
+    if (!sessionSecret) {
+        errors.push("SESSION_SECRET is required in production");
+    } else if (sessionSecret.length < 32 || /local|dev|change|codedrop-local/i.test(sessionSecret)) {
+        errors.push("SESSION_SECRET must be a long random production secret");
+    }
+
+    const origins = csvValues(process.env.ALLOWED_ORIGINS);
+    if (!origins.length) {
+        errors.push("ALLOWED_ORIGINS is required in production");
+    } else {
+        const invalidOrigins = origins.filter(origin => !publicHttpsUrlLike(origin));
+        if (invalidOrigins.length) {
+            errors.push(`ALLOWED_ORIGINS must contain only public https origins: ${invalidOrigins.join(", ")}`);
+        }
+    }
+
+    for (const name of ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]) {
+        if (!String(process.env[name] || "").trim()) errors.push(`${name} is required in production`);
+    }
+
+    for (const name of ["KUGNUS_GATEWAY_BASE_URL", "KUGNUS_GATEWAY_API_KEY", "KUGNUS_GATEWAY_MODEL"]) {
+        if (!String(process.env[name] || "").trim()) errors.push(`${name} is required in production`);
+    }
+
+    const gatewayBase = String(process.env.KUGNUS_GATEWAY_BASE_URL || "").trim();
+    if (gatewayBase && !publicHttpsUrlLike(gatewayBase)) {
+        errors.push(`KUGNUS_GATEWAY_BASE_URL must be a public https URL: ${gatewayBase}`);
+    }
+
+    const openAiModel = String(process.env.OPENAI_MODEL || "").trim();
+    if (process.env.OPENAI_API_KEY && openAiModel && !/(^|[-.])mini($|[-.])/i.test(openAiModel)) {
+        errors.push(`OPENAI_MODEL fallback must stay mini in production: ${openAiModel}`);
+    }
+
+    return errors;
+}
+
+const productionConfigErrors = validateProductionConfig();
+if (productionConfigErrors.length) {
+    throw new Error(`Unsafe production configuration:\n- ${productionConfigErrors.join("\n- ")}`);
+}
+
 const app = express();
 app.set("etag", false);
-const allowedOrigins = (process.env.ALLOWED_ORIGINS ||
-    "http://localhost:3001,http://127.0.0.1:3001,https://codedrop-se9n.onrender.com")
-    .split(",")
-    .map(origin => origin.trim())
-    .filter(Boolean);
+const allowedOrigins = csvValues(process.env.ALLOWED_ORIGINS ||
+    "http://localhost:3001,http://127.0.0.1:3001,https://codedrop-se9n.onrender.com");
 
 app.use(cors({
     origin(origin, callback) {

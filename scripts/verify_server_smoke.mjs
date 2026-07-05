@@ -58,6 +58,50 @@ async function freePort() {
     });
 }
 
+async function verifyProductionRuntimeGuard() {
+    const guard = spawn(process.execPath, ['server.js'], {
+        env: {
+            ...process.env,
+            NODE_ENV: 'production',
+            PORT: String(await freePort()),
+            SESSION_SECRET: 'codedrop-local-dev-session-secret-change-for-release',
+            ALLOWED_ORIGINS: 'http://localhost:3001',
+            DB_HOST: 'db.example.com',
+            DB_USER: 'codedrop',
+            DB_PASSWORD: 'secret',
+            DB_NAME: 'codedrop',
+            KUGNUS_GATEWAY_BASE_URL: 'http://127.0.0.1:11434/v1',
+            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
+            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
+            OPENAI_API_KEY: 'fallback-key',
+            OPENAI_MODEL: 'gpt-4o'
+        },
+        stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let guardOutput = '';
+    guard.stdout.on('data', chunk => { guardOutput += chunk.toString(); });
+    guard.stderr.on('data', chunk => { guardOutput += chunk.toString(); });
+
+    const code = await new Promise(resolve => {
+        const timer = setTimeout(() => {
+            guard.kill('SIGKILL');
+            resolve(null);
+        }, 5000);
+        guard.on('close', exitCode => {
+            clearTimeout(timer);
+            resolve(exitCode);
+        });
+    });
+
+    assert(code !== 0, 'production server should refuse unsafe runtime env');
+    assert(guardOutput.includes('Unsafe production configuration'), 'production guard should explain unsafe config');
+    assert(guardOutput.includes('SESSION_SECRET'), 'production guard should reject local session secret');
+    assert(guardOutput.includes('ALLOWED_ORIGINS'), 'production guard should reject non-public origins');
+    assert(guardOutput.includes('KUGNUS_GATEWAY_BASE_URL'), 'production guard should reject private KUGNUS gateway URLs');
+    assert(guardOutput.includes('OPENAI_MODEL'), 'production guard should reject non-mini GPT fallback models');
+}
+
 const child = spawn(process.execPath, ['server.js'], {
     env: {
         ...process.env,
@@ -195,6 +239,8 @@ try {
     assert(streamError.text.includes('"event":"error"') || streamError.text.includes('"event":"delta"') || streamError.text.includes('"event":"done"'),
         '/api/learn-chat/stream should emit at least error/delta/done after meta');
 
+    await verifyProductionRuntimeGuard();
+
     console.log(JSON.stringify({
         port: PORT,
         server: 'ok',
@@ -203,7 +249,8 @@ try {
         authSmoke: 'ok',
         learnChatSmoke: 'ok',
         learnChatStreamSmoke: 'ok',
-        packMakerSmoke: 'ok'
+        packMakerSmoke: 'ok',
+        productionRuntimeGuard: 'ok'
     }, null, 2));
 } catch (err) {
     err.message = `${err.message}\nServer output:\n${output}`;
