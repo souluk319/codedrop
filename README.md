@@ -271,13 +271,18 @@ Use the doctor command when the local app feels inconsistent and you need a sing
 npm run doctor
 ```
 
-The output groups checks as `PASS`, `WARN`, `BLOCKED`, or `FAIL`. It reports the active KUGNUS route, DB readiness, release blockers, and whether the current environment is still using direct Ollama routing. For a heavier local sweep:
+The output groups checks as `PASS`, `SKIPPED`, `WARN`, `BLOCKED`, or `FAIL`.
+It reports the active KUGNUS route and DB readiness. Use the local variants
+when you want product/runtime evidence without deployment env noise:
 
 ```bash
-npm run doctor:deep
+npm run doctor:local
+npm run doctor:local:full
 ```
 
-Add `-- --packmaker` only when you intentionally want the slow real KUGNUS Pack Maker 50-item E2E included.
+`doctor:local` and `doctor:local:full` mark `release.preflight` as `SKIPPED`;
+that is expected. `doctor:local:full` includes the slow real KUGNUS Pack Maker
+50-item E2E.
 
 For release candidates, use the strict variants so `BLOCKED` cannot be missed:
 

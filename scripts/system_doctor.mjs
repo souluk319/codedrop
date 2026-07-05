@@ -250,7 +250,7 @@ function summarizeReleaseCheck(stdout) {
     };
 }
 
-const order = ['FAIL', 'BLOCKED', 'WARN', 'PASS'];
+const order = ['FAIL', 'BLOCKED', 'WARN', 'PASS', 'SKIPPED'];
 
 function currentOverall() {
     return checks.some(check => check.status === 'FAIL')
@@ -356,7 +356,7 @@ if (!skipRelease) {
         emitAndExitIfStrict();
     }
 } else {
-    addCheck('release.preflight', 'PASS', {
+    addCheck('release.preflight', 'SKIPPED', {
         detail: 'Skipped by --skip-release; run npm run doctor:release:full or npm run release:check before deployment.'
     });
 }
