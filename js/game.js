@@ -9,6 +9,7 @@ const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language';
 const APP_LANGUAGE_STORAGE_KEY = 'codedrop_language';
 const MUSIC_UI_STORAGE_KEY = 'codedrop_music_ui';
 const KUGNUS_HEALTH_TIMEOUT_MS = 12_000;
+const CODEDROP_BASE_PATH = '/games/codedrop';
 const MUSIC_FALLBACK_TRACKS = [
     'KUGNUS X AI SET',
     'SoundCloud playlist queue',
@@ -341,6 +342,163 @@ const llmStatus = {
     promise: null,
     promptedScopes: new Set(),
     fallbackScopes: new Set()
+};
+let routeApplying = false;
+
+const APP_ROUTE_PATHS = {
+    home: '/',
+    play: '/play',
+    packMaker: '/pack-maker',
+    keyTest: '/key-test',
+    ocp: '/ocp',
+    ocpPlay: '/ocp/play',
+    ocpLearn: '/ocp/learn',
+    ocpScenario: '/ocp/scenario',
+    ocpLab: '/ocp/lab',
+    ocpExam: '/ocp/exam',
+    ocpDashboard: '/ocp/dashboard'
+};
+
+function routePath(route) {
+    const suffix = APP_ROUTE_PATHS[route] || APP_ROUTE_PATHS.home;
+    return `${CODEDROP_BASE_PATH}${suffix}`;
+}
+
+function routeFromPath(pathname) {
+    let path = String(pathname || '/').replace(/\/+$/, '');
+    if (!path || path === '/') return 'home';
+    if (path === CODEDROP_BASE_PATH) return 'home';
+    if (!path.startsWith(`${CODEDROP_BASE_PATH}/`)) return 'home';
+
+    const suffix = path.slice(CODEDROP_BASE_PATH.length);
+    const entry = Object.entries(APP_ROUTE_PATHS)
+        .find(([, value]) => value !== '/' && value.replace(/\/+$/, '') === suffix);
+    return entry ? entry[0] : 'home';
+}
+
+function navigateAppRoute(route, options = {}) {
+    if (routeApplying || !window.history?.pushState) return;
+    const path = routePath(route);
+    if (window.location.pathname === path && !options.replace) return;
+    const method = options.replace ? 'replaceState' : 'pushState';
+    window.history[method]({ codedropRoute: route }, '', path);
+}
+
+function hideAppOverlaysForRoute() {
+    [
+        'pause-screen',
+        'result-screen',
+        'confirm-screen',
+        'pack-maker-screen',
+        'keyboard-test-screen',
+        'scenario-screen',
+        'lab-screen',
+        'dashboard-screen',
+        'learn-screen'
+    ].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+
+    const learnChat = document.getElementById('learn-chat-panel');
+    if (learnChat) learnChat.classList.add('hidden');
+}
+
+function restoreStartShellForRoute() {
+    state.isPlaying = false;
+    state.isPaused = false;
+    setGameChrome(false);
+    setBottomWidgetsTranslucent(false);
+    els.screens.start.classList.remove('hidden');
+    els.input.field.value = '';
+    els.input.field.disabled = true;
+    updateTargetDisplay('');
+    state.targetId = null;
+    state.lastInputLength = 0;
+    els.gameArea.innerHTML = '';
+    state.activeWords = [];
+    hideAppOverlaysForRoute();
+    syncOverlayChrome();
+}
+
+function applyAppRoute(route) {
+    routeApplying = true;
+    try {
+        restoreStartShellForRoute();
+
+        if (route.startsWith('ocp')) {
+            window.CodeDropModeControls?.openOcpEdition();
+        } else {
+            window.CodeDropModeControls?.closeOcpEdition();
+        }
+
+        if (route === 'packMaker') {
+            window.PackMaker?.open();
+        } else if (route === 'keyTest') {
+            window.KeyboardTest?.open();
+        } else if (route === 'ocpDashboard') {
+            if (typeof Dashboard !== 'undefined') Dashboard.open();
+        } else if (route === 'ocpLearn') {
+            window.CodeDropModeControls?.setMode('LEARN');
+            if (typeof LearnMode !== 'undefined') LearnMode.openPicker();
+        } else if (route === 'ocpScenario') {
+            window.CodeDropModeControls?.setMode('SCENARIO');
+            if (typeof ScenarioMode !== 'undefined') {
+                ScenarioMode.start(document.getElementById('scenario-category-select')?.value);
+            }
+        } else if (route === 'ocpLab') {
+            window.CodeDropModeControls?.setMode('LAB');
+            if (typeof LabMode !== 'undefined') {
+                LabMode.start(document.getElementById('lab-select')?.value);
+            }
+        } else if (route === 'ocpExam') {
+            window.CodeDropModeControls?.setMode('EXAM');
+            if (typeof ScenarioMode !== 'undefined') ScenarioMode.startExam();
+        }
+
+        syncOverlayChrome();
+    } finally {
+        routeApplying = false;
+    }
+}
+
+function initAppRouter() {
+    if (window.CodeDropRouter?.initialized) return;
+
+    window.CodeDropRouter = {
+        initialized: true,
+        navigate: navigateAppRoute,
+        routeFromPath,
+        apply: applyAppRoute
+    };
+
+    document.getElementById('pack-maker-btn')?.addEventListener('click', () => navigateAppRoute('packMaker'));
+    document.getElementById('pack-maker-close')?.addEventListener('click', () => navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home'));
+    document.getElementById('keyboard-test-btn')?.addEventListener('click', () => navigateAppRoute('keyTest'));
+    document.getElementById('keytest-close')?.addEventListener('click', () => navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home'));
+    document.getElementById('dashboard-close')?.addEventListener('click', () => navigateAppRoute('ocp'));
+    document.getElementById('scenario-quit')?.addEventListener('click', () => navigateAppRoute('ocp'));
+    document.getElementById('lab-home')?.addEventListener('click', () => navigateAppRoute('ocp'));
+    document.getElementById('learn-picker-home')?.addEventListener('click', () => navigateAppRoute('ocp'));
+    document.getElementById('learn-home')?.addEventListener('click', () => navigateAppRoute('ocp'));
+
+    window.addEventListener('popstate', () => {
+        applyAppRoute(routeFromPath(window.location.pathname));
+    });
+
+    const currentRoute = routeFromPath(window.location.pathname);
+    const canonicalPath = routePath(currentRoute);
+    if (!window.location.pathname.startsWith(CODEDROP_BASE_PATH)) {
+        navigateAppRoute('home', { replace: true });
+    } else if (window.location.pathname !== canonicalPath && currentRoute === 'home') {
+        navigateAppRoute('home', { replace: true });
+    }
+
+    setTimeout(() => applyAppRoute(routeFromPath(window.location.pathname)), 0);
+}
+
+window.CodeDropRouter = {
+    initialized: false,
+    navigate: navigateAppRoute,
+    routeFromPath,
+    apply: applyAppRoute
 };
 
 function setGameChrome(active) {
@@ -1960,17 +2118,21 @@ function triggerEditionBurst() {
 
 function handleStart() {
     if (gameMode === 'LEARN') {
+        navigateAppRoute('ocpLearn');
         els.screens.start.classList.add('hidden');
         LearnMode.openPicker();
     } else if (gameMode === 'SCENARIO') {
+        navigateAppRoute('ocpScenario');
         const catSelect = document.getElementById('scenario-category-select');
         els.screens.start.classList.add('hidden');
         ScenarioMode.start(catSelect.value);
     } else if (gameMode === 'LAB') {
+        navigateAppRoute('ocpLab');
         const labSelect = document.getElementById('lab-select');
         els.screens.start.classList.add('hidden');
         LabMode.start(labSelect.value);
     } else if (gameMode === 'EXAM') {
+        navigateAppRoute('ocpExam');
         els.screens.start.classList.add('hidden');
         ScenarioMode.startExam();
     } else {
@@ -2066,6 +2228,7 @@ function initModeControls() {
     }
 
     function openOcpEdition() {
+        navigateAppRoute('ocp');
         if (isOcpEditionActive()) {
             setMode('DROP');
             forceOcpDropPackSync();
@@ -2082,6 +2245,7 @@ function initModeControls() {
     }
 
     function closeOcpEdition() {
+        navigateAppRoute('home');
         if (!isOcpEditionActive()) return;
         triggerEditionBurst();
         document.body.classList.remove('ocp-edition');
@@ -2092,6 +2256,13 @@ function initModeControls() {
         setMode('DROP');
         fetchLeaderboard();
     }
+
+    window.CodeDropModeControls = {
+        openOcpEdition,
+        closeOcpEdition,
+        setMode,
+        currentMode: () => gameMode
+    };
 
     modeButtons.forEach(btn => {
         btn.addEventListener('click', () => setMode(btn.dataset.mode));
@@ -2110,7 +2281,10 @@ function initModeControls() {
     }
 
     if (dashboardBtn) {
-        dashboardBtn.addEventListener('click', () => Dashboard.open());
+        dashboardBtn.addEventListener('click', () => {
+            navigateAppRoute('ocpDashboard');
+            Dashboard.open();
+        });
     }
 
     if (els.controls.diffSelect) {
@@ -2156,6 +2330,7 @@ async function startGame() {
     const diff = els.controls.diffSelect.value;
     const pack = els.controls.packSelect.value;
     if (!await ensureSelectedPackReady(pack)) return;
+    navigateAppRoute(isOcpEditionActive() ? 'ocpPlay' : 'play');
 
     state.difficulty = diff;
     state.pack = pack;
@@ -2248,6 +2423,7 @@ async function goHome() {
 
     fetchLeaderboard();
     initGameControls();
+    navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home', { replace: true });
     syncOverlayChrome();
     // sfx.playBGM();
 }
@@ -2265,6 +2441,7 @@ function handleRestart() {
     state.targetId = null;
     state.lastInputLength = 0;
     fetchLeaderboard();
+    navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home', { replace: true });
     syncOverlayChrome();
     // sfx.playBGM();
 }
@@ -2764,6 +2941,7 @@ function init() {
     initGameControls();
     initPackSelector();
     initModeControls();
+    initAppRouter();
 
 
     // Sfx Init on interaction

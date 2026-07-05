@@ -5,6 +5,9 @@
 const Dashboard = (() => {
     const $ = (id) => document.getElementById(id);
     const ui = {};
+    const state = {
+        startWasHidden: false
+    };
 
     function cacheEls() {
         ui.screen = $('dashboard-screen');
@@ -26,14 +29,14 @@ const Dashboard = (() => {
         ui.closeBtn.addEventListener('click', close);
         ui.reviewBtn.addEventListener('click', () => {
             if (ui.reviewBtn.disabled) return;
-            close();
+            close({ restoreStart: false });
             document.getElementById('start-screen').classList.add('hidden');
             ScenarioMode.startReview();
         });
         ui.nextBtn.addEventListener('click', () => {
             const rec = recommendNext();
             if (!rec) return;
-            close();
+            close({ restoreStart: false });
             document.getElementById('start-screen').classList.add('hidden');
             rec.run();
         });
@@ -124,11 +127,17 @@ const Dashboard = (() => {
         bindEvents();
         render();
         if (ui.resetBtn) ui.resetBtn.classList.toggle('hidden', !isQaResetEnabled());
+        const startScreen = document.getElementById('start-screen');
+        state.startWasHidden = Boolean(startScreen?.classList.contains('hidden'));
+        startScreen?.classList.add('hidden');
         ui.screen.classList.remove('hidden');
     }
 
-    function close() {
+    function close(options = {}) {
+        const { restoreStart = true } = options;
         ui.screen.classList.add('hidden');
+        const startScreen = document.getElementById('start-screen');
+        if (restoreStart && startScreen && !state.startWasHidden) startScreen.classList.remove('hidden');
     }
 
     function render() {

@@ -873,6 +873,15 @@ assert(stats.includes('function reset()'), 'StudyStats reset API is missing');
 assert(learn.includes('resetProgress'), 'LearnMode reset hook is missing');
 
 assert(game.includes("const LOCAL_AUTH_KEY = 'codedrop_local_auth_users';"), 'local dev auth key is missing');
+assert(index.includes('<base href="/games/codedrop/">'), 'deployment base href should target /games/codedrop/');
+assert(server.includes('const CODEDROP_BASE_PATH = "/games/codedrop";'), 'server should define the /games/codedrop deployment base path');
+assert(server.includes('app.use(`${CODEDROP_BASE_PATH}/js`'), 'server should serve JS assets under /games/codedrop');
+assert(server.includes('/^\\/games\\/codedrop(?:\\/.*)?$/'), 'server should fallback /games/codedrop routes to index.html');
+assert(game.includes("const CODEDROP_BASE_PATH = '/games/codedrop';"), 'client router should target /games/codedrop');
+assert(game.includes('function initAppRouter()'), 'client app router initializer is missing');
+assert(game.includes("packMaker: '/pack-maker'"), 'Pack Maker should have a browser route');
+assert(game.includes("ocpDashboard: '/ocp/dashboard'"), 'OCP dashboard should have a browser route');
+assert(game.includes("window.addEventListener('popstate'"), 'client router should handle browser back/forward');
 assert(game.includes("users.test = { id: 'local-test', nickname: 'test', password: 'test' };"), 'local test/test auth seed is missing');
 assert(game.includes('tryLocalDevLogin(nickname, password)'), 'login flow does not call local dev fallback');
 assert(game.includes('async function provisionLocalDevServerSession'), 'local test/test should try to obtain a real server token for Pack Maker');
@@ -884,6 +893,11 @@ assert(game.includes('forceOcpDropPackSync({ notify: false })'), 'OCP game start
 assert(game.includes('ScenarioMode.startExam()'), 'EXAM mode route is missing');
 assert(game.includes('LabMode.start(labSelect.value)'), 'LAB mode route is missing');
 assert(game.includes('Dashboard.open()'), 'dashboard route is missing');
+assert(dashboard.includes("document.getElementById('start-screen')"), 'dashboard should coordinate with the start screen overlay');
+assert(dashboard.includes("startScreen?.classList.add('hidden')"), 'dashboard should hide the start screen while open');
+assert(dashboard.includes("startScreen.classList.remove('hidden')"), 'dashboard should restore the start screen on close');
+assert(dashboard.includes('restoreStart = true'), 'dashboard close should default to restoring the start screen');
+assert(dashboard.includes('restoreStart: false'), 'dashboard handoffs should not briefly restore the start screen');
 assert(game.includes("document.createElement('table')") || game.includes('document.createElement("table")'), 'leaderboard should be rendered with DOM nodes');
 assert(!game.includes('${item.nickname}'), 'leaderboard nickname must not be interpolated into innerHTML');
 assert(!game.includes('Session expired'), 'UI should not show raw session-expired copy to users');

@@ -90,6 +90,7 @@ if (productionConfigErrors.length) {
 
 const app = express();
 app.set("etag", false);
+const CODEDROP_BASE_PATH = "/games/codedrop";
 const allowedOrigins = csvValues(process.env.ALLOWED_ORIGINS ||
     "http://localhost:3001,http://127.0.0.1:3001,https://codedrop-se9n.onrender.com");
 
@@ -120,6 +121,16 @@ function sendNoStoreFile(res, filePath, onError) {
     res.sendFile(filePath, { cacheControl: false, lastModified: false }, onError);
 }
 
+function sendIndexHtml(res) {
+    const indexPath = path.join(__dirname, "index.html");
+    sendNoStoreFile(res, indexPath, (err) => {
+        if (err) {
+            console.error("Error serving index.html:", err);
+            res.status(500).send("Error loading game: " + err.message);
+        }
+    });
+}
+
 if (process.env.REQUEST_LOGS === "1") {
     app.use((req, res, next) => {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -129,13 +140,7 @@ if (process.env.REQUEST_LOGS === "1") {
 
 // Serve index.html at root (Explicitly before static)
 app.get('/', (req, res) => {
-    const indexPath = path.join(__dirname, 'index.html');
-    sendNoStoreFile(res, indexPath, (err) => {
-        if (err) {
-            console.error("Error serving index.html:", err);
-            res.status(500).send("Error loading game: " + err.message);
-        }
-    });
+    sendIndexHtml(res);
 });
 
 ["privacy.html", "terms.html", "data-deletion.html", "meta-review.html"].forEach(file => {
@@ -151,6 +156,13 @@ app.use("/js", express.static(path.join(__dirname, "js"), {
 }));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use("/sound", express.static(path.join(__dirname, "sound")));
+app.use(`${CODEDROP_BASE_PATH}/js`, express.static(path.join(__dirname, "js"), {
+    etag: false,
+    lastModified: false,
+    setHeaders: preventStaleUiCache
+}));
+app.use(`${CODEDROP_BASE_PATH}/assets`, express.static(path.join(__dirname, "assets")));
+app.use(`${CODEDROP_BASE_PATH}/sound`, express.static(path.join(__dirname, "sound")));
 
 function dbSslConfig() {
     const value = String(process.env.DB_SSL || "").trim().toLowerCase();
@@ -2835,6 +2847,10 @@ app.get("/leaderboard", async (req, res) => {
         console.error(err);
         res.status(500).json({ error: "Database error" });
     }
+});
+
+app.get(/^\/games\/codedrop(?:\/.*)?$/, (req, res) => {
+    sendIndexHtml(res);
 });
 
 // Helper function to get leaderboard
