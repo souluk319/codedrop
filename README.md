@@ -148,9 +148,15 @@ OPENAI_API_KEY=<KUGNUS_GATEWAY_API_KEY>
 OPENAI_MODEL=gemma4:12b-it-qat
 ```
 
+The exact handoff template is in `.env.kugnus-gateway.example`. When `OPENAI_*` points at KUGNUS, keep GPT fallback on `GPT_OPENAI_*`; otherwise the app cannot distinguish KUGNUS gateway from GPT fallback.
+
 When that alias is complete, the server intentionally routes KUGNUS through the alias even if a local `LLM_BASE_URL` is still present. Release checks still block direct `LLM_BASE_URL`; remove it from production env after gateway verification.
 
-`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, and `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias paths.
+`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, and `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias paths. You can also run that contract directly:
+
+```bash
+npm run verify:kugnus-gateway
+```
 
 After real gateway env values are present, run a live gateway check before release. The verifier accepts explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, or a safe `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias that does not point at `api.openai.com`:
 

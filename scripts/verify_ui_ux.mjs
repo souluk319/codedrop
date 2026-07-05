@@ -12,6 +12,7 @@ const dockerCompose = read('docker-compose.local.yml');
 const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
 const productionEnvExample = read('.env.production.example');
+const kugnusGatewayEnvExample = read('.env.kugnus-gateway.example');
 const verifyWorkflow = read('.github/workflows/verify.yml');
 const verifyAll = read('scripts/verify_all.mjs');
 const releaseCheck = read('scripts/check_release_readiness.mjs');
@@ -516,6 +517,7 @@ assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), 'local env example s
 assert(localEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS gateway chat model');
 assert(localEnvExample.includes('KUGNUS_EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model');
 assert(fs.existsSync(path.join(root, 'scripts/verify_kugnus_gateway_live.mjs')), 'live KUGNUS gateway verifier script is missing');
+assert(packageJson.scripts?.['verify:kugnus-gateway'] === 'node scripts/verify_kugnus_gateway_contract.mjs', 'package should expose the KUGNUS gateway contract verifier command');
 assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugnus_gateway_live.mjs', 'package should expose the live KUGNUS gateway verifier command');
 assert(packageJson.scripts?.['verify:release-matrix'] === 'node scripts/verify_release_readiness_matrix.mjs', 'package should expose release readiness matrix verification');
 assert(packageJson.scripts?.['verify:release-runtime'] === 'node scripts/verify_release_runtime_route.mjs', 'package should expose release runtime route verification');
@@ -553,6 +555,8 @@ assert(kugnusGatewayContract.includes('verifyIncompleteOpenAiEnvAliasDoesNotFall
 assert(kugnusGatewayContract.includes('OPENAI_* KUGNUS alias is incomplete; missing OPENAI_API_KEY'), 'KUGNUS gateway contract should assert the exact missing OPENAI_API_KEY reason');
 assert(server.includes('apiKey = process.env.OPENAI_API_KEY || apiKey || "";'), 'OPENAI_* KUGNUS alias should prefer OPENAI_API_KEY over stale direct/local keys');
 assert(readme.includes('OPENAI_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the OpenAI-compatible KUGNUS gateway alias');
+assert(readme.includes('.env.kugnus-gateway.example'), 'README should point to the exact local-llm-lab KUGNUS gateway handoff env template');
+assert(readme.includes('npm run verify:kugnus-gateway'), 'README should document the KUGNUS gateway contract verifier alias');
 assert(readme.includes('verify:release-runtime -- --env-file=.env.production'), 'README should document runtime route verification before release');
 assert(readme.indexOf('`OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL`') < readme.indexOf('`LLM_BASE_URL` / `LLM_MODEL` direct'), 'README KUGNUS routing order should put the gateway alias before direct LLM_BASE_URL');
 assert(verifyAll.includes('scripts/verify_release_readiness_matrix.mjs'), 'main verification should exercise the release readiness matrix');
@@ -745,6 +749,10 @@ assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.producti
 assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
 assert(!/(^|\n)LLM_BASE_URL=\\S/.test(productionEnvExample), '.env.production.example must not enable direct KUGNUS routing');
 assert(productionEnvExample.includes('ALLOW_DIRECT_KUGNUS=0'), '.env.production.example should explicitly reject direct KUGNUS by default');
+assert(kugnusGatewayEnvExample.includes('OPENAI_BASE_URL=https://llm.yourdomain.com/v1'), 'KUGNUS gateway env handoff template should support the local-llm-lab OPENAI_BASE_URL alias');
+assert(kugnusGatewayEnvExample.includes('OPENAI_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway env handoff template should pin Gemma 4 12B');
+assert(kugnusGatewayEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'KUGNUS gateway env handoff template should keep GPT fallback separate and mini-only');
+assert(kugnusGatewayEnvExample.includes('ALLOW_DIRECT_KUGNUS=0'), 'KUGNUS gateway env handoff template should reject direct KUGNUS by default');
 
 console.log(JSON.stringify({
     ui: 'ok',
