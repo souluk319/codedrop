@@ -194,9 +194,14 @@ DEPLOY_TARGET=firebase npm run release:check
 This must not pass until all of these exist:
 
 - `firebase.json`
+- Firebase Hosting rewrite from `/api/**` to Cloud Run or Functions
 - `.firebaserc`
 - `firestore.rules`
+- Firestore rules for `profiles`, `officialScores`, and `customPacks` without
+  open development `allow read, write: if true` style rules
 - a real Cloud Run or Functions API layer
+- private API endpoints for `/api/llm/kugnus/health`,
+  `/api/learn-chat/stream`, and `/api/pack-maker/chat/stream`
 - public `https://` KUGNUS gateway variables
 - no release use of direct `LLM_BASE_URL`
 

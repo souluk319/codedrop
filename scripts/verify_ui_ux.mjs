@@ -597,6 +597,9 @@ assert(releaseCheck.includes('openAiAliasMissing'), 'release check should detect
 assert(releaseCheck.includes('OPENAI_* KUGNUS alias is incomplete'), 'release check should clearly explain incomplete OPENAI_* KUGNUS aliases');
 assert(releaseCheck.includes('hasGenericOpenAiFallback'), 'release check should accept generic OPENAI_* as GPT fallback when it is not KUGNUS');
 assert(releaseCheck.includes('Generic OPENAI_MODEL fallback must stay gpt-5.4-mini'), 'release check should enforce mini-only generic GPT fallback');
+assert(releaseCheck.includes('Firebase Hosting must rewrite /api/** to Cloud Run or Functions'), 'release check should require Firebase API rewrites');
+assert(releaseCheck.includes('firestore.rules must not use open development allow read/write rules'), 'release check should reject open Firestore rules');
+assert(releaseCheck.includes('Firebase API layer must expose required private endpoints'), 'release check should require Firebase private API endpoint contracts');
 assert(systemDoctor.includes('function openAiAliasLooksLikeKugnus'), 'system doctor should share KUGNUS OPENAI_* alias detection');
 assert(systemDoctor.includes('openAiGatewayAliasMissing'), 'system doctor should detect incomplete OPENAI_* KUGNUS gateway aliases');
 assert(systemDoctor.includes('OPENAI_* KUGNUS alias incomplete'), 'system doctor should clearly report incomplete OPENAI_* KUGNUS aliases');
@@ -776,6 +779,10 @@ assert(kugnusGatewayEnvExample.includes('OPENAI_BASE_URL=https://llm.yourdomain.
 assert(kugnusGatewayEnvExample.includes('OPENAI_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway env handoff template should pin Gemma 4 12B');
 assert(kugnusGatewayEnvExample.includes('GPT_OPENAI_MODEL=gpt-5.4-mini'), 'KUGNUS gateway env handoff template should keep GPT fallback separate and mini-only');
 assert(kugnusGatewayEnvExample.includes('ALLOW_DIRECT_KUGNUS=0'), 'KUGNUS gateway env handoff template should reject direct KUGNUS by default');
+const firebaseMigration = read('FIREBASE_MIGRATION.md');
+assert(firebaseMigration.includes('Firebase Hosting rewrite from `/api/**` to Cloud Run or Functions'), 'Firebase migration doc should require API rewrites');
+assert(firebaseMigration.includes('without\n  open development `allow read, write: if true`'), 'Firebase migration doc should reject open Firestore rules');
+assert(firebaseMigration.includes('/api/pack-maker/chat/stream'), 'Firebase migration doc should require Pack Maker streaming in the private API layer');
 
 console.log(JSON.stringify({
     ui: 'ok',

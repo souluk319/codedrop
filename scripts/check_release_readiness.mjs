@@ -69,6 +69,91 @@ function hasAnyFile(files) {
     return files.some(file => fs.existsSync(path.join(root, file)));
 }
 
+function readIfExists(file) {
+    const fullPath = path.join(root, file);
+    if (!fs.existsSync(fullPath)) return '';
+    return fs.readFileSync(fullPath, 'utf8');
+}
+
+function parseJsonIfExists(file) {
+    const text = readIfExists(file);
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch {
+        errors.push(`${file} must be valid JSON`);
+        return null;
+    }
+}
+
+function firebaseHostingEntries(firebaseJson) {
+    const hosting = firebaseJson?.hosting;
+    if (!hosting) return [];
+    return Array.isArray(hosting) ? hosting : [hosting];
+}
+
+function firebaseRewriteTargetsApi(rewrite) {
+    if (!rewrite || rewrite.source !== '/api/**') return false;
+    return Boolean(rewrite.run || rewrite.function || rewrite.destination);
+}
+
+function checkFirebaseHostingRewrite() {
+    const firebaseJson = parseJsonIfExists('firebase.json');
+    if (!firebaseJson) return;
+
+    const hasApiRewrite = firebaseHostingEntries(firebaseJson)
+        .some(hosting => Array.isArray(hosting.rewrites) && hosting.rewrites.some(firebaseRewriteTargetsApi));
+
+    if (!hasApiRewrite) {
+        errors.push('Firebase Hosting must rewrite /api/** to Cloud Run or Functions');
+        addAction('Add a Firebase Hosting rewrite from /api/** to the Cloud Run or Functions API service before Firebase deploy.');
+    }
+}
+
+function checkFirestoreRules() {
+    const rules = readIfExists('firestore.rules');
+    if (!rules) return;
+
+    if (/allow\s+read\s*,\s*write\s*:\s*if\s+(true|request\.time\s*<)/i.test(rules)) {
+        errors.push('firestore.rules must not use open development allow read/write rules');
+        addAction('Replace open Firestore rules with owner/admin/status-scoped rules before deploy.');
+    }
+
+    const requiredCollections = ['profiles', 'officialScores', 'customPacks'];
+    const missingCollections = requiredCollections.filter(name => !rules.includes(name));
+    if (missingCollections.length) {
+        errors.push(`firestore.rules must define release rules for ${missingCollections.join(', ')}`);
+        addAction('Add Firestore rules for profiles, officialScores, customPacks, custom pack items, and custom score subcollections.');
+    }
+}
+
+function checkFirebaseApiLayerContract() {
+    const apiFiles = [
+        'functions/src/index.js',
+        'functions/src/index.ts',
+        'functions/index.js',
+        'cloudrun/server.js',
+        'cloudrun/src/server.js',
+        'api/server.js',
+        'api/index.js',
+        'api/src/index.js'
+    ].filter(file => fs.existsSync(path.join(root, file)));
+
+    if (!apiFiles.length) return;
+
+    const apiText = apiFiles.map(readIfExists).join('\n');
+    const requiredEndpoints = [
+        '/api/llm/kugnus/health',
+        '/api/learn-chat/stream',
+        '/api/pack-maker/chat/stream'
+    ];
+    const missingEndpoints = requiredEndpoints.filter(endpoint => !apiText.includes(endpoint));
+    if (missingEndpoints.length) {
+        errors.push(`Firebase API layer must expose required private endpoints: ${missingEndpoints.join(', ')}`);
+        addAction('Implement the private API layer endpoints for KUGNUS health, learn chat streaming, and Pack Maker streaming before Firebase deploy.');
+    }
+}
+
 const GPT_OPENAI_KEY_NAMES = [
     'GPT_OPENAI_API_KEY',
     'GPT54_MINI_API_KEY',
@@ -209,6 +294,8 @@ function checkFirebaseRelease() {
     requireFile('firebase.json');
     requireFile('.firebaserc');
     requireFile('firestore.rules');
+    checkFirebaseHostingRewrite();
+    checkFirestoreRules();
     if (!fs.existsSync(path.join(root, 'firebase.json'))) {
         addAction('Create firebase.json after Firebase project setup; Hosting must rewrite /api/** to Cloud Run or Functions.');
     }
@@ -233,6 +320,7 @@ function checkFirebaseRelease() {
         errors.push('Firebase release needs Functions/Cloud Run API layer for KUGNUS, DuckDuckGo, Pack Maker, and private keys');
         addAction('Add a real Functions or Cloud Run API layer for /api/learn-chat/stream, /api/pack-maker/chat/stream, KUGNUS, DuckDuckGo, score verification, and public pack review.');
     }
+    checkFirebaseApiLayerContract();
 }
 
 if (!['node', 'firebase'].includes(target)) {
