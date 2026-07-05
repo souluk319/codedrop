@@ -75,6 +75,90 @@ function readIfExists(file) {
     return fs.readFileSync(fullPath, 'utf8');
 }
 
+function renderYamlKeyBlock(text, key) {
+    const marker = new RegExp(`(^|\\n)\\s*-\\s*key:\\s*${key}\\s*(\\n|$)`);
+    const match = text.match(marker);
+    if (!match || match.index == null) return '';
+    const start = match.index + (match[1] ? match[1].length : 0);
+    const rest = text.slice(start);
+    const next = rest.slice(1).search(/\n\s*-\s*key:\s*[A-Z0-9_]+\s*(\n|$)/);
+    return next === -1 ? rest : rest.slice(0, next + 1);
+}
+
+function renderYamlHasKey(text, key) {
+    return Boolean(renderYamlKeyBlock(text, key));
+}
+
+function renderYamlKeyUsesSyncFalse(text, key) {
+    return /\bsync:\s*false\b/.test(renderYamlKeyBlock(text, key));
+}
+
+function checkRenderBlueprint() {
+    const text = readIfExists('render.yaml');
+    if (!text) {
+        warnings.push('render.yaml is missing; Render Docker deploy must be configured manually');
+        addAction('Add render.yaml or configure the Render Docker web service manually with the same release env contract.');
+        return;
+    }
+
+    const requiredSnippets = [
+        ['type: web', 'render.yaml must define a web service'],
+        ['runtime: docker', 'render.yaml must use runtime: docker'],
+        ['dockerfilePath: ./Dockerfile', 'render.yaml must build from ./Dockerfile'],
+        ['healthCheckPath: /health', 'render.yaml must probe /health'],
+        ['autoDeployTrigger: checksPass', 'render.yaml should deploy only after CI checks pass']
+    ];
+
+    for (const [snippet, message] of requiredSnippets) {
+        if (!text.includes(snippet)) errors.push(message);
+    }
+
+    const requiredEnvKeys = [
+        'NODE_ENV',
+        'DEFAULT_CHAT_ENGINE',
+        'DB_HOST',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_NAME',
+        'SESSION_SECRET',
+        'ALLOWED_ORIGINS',
+        'KUGNUS_GATEWAY_BASE_URL',
+        'KUGNUS_GATEWAY_API_KEY',
+        'KUGNUS_GATEWAY_MODEL',
+        'OPENAI_API_KEY',
+        'OPENAI_MODEL',
+        'DUCKDUCKGO_API_KEY'
+    ];
+    const missingEnvKeys = requiredEnvKeys.filter(key => !renderYamlHasKey(text, key));
+    if (missingEnvKeys.length) {
+        errors.push(`render.yaml missing release env keys: ${missingEnvKeys.join(', ')}`);
+        addAction('Add every release env key to render.yaml so Render prompts for secrets instead of silently deploying with missing config.');
+    }
+
+    const secretEnvKeys = [
+        'DB_HOST',
+        'DB_USER',
+        'DB_PASSWORD',
+        'DB_NAME',
+        'SESSION_SECRET',
+        'ALLOWED_ORIGINS',
+        'KUGNUS_GATEWAY_BASE_URL',
+        'KUGNUS_GATEWAY_API_KEY',
+        'OPENAI_API_KEY',
+        'DUCKDUCKGO_API_KEY'
+    ];
+    const unsafeSecretKeys = secretEnvKeys.filter(key => renderYamlHasKey(text, key) && !renderYamlKeyUsesSyncFalse(text, key));
+    if (unsafeSecretKeys.length) {
+        errors.push(`render.yaml must mark deployment-specific env keys sync:false: ${unsafeSecretKeys.join(', ')}`);
+        addAction('Use sync:false for deployment-specific Render env vars; do not commit production URLs, DB settings, or API keys.');
+    }
+
+    if (/100\.99\.|127\.0\.0\.1|localhost|sk-[A-Za-z0-9_-]{16,}/.test(text)) {
+        errors.push('render.yaml must not contain private gateway addresses or secret-like keys');
+        addAction('Keep render.yaml secret-free; enter deployment values in Render prompted env vars.');
+    }
+}
+
 function parseJsonIfExists(file) {
     const text = readIfExists(file);
     if (!text) return null;
@@ -220,6 +304,8 @@ function checkCommon() {
 }
 
 function checkNodeRelease() {
+    checkRenderBlueprint();
+
     ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'].forEach(name => addMissing([name], name));
     ['SESSION_SECRET', 'ALLOWED_ORIGINS'].forEach(name => addMissing([name], name));
     if (!has('DB_HOST') || !has('DB_USER') || !has('DB_PASSWORD') || !has('DB_NAME')) {

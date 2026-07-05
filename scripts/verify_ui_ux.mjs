@@ -14,6 +14,7 @@ const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
 const productionEnvExample = read('.env.production.example');
 const kugnusGatewayEnvExample = read('.env.kugnus-gateway.example');
+const renderYaml = read('render.yaml');
 const verifyWorkflow = read('.github/workflows/verify.yml');
 const verifyAll = read('scripts/verify_all.mjs');
 const verifyDb = read('scripts/verify_db_e2e.mjs');
@@ -668,6 +669,32 @@ assert(releaseCheck.includes('Firebase Hosting must rewrite /api/** to Cloud Run
 assert(releaseCheck.includes('.firebaserc projects.default must be the real Firebase project id'), 'release check should reject placeholder Firebase project ids');
 assert(releaseCheck.includes('firestore.rules must not use open development allow read/write rules'), 'release check should reject open Firestore rules');
 assert(releaseCheck.includes('Firebase API layer must expose required private endpoints'), 'release check should require Firebase private API endpoint contracts');
+assert(releaseCheck.includes('function checkRenderBlueprint()'), 'release check should validate the Render Docker Blueprint');
+assert(releaseCheck.includes('runtime: docker'), 'release check should require Render Docker runtime');
+assert(releaseCheck.includes('healthCheckPath: /health'), 'release check should require Render health checks');
+assert(releaseCheck.includes('autoDeployTrigger: checksPass'), 'release check should require Render deploys after CI checks pass');
+assert(releaseCheck.includes('renderYamlKeyUsesSyncFalse'), 'release check should verify Render secret env vars are sync:false');
+assert(releaseCheck.includes('render.yaml must not contain private gateway addresses or secret-like keys'), 'release check should reject private/secret Render Blueprint values');
+assert(renderYaml.includes('runtime: docker'), 'render.yaml should deploy the Docker runtime');
+assert(renderYaml.includes('dockerfilePath: ./Dockerfile'), 'render.yaml should build the repository Dockerfile');
+assert(renderYaml.includes('healthCheckPath: /health'), 'render.yaml should use the server health endpoint');
+assert(renderYaml.includes('autoDeployTrigger: checksPass'), 'render.yaml should wait for CI checks');
+[
+    'DB_HOST',
+    'DB_PASSWORD',
+    'SESSION_SECRET',
+    'ALLOWED_ORIGINS',
+    'KUGNUS_GATEWAY_BASE_URL',
+    'KUGNUS_GATEWAY_API_KEY',
+    'OPENAI_API_KEY',
+    'DUCKDUCKGO_API_KEY'
+].forEach(key => {
+    const blockPattern = new RegExp(`\\s*- key: ${key}\\n(?:\\s+(?!- key:)[^\\n]*\\n)*\\s+sync: false`);
+    assert(blockPattern.test(renderYaml), `render.yaml should prompt Render for ${key}`);
+});
+assert(readme.includes('Render/Docker deployment is described by `render.yaml`'), 'README should document the Render Blueprint path');
+assert(readme.includes('Deployment-specific values are intentionally `sync: false`'), 'README should explain Render secret env prompting');
+assert(readme.includes('KUGNUS_GATEWAY_BASE_URL` must be the public HTTPS gateway URL'), 'README should reject private KUGNUS gateway URLs for Render release');
 assert(!releaseCheck.includes('function openAiAliasLooksLikeKugnus'), 'release check should not treat OPENAI_* as KUGNUS');
 assert(!systemDoctor.includes('function openAiAliasLooksLikeKugnus'), 'system doctor should not treat OPENAI_* as KUGNUS');
 assert(systemDoctor.includes('if (strict && !releaseSummary.ok)'), 'strict release doctor should stop before slow/mutating checks when release preflight is blocked');

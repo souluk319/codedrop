@@ -146,6 +146,60 @@ const cases = [
         expectError: 'ALLOWED_ORIGINS must contain only public https origins'
     },
     {
+        name: 'render blueprint secrets must be prompted',
+        cwd: writeFixture({
+            'render.yaml': [
+                'services:',
+                '  - type: web',
+                '    name: codedrop',
+                '    runtime: node',
+                '    dockerfilePath: ./Dockerfile',
+                '    envVars:',
+                '      - key: NODE_ENV',
+                '        value: production',
+                '      - key: DEFAULT_CHAT_ENGINE',
+                '        value: kugnus',
+                '      - key: DB_HOST',
+                '        value: db.example.com',
+                '      - key: DB_USER',
+                '        sync: false',
+                '      - key: DB_PASSWORD',
+                '        value: committed-password',
+                '      - key: DB_NAME',
+                '        sync: false',
+                '      - key: SESSION_SECRET',
+                '        value: committed-secret',
+                '      - key: ALLOWED_ORIGINS',
+                '        sync: false',
+                '      - key: KUGNUS_GATEWAY_BASE_URL',
+                `        value: http://${['100', '99', '152', '52'].join('.')}:8790/v1`,
+                '      - key: KUGNUS_GATEWAY_API_KEY',
+                '        sync: false',
+                '      - key: KUGNUS_GATEWAY_MODEL',
+                '        value: gemma4:12b-it-qat',
+                '      - key: OPENAI_API_KEY',
+                '        sync: false',
+                '      - key: OPENAI_MODEL',
+                '        value: gpt-5.4-mini',
+                '      - key: DUCKDUCKGO_API_KEY',
+                '        sync: false'
+            ].join('\n')
+        }),
+        env: {
+            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
+            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
+            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat'
+        },
+        expectOk: false,
+        expectErrors: [
+            'render.yaml must use runtime: docker',
+            'render.yaml must probe /health',
+            'render.yaml should deploy only after CI checks pass',
+            'render.yaml must mark deployment-specific env keys sync:false',
+            'render.yaml must not contain private gateway addresses or secret-like keys'
+        ]
+    },
+    {
         name: 'firebase placeholder files are blocked by contract',
         cwd: writeFixture({
             'firebase.json': JSON.stringify({ hosting: { public: '.', rewrites: [{ source: '**', destination: '/index.html' }] } }, null, 2),

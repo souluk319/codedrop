@@ -228,6 +228,28 @@ GPT mini fallback
 
 KUGNUS routing must go through the configured gateway contract.
 
+Render/Docker deployment is described by `render.yaml` at the repository root.
+It builds the checked-in `Dockerfile`, probes `/health`, and waits for CI checks
+before auto-deploying. Deployment-specific values are intentionally `sync: false`
+so Render prompts for them instead of storing production URLs, DB credentials, or
+API keys in git.
+
+Before syncing the Render Blueprint, fill these in the Render environment UI:
+
+```text
+DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL
+SESSION_SECRET
+ALLOWED_ORIGINS
+PACK_ADMIN_NICKNAMES
+KUGNUS_GATEWAY_BASE_URL
+KUGNUS_GATEWAY_API_KEY
+OPENAI_API_KEY
+DUCKDUCKGO_API_KEY
+```
+
+`KUGNUS_GATEWAY_BASE_URL` must be the public HTTPS gateway URL, not a Tailscale,
+localhost, or direct Ollama address.
+
 Firebase migration target:
 
 ```text
