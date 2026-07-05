@@ -409,6 +409,16 @@ function chatCompletionsUrl(baseUrl, provider) {
     return `${openAiBase}/chat/completions`;
 }
 
+function safeLlmTargetUrlParts(url) {
+    if (process.env.NODE_ENV === "production" && !envFlag(process.env.LLM_TARGET_DIAGNOSTICS)) return undefined;
+    try {
+        const parsed = new URL(url);
+        return { host: parsed.host, path: parsed.pathname };
+    } catch {
+        return { host: "", path: "" };
+    }
+}
+
 function shouldUseOpenAiEnvForKugnus() {
     const baseUrl = (process.env.OPENAI_BASE_URL || "").trim();
     const model = (process.env.OPENAI_MODEL || "").trim();
@@ -1842,6 +1852,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
             provider: target.provider,
             route: target.route,
             model: target.model,
+            target: safeLlmTargetUrlParts(target.url),
             reason: answer || text.trim() ? "" : "Empty KUGNUS response"
         });
     } catch (err) {
@@ -1849,6 +1860,10 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
             ok: false,
             engine: "kugnus",
             label: "KUGNUS SERVER",
+            provider: target && target.provider,
+            route: target && target.route,
+            model: target && target.model,
+            target: target ? safeLlmTargetUrlParts(target.url) : undefined,
             reason: err.name === "AbortError" ? "KUGNUS health timeout" : err.message
         });
     } finally {

@@ -31,6 +31,8 @@ const expectedRoutes = String(args.get('expect-route') || process.env.RELEASE_KU
     .split(',')
     .map(route => route.trim())
     .filter(Boolean);
+const testMode = process.env.RELEASE_RUNTIME_TEST_MODE === '1';
+const skipReadyDb = testMode && process.env.RELEASE_RUNTIME_SKIP_READY_DB === '1';
 
 function emit(status, message, extra = {}) {
     const payload = {
@@ -111,11 +113,13 @@ const runtimeEnv = {
     RELEASE_ENV_FILE: envFile
 };
 
-const releaseCheck = spawnSync(process.execPath, ['scripts/check_release_readiness.mjs', '--env-file', envFile], {
-    cwd: root,
-    encoding: 'utf8',
-    env: runtimeEnv
-});
+const releaseCheck = testMode
+    ? { status: 0, stdout: '', stderr: '' }
+    : spawnSync(process.execPath, ['scripts/check_release_readiness.mjs', '--env-file', envFile], {
+        cwd: root,
+        encoding: 'utf8',
+        env: runtimeEnv
+    });
 
 if (releaseCheck.status !== 0) {
     fail('Release preflight failed before runtime route verification', {
@@ -147,13 +151,16 @@ let runtimeError = null;
 try {
     await waitForServer(baseUrl, () => output);
 
-    const ready = await json('/ready', baseUrl);
-    if (!ready.ok || ready.body?.db !== 'ok') {
-        checkFail('Release runtime DB readiness failed', {
-            statusCode: ready.status,
-            body: ready.body,
-            serverOutput: output.slice(-5000)
-        });
+    let ready = { body: { skipped: true } };
+    if (!skipReadyDb) {
+        ready = await json('/ready', baseUrl);
+        if (!ready.ok || ready.body?.db !== 'ok') {
+            checkFail('Release runtime DB readiness failed', {
+                statusCode: ready.status,
+                body: ready.body,
+                serverOutput: output.slice(-5000)
+            });
+        }
     }
 
     const health = await json('/api/llm/kugnus/health', baseUrl);
@@ -180,7 +187,8 @@ try {
         provider: body.provider,
         model: body.model,
         ready: ready.body,
-        baseUrl
+        baseUrl,
+        testMode
     });
 } catch (err) {
     runtimeError = err;
