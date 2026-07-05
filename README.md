@@ -89,6 +89,12 @@ npm run db:local:reset
 
 Use `.env.local.example` for local development and `.env.production.example` as the deployment checklist. Do not commit real `.env` or secret-filled production files.
 
+Generate the production session secret with:
+
+```bash
+npm run release:secret
+```
+
 Minimum local DB variables:
 
 ```env
@@ -201,6 +207,7 @@ npm run doctor:full     # Deep system doctor plus release preflight; BLOCKED unt
 npm run doctor:release  # Fail-fast doctor for release gates; exits non-zero on FAIL/BLOCKED
 npm run doctor:release:full
                        # Fail-fast release gate; runs slow Pack Maker E2E only after preflight passes
+npm run release:secret # Print a random SESSION_SECRET for deployment env
 npm run release:check  # Fail-fast release environment preflight
 npm run db:local:up    # Start local MySQL
 npm run db:local:down  # Stop local MySQL

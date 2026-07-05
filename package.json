@@ -24,6 +24,7 @@
     "verify:release-runtime-contract": "node scripts/verify_release_runtime_contract.mjs",
     "verify:release-runtime": "node scripts/verify_release_runtime_route.mjs",
     "audit:prod": "npm audit --omit=dev --audit-level=moderate",
+    "release:secret": "node scripts/generate_session_secret.mjs",
     "release:check": "node scripts/check_release_readiness.mjs",
     "db:local:up": "docker compose -f docker-compose.local.yml up -d",
     "db:local:down": "docker compose -f docker-compose.local.yml down",

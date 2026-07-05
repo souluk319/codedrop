@@ -208,14 +208,14 @@ function checkNodeRelease() {
     if (!has('DB_HOST') || !has('DB_USER') || !has('DB_PASSWORD') || !has('DB_NAME')) {
         addAction('Fill the production MySQL-compatible DB variables, or switch DEPLOY_TARGET=firebase after Firebase migration is implemented.');
     }
-    if (!has('SESSION_SECRET')) addAction('Set a long random SESSION_SECRET in the deployment environment.');
+    if (!has('SESSION_SECRET')) addAction('Generate a production SESSION_SECRET with npm run release:secret and set it in the deployment environment.');
     if (!has('ALLOWED_ORIGINS')) addAction('Set ALLOWED_ORIGINS to the exact deployed app origin.');
 
     if (has('SESSION_SECRET')) {
         const secret = value('SESSION_SECRET');
         if (secret.length < 32 || /local|dev|change|codedrop-local/i.test(secret)) {
             errors.push('SESSION_SECRET must be a long random production secret, not a local/dev placeholder');
-            addAction('Generate a new production SESSION_SECRET with at least 32 random characters.');
+            addAction('Generate a new production SESSION_SECRET with npm run release:secret and replace the placeholder.');
         }
     }
 

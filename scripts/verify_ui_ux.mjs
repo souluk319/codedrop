@@ -847,6 +847,9 @@ assert(server.includes('setHeaders: preventStaleUiCache'), 'JS assets should be 
 assert(server.includes('etag: false') && server.includes('lastModified: false'), 'JS static assets should not rely on stale validators during active QA');
 assert(systemDoctor.includes('acceptedEnv'), 'system doctor should explain the accepted KUGNUS gateway env shape');
 assert(systemDoctor.includes('GPT fallback only'), 'system doctor should distinguish GPT fallback env from KUGNUS gateway env');
+assert(packageJson.scripts['release:secret'] === 'node scripts/generate_session_secret.mjs', 'package scripts should expose release:secret');
+assert(fs.existsSync(path.join(root, 'scripts/generate_session_secret.mjs')), 'release secret generator should exist');
+assert(releaseCheck.includes('npm run release:secret'), 'release check should direct operators to the session secret generator');
 assert(localEnvExample.includes('SESSION_SECRET='), '.env.local.example should document SESSION_SECRET for stable sessions');
 assert(localEnvExample.includes('ALLOWED_ORIGINS='), '.env.local.example should document ALLOWED_ORIGINS for release preflight');
 assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example should document pack admin configuration');
@@ -854,6 +857,7 @@ assert(/(^|\n)KUGNUS_GATEWAY_BASE_URL=\s*(\n|$)/.test(localEnvExample), '.env.lo
 assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document the public KUGNUS gateway key');
 assert(productionEnvExample.includes('NODE_ENV=production'), '.env.production.example should be explicitly production-scoped');
 assert(productionEnvExample.includes('SESSION_SECRET='), '.env.production.example should require a session secret');
+assert(productionEnvExample.includes('npm run release:secret'), '.env.production.example should point to the session secret generator');
 assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://'), '.env.production.example should require public allowed origins');
 assert(productionEnvExample.includes('DB_SSL=true'), '.env.production.example should default production DB SSL on');
 assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.production.example should require the public KUGNUS gateway URL');
