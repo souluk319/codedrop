@@ -881,6 +881,10 @@ assert(readme.includes('https://www.kugnus.com/games/codedrop/'), 'README should
 assert(readme.includes('/games/codedrop/*  -> CodeDrop backend'), 'README should document the reverse proxy path for CodeDrop');
 assert(readme.includes('/api/*             -> CodeDrop backend'), 'README should document API proxy routing for subpath deploy');
 assert(readme.includes('ALLOWED_ORIGINS') && readme.includes('https://www.kugnus.com'), 'README should document the production allowed origin for kugnus.com');
+assert(verifyServerSmoke.includes('/games/codedrop/pack-maker'), 'server smoke should verify Pack Maker direct subpath refresh');
+assert(verifyServerSmoke.includes('/games/codedrop/ocp/dashboard'), 'server smoke should verify OCP dashboard direct subpath refresh');
+assert(verifyServerSmoke.includes('/games/codedrop/js/game.js'), 'server smoke should verify subpath JS asset serving');
+assert(verifyServerSmoke.includes('/games/codedrop/assets/red-hat-logo.svg'), 'server smoke should verify subpath asset serving');
 assert(game.includes("const CODEDROP_BASE_PATH = '/games/codedrop';"), 'client router should target /games/codedrop');
 assert(game.includes('function initAppRouter()'), 'client app router initializer is missing');
 assert(game.includes("packMaker: '/pack-maker'"), 'Pack Maker should have a browser route');

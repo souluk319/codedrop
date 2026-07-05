@@ -133,8 +133,25 @@ try {
     const root = await request('/');
     assert(root.status === 200 && root.text.includes('CodeDrop: Neon Cyberpunk'), '/ should serve the app shell');
     assertNoStore(root.headers, '/');
+    assert(root.text.includes('<base href="/games/codedrop/">'), '/ should include the deployment base href');
     assert(root.text.includes('id="pack-maker-screen"'), '/ should include the Pack Maker screen');
     assert(root.text.includes('id="keyboard-test-screen"'), '/ should include the Keyboard Test screen');
+
+    const subpathRoutes = [
+        '/games/codedrop/',
+        '/games/codedrop/pack-maker',
+        '/games/codedrop/key-test',
+        '/games/codedrop/ocp',
+        '/games/codedrop/ocp/dashboard',
+        '/games/codedrop/ocp/scenario'
+    ];
+    for (const path of subpathRoutes) {
+        const res = await request(path);
+        assert(res.status === 200, `${path} should serve the app shell for browser refresh/back-forward routes`);
+        assertNoStore(res.headers, path);
+        assert(res.text.includes('CodeDrop: Neon Cyberpunk'), `${path} should return index.html`);
+        assert(res.text.includes('<base href="/games/codedrop/">'), `${path} should preserve the deployment base href`);
+    }
 
     const localScripts = extractLocalScripts(root.text);
     const requiredScripts = [
@@ -163,9 +180,14 @@ try {
 
     const gameJs = await request('/js/game.js');
     assert(gameJs.status === 200 && gameJs.text.includes('CodeDrop - Cyberpunk Edition'), '/js/game.js should be public');
+    const subpathGameJs = await request('/games/codedrop/js/game.js');
+    assert(subpathGameJs.status === 200 && subpathGameJs.text.includes('CodeDrop - Cyberpunk Edition'), '/games/codedrop/js/game.js should be public');
+    assertNoStore(subpathGameJs.headers, '/games/codedrop/js/game.js');
 
     const asset = await request('/assets/red-hat-logo.svg');
     assert(asset.status === 200 && asset.text.includes('<svg'), 'red hat SVG should be public');
+    const subpathAsset = await request('/games/codedrop/assets/red-hat-logo.svg');
+    assert(subpathAsset.status === 200 && subpathAsset.text.includes('<svg'), 'red hat SVG should be public under /games/codedrop assets');
 
     const denied = ['/server.js', '/package.json', '/scripts/verify_db.js', '/.env'];
     for (const path of denied) {
@@ -244,7 +266,7 @@ try {
     console.log(JSON.stringify({
         port: PORT,
         server: 'ok',
-        publicAssets: ['/', ...localScripts, '/assets/red-hat-logo.svg'],
+        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg'],
         protectedPaths: denied.length,
         authSmoke: 'ok',
         learnChatSmoke: 'ok',
