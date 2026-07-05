@@ -25,7 +25,7 @@ const envPaths = envFiles
     .filter(file => fs.existsSync(file));
 if (envPaths.length) dotenv.config({ path: envPaths, override: Boolean(explicitEnvFile), quiet: true });
 
-const baseUrl = (valueArg.get('base-url') || process.env.CODEDROP_DOCTOR_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
+const baseUrl = (valueArg.get('base-url') || process.env.CODEDROP_DOCTOR_BASE_URL || 'http://127.0.0.1:3001').replace(/\/+$/, '');
 const deep = args.has('--deep');
 const packmaker = args.has('--packmaker');
 const strict = args.has('--strict');

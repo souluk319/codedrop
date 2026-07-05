@@ -649,6 +649,7 @@ assert(releaseCheck.includes("['.env.local', '.env']"), 'release check should lo
 assert(releaseCheck.includes('override: Boolean(explicitEnvFile)'), 'release check should let explicit env files override stale shell env');
 assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
 assert(systemDoctor.includes('override: Boolean(explicitEnvFile)'), 'system doctor should let explicit env files override stale shell env');
+assert(systemDoctor.includes("'http://127.0.0.1:3001'"), 'system doctor default should use 127.0.0.1 to avoid localhost resolver drift');
 assert(liveGatewayVerifier.includes("override: Boolean(args.get('env-file') || process.env.KUGNUS_GATEWAY_ENV_FILE)"), 'live KUGNUS verifier should let explicit env files override stale shell env');
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
 assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https origins'), 'release check should reject localhost/private release origins');
