@@ -728,9 +728,9 @@ function packMakerBriefResponse(message) {
     const korean = /[가-힣]/.test(message || "");
     if (korean) {
         return [
-            "팩 생성 요청이 아니어서 검색/생성을 시작하지 않았습니다.",
+            "됩니다. 다만 Pack Maker는 일반 대화보다 데이터팩 생성 요청에 맞춰져 있습니다.",
             "",
-            "Pack Maker에는 아래 4가지를 한 문장에 넣어주세요.",
+            "한 문장에 아래 4가지를 넣으면 KUGNUS SERVER가 검색 근거를 보고 초안을 만듭니다.",
             "- 도메인: 자동차 정비, EX280, 간호학, 회계 등",
             "- 언어: 한글 또는 영어",
             "- 개수: 10-120개",
@@ -741,7 +741,7 @@ function packMakerBriefResponse(message) {
     }
 
     return [
-        "I did not start search/generation because this is not a pack-making request.",
+        "Yes. Pack Maker is for data pack generation requests, not open-ended chat.",
         "",
         "Tell Pack Maker the domain, term language, item count, and pack name.",
         "Example: Make a Korean car-parts pack with 50 common auto repair terms."

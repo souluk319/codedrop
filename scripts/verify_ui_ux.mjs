@@ -479,6 +479,7 @@ assert(server.includes('app.post("/api/pack-maker/chat/stream", authUser'), 'pac
 assert(server.includes('function extractPackIntent'), 'pack maker should parse realistic natural-language pack requests');
 assert(server.includes('function isPackGenerationRequest'), 'pack maker should gate vague chat before starting search/generation');
 assert(server.includes('PACK BRIEF REQUIRED'), 'pack maker should answer vague prompts with a brief request instead of generating');
+assert(server.includes('됩니다. 다만 Pack Maker는 일반 대화보다 데이터팩 생성 요청에 맞춰져 있습니다.'), 'server-side Pack Maker brief answer should explain capability instead of sounding like a hard failure');
 assert(server.includes('requestedCount'), 'pack maker should track the requested item count');
 assert(server.includes('packMakerTokenBudget'), 'pack maker should scale LLM token budget from target item count');
 assert(server.includes('PACK_MAKER_BATCH_TIMEOUT_MS'), 'pack maker should bound each LLM batch so requests do not hang indefinitely');
