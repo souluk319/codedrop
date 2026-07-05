@@ -265,7 +265,9 @@ This intentionally fails if release env does not provide a public `https://` KUG
 DEPLOY_TARGET=firebase npm run release:check
 ```
 
-That target requires `firebase.json`, `.firebaserc`, `firestore.rules`, and a Functions/Cloud Run API layer for KUGNUS, DuckDuckGo, Pack Maker, and private keys.
+That target requires `firebase.json`, `.firebaserc` with the real Firebase
+project id, `firestore.rules`, and a Functions/Cloud Run API layer for KUGNUS,
+DuckDuckGo, Pack Maker, and private keys.
 
 When a release preflight fails, inspect the JSON `nextActions` field first. It is
 the deployment punch list, not just a generic error dump.

@@ -656,6 +656,7 @@ assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https ori
 assert(releaseCheck.includes('hasGenericOpenAiFallback'), 'release check should accept generic OPENAI_* as GPT fallback when it is not KUGNUS');
 assert(releaseCheck.includes('Generic OPENAI_MODEL fallback must stay gpt-5.4-mini'), 'release check should enforce mini-only generic GPT fallback');
 assert(releaseCheck.includes('Firebase Hosting must rewrite /api/** to Cloud Run or Functions'), 'release check should require Firebase API rewrites');
+assert(releaseCheck.includes('.firebaserc projects.default must be the real Firebase project id'), 'release check should reject placeholder Firebase project ids');
 assert(releaseCheck.includes('firestore.rules must not use open development allow read/write rules'), 'release check should reject open Firestore rules');
 assert(releaseCheck.includes('Firebase API layer must expose required private endpoints'), 'release check should require Firebase private API endpoint contracts');
 assert(!releaseCheck.includes('function openAiAliasLooksLikeKugnus'), 'release check should not treat OPENAI_* as KUGNUS');

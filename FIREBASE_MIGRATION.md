@@ -195,7 +195,8 @@ This must not pass until all of these exist:
 
 - `firebase.json`
 - Firebase Hosting rewrite from `/api/**` to Cloud Run or Functions
-- `.firebaserc`
+- `.firebaserc` with the real Firebase project id from Firebase Console, not a
+  placeholder such as `codedrop-test`
 - `firestore.rules`
 - Firestore rules for `profiles`, `officialScores`, and `customPacks` without
   open development `allow read, write: if true` style rules

@@ -169,6 +169,7 @@ const cases = [
         expectOk: false,
         expectErrors: [
             'Firebase Hosting must rewrite /api/** to Cloud Run or Functions',
+            '.firebaserc projects.default must be the real Firebase project id',
             'firestore.rules must not use open development allow read/write rules',
             'Firebase API layer must expose required private endpoints'
         ]
@@ -185,7 +186,7 @@ const cases = [
                     ]
                 }
             }, null, 2),
-            '.firebaserc': JSON.stringify({ projects: { default: 'codedrop-test' } }, null, 2),
+            '.firebaserc': JSON.stringify({ projects: { default: 'codedrop-prod-123' } }, null, 2),
             'firestore.rules': [
                 "rules_version = '2';",
                 'service cloud.firestore {',

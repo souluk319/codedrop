@@ -127,6 +127,23 @@ function checkFirestoreRules() {
     }
 }
 
+function checkFirebasercProject() {
+    const firebaserc = parseJsonIfExists('.firebaserc');
+    if (!firebaserc) return;
+
+    const projectId = String(firebaserc.projects?.default || '').trim();
+    if (!projectId) {
+        errors.push('.firebaserc must define projects.default with the real Firebase project id');
+        addAction('Set .firebaserc projects.default to the Firebase project id from Firebase Console.');
+        return;
+    }
+
+    if (/^(codedrop-test|codedrop-placeholder|firebase-demo|demo-|test-|example)/i.test(projectId)) {
+        errors.push(`.firebaserc projects.default must be the real Firebase project id, not placeholder "${projectId}"`);
+        addAction('Replace the placeholder .firebaserc project id with the real Firebase project id before Firebase deploy.');
+    }
+}
+
 function checkFirebaseApiLayerContract() {
     const apiFiles = [
         'functions/src/index.js',
@@ -241,6 +258,7 @@ function checkFirebaseRelease() {
     requireFile('.firebaserc');
     requireFile('firestore.rules');
     checkFirebaseHostingRewrite();
+    checkFirebasercProject();
     checkFirestoreRules();
     if (!fs.existsSync(path.join(root, 'firebase.json'))) {
         addAction('Create firebase.json after Firebase project setup; Hosting must rewrite /api/** to Cloud Run or Functions.');
