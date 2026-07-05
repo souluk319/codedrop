@@ -325,6 +325,7 @@ assert(server.includes('GPT_OPENAI_API_KEY'), 'learn chat proxy should support a
 assert(server.includes('GPT_OPENAI_MODEL'), 'learn chat proxy should support a GPT-specific mini fallback model override');
 assert(server.includes('shouldUseOpenAiEnvForKugnus'), 'KUGNUS gateway should support OpenAI-compatible env aliases safely');
 assert(server.includes('function openAiEnvKugnusAliasReady'), 'KUGNUS routing should have an explicit OPENAI_* gateway alias readiness helper');
+assert(server.includes('function openAiEnvKugnusAliasMissing'), 'KUGNUS routing should report incomplete OPENAI_* gateway aliases before trying direct routes');
 assert(server.includes('openAiEnvKugnusAliasReady() && route !== "gateway"'), 'KUGNUS OPENAI_* gateway alias should outrank direct LLM_BASE_URL when both are present');
 assert(server.includes('function kugnusRouteFromEnvName'), 'KUGNUS health should identify whether it uses gateway, direct, or OpenAI env alias routing');
 assert(server.includes('route: target.route'), 'KUGNUS health and stream meta should expose sanitized routing type');
@@ -547,6 +548,8 @@ assert(releaseRuntimeContract.includes("mode: 'kugnus-base-alias'"), 'release ru
 assert(releaseRuntimeContract.includes('LLM_BASE_URL=http://100.99.152.52:11434'), 'release runtime contract should prove OPENAI_* alias wins even when direct LLM_BASE_URL remains set');
 assert(releaseRuntimeContract.includes('stale-direct-key-must-not-win'), 'release runtime contract should prove OPENAI_* alias does not reuse stale direct/local keys');
 assert(kugnusGatewayContract.includes('stale-direct-key-must-not-win'), 'KUGNUS gateway contract should prove OPENAI_* alias keeps its own bearer key');
+assert(kugnusGatewayContract.includes('verifyIncompleteOpenAiEnvAliasDoesNotFallbackToDirect'), 'KUGNUS gateway contract should prove incomplete OPENAI_* aliases do not fall back to direct/local KUGNUS');
+assert(kugnusGatewayContract.includes('OPENAI_* KUGNUS alias is incomplete; missing OPENAI_API_KEY'), 'KUGNUS gateway contract should assert the exact missing OPENAI_API_KEY reason');
 assert(server.includes('apiKey = process.env.OPENAI_API_KEY || apiKey || "";'), 'OPENAI_* KUGNUS alias should prefer OPENAI_API_KEY over stale direct/local keys');
 assert(readme.includes('OPENAI_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the OpenAI-compatible KUGNUS gateway alias');
 assert(readme.includes('verify:release-runtime -- --env-file=.env.production'), 'README should document runtime route verification before release');

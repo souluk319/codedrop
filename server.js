@@ -446,10 +446,14 @@ function shouldUseOpenAiEnvForKugnus() {
     return false;
 }
 
+function openAiEnvKugnusAliasMissing() {
+    if (!shouldUseOpenAiEnvForKugnus()) return [];
+    return ["OPENAI_BASE_URL", "OPENAI_API_KEY", "OPENAI_MODEL"]
+        .filter(name => !String(process.env[name] || "").trim());
+}
+
 function openAiEnvKugnusAliasReady() {
-    return shouldUseOpenAiEnvForKugnus()
-        && Boolean((process.env.OPENAI_BASE_URL || "").trim())
-        && Boolean((process.env.OPENAI_MODEL || "").trim());
+    return shouldUseOpenAiEnvForKugnus() && openAiEnvKugnusAliasMissing().length === 0;
 }
 
 function kugnusRouteFromEnvName(envName, viaOpenAiAlias = false) {
@@ -504,6 +508,13 @@ function buildLlmTarget(engine = "kugnus") {
     let apiKey = keyEntry.value;
     let explicitProvider = process.env.KUGNUS_PROVIDER || process.env.LLM_PROVIDER || "";
     let route = kugnusRouteFromEnvName(baseEntry.name);
+    const openAiAliasMissing = openAiEnvKugnusAliasMissing();
+
+    if (openAiAliasMissing.length && route !== "gateway") {
+        const err = new Error(`OPENAI_* KUGNUS alias is incomplete; missing ${openAiAliasMissing.join(", ")}`);
+        err.status = 503;
+        throw err;
+    }
 
     if (openAiEnvKugnusAliasReady() && route !== "gateway") {
         baseUrl = process.env.OPENAI_BASE_URL || "";

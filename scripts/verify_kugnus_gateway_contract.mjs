@@ -212,6 +212,39 @@ async function verifyOpenAiEnvAlias(gateway) {
     }
 }
 
+async function verifyIncompleteOpenAiEnvAliasDoesNotFallbackToDirect(gateway) {
+    const app = await startCodeDrop({
+        KUGNUS_GATEWAY_BASE_URL: '',
+        KUGNUS_GATEWAY_API_KEY: '',
+        KUGNUS_MODEL: '',
+        KUGNUS_PROVIDER: '',
+        LLM_BASE_URL: gateway.baseUrl,
+        LLM_MODEL: KUGNUS_MODEL,
+        LLM_API_KEY: 'stale-direct-key-must-not-win',
+        LLM_PROVIDER: 'openai',
+        OPENAI_BASE_URL: gateway.baseUrl,
+        OPENAI_API_KEY: '',
+        OPENAI_MODEL: KUGNUS_MODEL
+    });
+
+    try {
+        const requestCountBefore = gateway.requests.length;
+        const health = await requestJson(`${app.base}/api/llm/kugnus/health`);
+        const newRequests = gateway.requests.slice(requestCountBefore);
+        assert(health.res.status === 200, 'incomplete OPENAI_* alias health should return stable HTTP 200 JSON');
+        assert(health.data.ok === false, 'incomplete OPENAI_* alias should not be considered healthy');
+        assert(String(health.data.reason || '').includes('OPENAI_* KUGNUS alias is incomplete; missing OPENAI_API_KEY'),
+            `incomplete OPENAI_* alias should report the missing key, got ${health.text}`);
+        assert(!newRequests.some(req => req.auth === 'Bearer stale-direct-key-must-not-win'),
+            'incomplete OPENAI_* alias must not silently fall back to stale direct/local KUGNUS keys');
+    } catch (err) {
+        err.message = `${err.message}\nServer output:\n${app.output()}`;
+        throw err;
+    } finally {
+        await app.close();
+    }
+}
+
 async function verifyKugnusBaseAlias(gateway) {
     const app = await startCodeDrop({
         KUGNUS_GATEWAY_BASE_URL: '',
@@ -245,13 +278,15 @@ try {
     await verifyExplicitKugnusGateway(gateway);
     await verifyKugnusBaseAlias(gateway);
     await verifyOpenAiEnvAlias(gateway);
+    await verifyIncompleteOpenAiEnvAliasDoesNotFallbackToDirect(gateway);
     console.log(JSON.stringify({
         gateway: 'ok',
         model: KUGNUS_MODEL,
         requests: gateway.requests.length,
         explicitKugnusGateway: 'ok',
         kugnusBaseAlias: 'ok',
-        openAiEnvAlias: 'ok'
+        openAiEnvAlias: 'ok',
+        incompleteOpenAiEnvAlias: 'blocked'
     }, null, 2));
 } finally {
     await gateway.close();
