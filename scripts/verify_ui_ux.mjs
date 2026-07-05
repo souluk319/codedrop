@@ -12,6 +12,7 @@ const dockerCompose = read('docker-compose.local.yml');
 const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
 const productionEnvExample = read('.env.production.example');
+const verifyWorkflow = read('.github/workflows/verify.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 function read(file) {
@@ -509,6 +510,9 @@ assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugn
 assert(fs.existsSync(path.join(root, 'scripts/system_doctor.mjs')), 'system doctor script is missing');
 assert(packageJson.scripts?.doctor === 'node scripts/system_doctor.mjs', 'package should expose the system doctor command');
 assert(packageJson.scripts?.['doctor:deep'] === 'node scripts/system_doctor.mjs --deep', 'package should expose the deep system doctor command');
+assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');
+assert(verifyWorkflow.includes('npm run verify:db'), 'CI workflow should run database E2E against local MySQL');
+assert(verifyWorkflow.includes('npm run doctor'), 'CI workflow should publish the system doctor report');
 assert(localEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'local env example should document realistic Pack Maker timeout');
 assert(localEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=90000'), 'local env example should document realistic Pack Maker batch timeout');
 assert(productionEnvExample.includes('PACK_MAKER_TIMEOUT_MS=300000'), 'production env example should document realistic Pack Maker timeout');
