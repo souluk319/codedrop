@@ -5149,25 +5149,42 @@
                 flex-direction: column;
                 justify-content: flex-start;
                 gap: 12px;
+                height: 100%;
+                overflow: hidden;
+                padding: 18px 0 calc(var(--corner-widget-size) + var(--corner-widget-offset) + 18px);
             }
 
             #learn-screen.learn-session-active #learn-card {
                 width: min(640px, 92vw);
+                flex: 0 0 min(260px, 38vh);
+                height: auto;
+                max-height: min(260px, 38vh);
                 padding: 24px 22px;
+                overflow-y: auto;
             }
 
             .learn-chat-panel {
                 width: min(640px, 92vw);
+                flex: 1 1 0;
                 height: auto;
-                max-height: 360px;
+                min-height: 0;
+                max-height: none;
+                gap: 8px;
+                padding: 14px;
+                overflow: hidden;
             }
 
             .learn-chat-log-wrap {
-                min-height: 150px;
+                min-height: 0;
             }
 
             .learn-chat-log {
-                max-height: 210px;
+                max-height: none;
+            }
+
+            #learn-chat-input {
+                min-height: 52px;
+                max-height: 82px;
             }
 
             .learn-step-nav {
