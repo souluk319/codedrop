@@ -116,6 +116,34 @@ try {
     assert(leaderboard.status === 200 && Array.isArray(leaderboardRows), `custom leaderboard failed: ${leaderboard.status} ${leaderboard.text}`);
     assert(leaderboardRows.some(row => row.score === 123), 'custom leaderboard did not include submitted score');
 
+    const officialBefore = await request(base, '/leaderboard?difficulty=normal&pack=python');
+    assert(officialBefore.status === 200 && Array.isArray(officialBefore.body.top10),
+        `official leaderboard failed after custom score: ${officialBefore.status} ${officialBefore.text}`);
+    assert(!officialBefore.body.top10.some(row => row.nickname === nickname && row.score === 123),
+        'custom pack score leaked into the official Python leaderboard');
+
+    const officialScore = await request(base, '/submit', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ score: 222, wpm: 11, accuracy: 91, difficulty: 'normal', pack: 'python' })
+    });
+    assert(officialScore.status === 200, `official score submit failed: ${officialScore.status} ${officialScore.text}`);
+
+    const officialAfter = await request(base, '/leaderboard?difficulty=normal&pack=python');
+    assert(officialAfter.status === 200 && Array.isArray(officialAfter.body.top10),
+        `official leaderboard failed after official score: ${officialAfter.status} ${officialAfter.text}`);
+    assert(officialAfter.body.top10.some(row => row.nickname === nickname && row.score === 222 && row.pack === 'python'),
+        'official leaderboard did not include the official Python score');
+
+    const customAfterOfficial = await request(base, `/api/packs/${packId}/leaderboard?difficulty=normal`, {
+        headers: { Authorization: `Bearer ${issuedToken}` }
+    });
+    const customAfterRows = Array.isArray(customAfterOfficial.body) ? customAfterOfficial.body : customAfterOfficial.body.top10;
+    assert(customAfterOfficial.status === 200 && Array.isArray(customAfterRows),
+        `custom leaderboard failed after official score: ${customAfterOfficial.status} ${customAfterOfficial.text}`);
+    assert(!customAfterRows.some(row => row.score === 222),
+        'official score leaked into the custom pack leaderboard');
+
     const withdraw = await request(base, '/withdraw', {
         method: 'POST',
         headers: authHeaders,
@@ -144,6 +172,8 @@ try {
             'custom pack save',
             'custom score',
             'custom leaderboard',
+            'custom score excluded from official leaderboard',
+            'official score excluded from custom leaderboard',
             'withdraw custom cleanup',
             'old token revoked'
         ]
