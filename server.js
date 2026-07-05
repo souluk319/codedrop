@@ -377,8 +377,7 @@ function learnContextMessage(context) {
     return `현재 학습 화면 컨텍스트:\n${lines.join("\n")}`;
 }
 
-function inferLlmProvider(baseUrl, explicitProvider) {
-    if (explicitProvider) return explicitProvider.toLowerCase();
+function inferLlmProvider(baseUrl) {
     if (/ollama|:11434|\/api\/chat|\/api\/generate/i.test(baseUrl)) return "ollama";
     return "openai";
 }
@@ -440,7 +439,6 @@ function buildLlmTarget(engine = "kugnus") {
     let baseUrl = baseEntry.value;
     let model = modelEntry.value;
     let apiKey = keyEntry.value;
-    let explicitProvider = process.env.KUGNUS_PROVIDER || "openai";
     let route = kugnusRouteFromEnvName(baseEntry.name);
 
     baseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
@@ -452,7 +450,7 @@ function buildLlmTarget(engine = "kugnus") {
         throw err;
     }
 
-    const provider = inferLlmProvider(baseUrl, explicitProvider);
+    const provider = inferLlmProvider(baseUrl);
     return {
         engine: "kugnus",
         label: "KUGNUS SERVER",

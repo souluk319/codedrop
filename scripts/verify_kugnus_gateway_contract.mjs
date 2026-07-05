@@ -143,7 +143,6 @@ async function verifyExplicitKugnusGateway(gateway) {
         KUGNUS_GATEWAY_BASE_URL: gateway.baseUrl,
         KUGNUS_GATEWAY_API_KEY: 'fake-kugnus-key',
         KUGNUS_GATEWAY_MODEL: KUGNUS_MODEL,
-        KUGNUS_PROVIDER: 'openai',
         OPENAI_API_KEY: 'fake-gpt-fallback-key',
         OPENAI_MODEL: 'gpt-5.4-mini',
         LLM_PROVIDER: ''
@@ -184,7 +183,6 @@ async function verifyOpenAiEnvDoesNotConfigureKugnus(gateway) {
         KUGNUS_GATEWAY_BASE_URL: '',
         KUGNUS_GATEWAY_API_KEY: '',
         KUGNUS_GATEWAY_MODEL: '',
-        KUGNUS_PROVIDER: '',
         LLM_API_KEY: 'stale-direct-key-must-not-win',
         LOCAL_LLM_API_KEY: 'stale-local-key-must-not-win',
         LLM_PROVIDER: '',
@@ -216,7 +214,6 @@ async function verifyCanonicalGatewayRequired(gateway) {
         KUGNUS_GATEWAY_BASE_URL: '',
         KUGNUS_GATEWAY_API_KEY: '',
         KUGNUS_GATEWAY_MODEL: '',
-        KUGNUS_PROVIDER: '',
         LLM_API_KEY: 'stale-direct-key-must-not-win',
         LLM_PROVIDER: 'openai',
         OPENAI_API_KEY: '',

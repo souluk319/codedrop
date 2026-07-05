@@ -74,7 +74,6 @@ function writeEnvFile(gateway) {
         `KUGNUS_GATEWAY_BASE_URL=${gateway.baseUrl}`,
         'KUGNUS_GATEWAY_API_KEY=fake-release-runtime-key',
         `KUGNUS_GATEWAY_MODEL=${KUGNUS_MODEL}`,
-        'KUGNUS_PROVIDER=openai',
         'KUGNUS_HEALTH_TIMEOUT_MS=5000',
         'DB_HOST=release-runtime-test',
         'DB_USER=release-runtime-test',
