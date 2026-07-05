@@ -76,10 +76,11 @@ function extractAnswer(data) {
     return String(choice?.message?.content || choice?.text || '').trim();
 }
 
-const useOpenAiAlias = !value('KUGNUS_GATEWAY_BASE_URL') && openAiAliasLooksLikeKugnus();
-const baseUrl = value('KUGNUS_GATEWAY_BASE_URL') || value('KUGNUS_OPENAI_BASE_URL') || (useOpenAiAlias ? value('OPENAI_BASE_URL') : '');
-const apiKey = value('KUGNUS_GATEWAY_API_KEY') || value('KUGNUS_OPENAI_API_KEY') || (useOpenAiAlias ? value('OPENAI_API_KEY') : '');
-const model = value('KUGNUS_GATEWAY_MODEL') || value('KUGNUS_MODEL') || value('KUGNUS_OPENAI_MODEL') || (useOpenAiAlias ? value('OPENAI_MODEL') : '');
+const hasExplicitGatewayBase = Boolean(value('KUGNUS_GATEWAY_BASE_URL') || value('KUGNUS_BASE_URL') || value('KUGNUS_OPENAI_BASE_URL') || value('KUGNUS_LLM_BASE_URL'));
+const useOpenAiAlias = !hasExplicitGatewayBase && openAiAliasLooksLikeKugnus();
+const baseUrl = value('KUGNUS_GATEWAY_BASE_URL') || value('KUGNUS_BASE_URL') || value('KUGNUS_OPENAI_BASE_URL') || value('KUGNUS_LLM_BASE_URL') || (useOpenAiAlias ? value('OPENAI_BASE_URL') : '');
+const apiKey = value('KUGNUS_GATEWAY_API_KEY') || value('KUGNUS_API_KEY') || value('KUGNUS_OPENAI_API_KEY') || value('KUGNUS_LLM_API_KEY') || (useOpenAiAlias ? value('OPENAI_API_KEY') : '');
+const model = value('KUGNUS_GATEWAY_MODEL') || value('KUGNUS_MODEL') || value('KUGNUS_OPENAI_MODEL') || value('KUGNUS_LLM_MODEL') || (useOpenAiAlias ? value('OPENAI_MODEL') : '');
 const timeoutMs = Math.max(3000, Math.min(Number(args.get('timeout-ms') || process.env.KUGNUS_GATEWAY_LIVE_TIMEOUT_MS || 20_000), 60_000));
 const envStyle = useOpenAiAlias ? 'openai-env-alias' : 'kugnus-gateway';
 const expectedRuntimeRoute = useOpenAiAlias ? 'openai-env-alias' : 'gateway';

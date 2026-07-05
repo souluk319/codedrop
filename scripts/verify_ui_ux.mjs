@@ -528,6 +528,7 @@ const releaseRuntimeContract = read('scripts/verify_release_runtime_contract.mjs
 const readme = read('README.md');
 assert(liveGatewayVerifier.includes("const envStyle = useOpenAiAlias ? 'openai-env-alias' : 'kugnus-gateway';"), 'live gateway verifier should report whether explicit gateway or OPENAI alias env is active');
 assert(liveGatewayVerifier.includes("const expectedRuntimeRoute = useOpenAiAlias ? 'openai-env-alias' : 'gateway';"), 'live gateway verifier should print the runtime route expected from the selected env style');
+assert(liveGatewayVerifier.includes("value('KUGNUS_BASE_URL')"), 'live gateway verifier should accept KUGNUS_BASE_URL as a gateway alias');
 assert(liveGatewayVerifier.includes('function observedOpenAiEnv'), 'live gateway verifier should explain why generic OPENAI_* env is or is not a KUGNUS alias');
 assert(liveGatewayVerifier.includes('not a KUGNUS gateway alias'), 'live gateway verifier should distinguish GPT fallback env from KUGNUS gateway alias env');
 assert(releaseReadinessMatrix.includes('incomplete OPENAI_* KUGNUS alias is blocked'), 'release readiness matrix should cover incomplete OPENAI_* aliases');
@@ -541,6 +542,7 @@ assert(releaseRuntimeVerifier.includes('Release runtime is using the wrong KUGNU
 assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_TEST_MODE'), 'release runtime contract should use explicit test mode');
 assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_SKIP_READY_DB'), 'release runtime contract should skip DB only in explicit test mode');
 assert(releaseRuntimeContract.includes("mode: 'openai-alias'"), 'release runtime contract should verify OPENAI_* KUGNUS alias routing');
+assert(releaseRuntimeContract.includes("mode: 'kugnus-base-alias'"), 'release runtime contract should verify KUGNUS_BASE_URL alias routing');
 assert(releaseRuntimeContract.includes('LLM_BASE_URL=http://100.99.152.52:11434'), 'release runtime contract should prove OPENAI_* alias wins even when direct LLM_BASE_URL remains set');
 assert(readme.includes('OPENAI_BASE_URL=https://llm.yourdomain.com/v1'), 'README should document the OpenAI-compatible KUGNUS gateway alias');
 assert(readme.includes('verify:release-runtime -- --env-file=.env.production'), 'README should document runtime route verification before release');
@@ -565,7 +567,7 @@ assert(releaseCheck.includes('Generic OPENAI_MODEL fallback must stay gpt-5.4-mi
 assert(systemDoctor.includes('function openAiAliasLooksLikeKugnus'), 'system doctor should share KUGNUS OPENAI_* alias detection');
 assert(systemDoctor.includes('openAiGatewayAliasMissing'), 'system doctor should detect incomplete OPENAI_* KUGNUS gateway aliases');
 assert(systemDoctor.includes('OPENAI_* KUGNUS alias incomplete'), 'system doctor should clearly report incomplete OPENAI_* KUGNUS aliases');
-assert(systemDoctor.includes("gatewayMode: explicitGatewayReady ? 'KUGNUS_GATEWAY_*' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : '')"), 'system doctor should report OPENAI_* KUGNUS gateway alias as gateway-ready');
+assert(systemDoctor.includes("gatewayMode: explicitGatewayReady ? 'KUGNUS gateway env' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : '')"), 'system doctor should report KUGNUS and OPENAI gateway aliases as gateway-ready');
 assert(systemDoctor.includes('expectedKugnusRoutes'), 'system doctor should know which runtime KUGNUS route the configured env expects');
 assert(systemDoctor.includes("expectedRoutes.length && !expectedRoutes.includes(body.route)"), 'system doctor should block when running server does not use configured KUGNUS gateway route');
 assert(verifyWorkflow.includes('npm run verify'), 'CI workflow should run the main verification suite');

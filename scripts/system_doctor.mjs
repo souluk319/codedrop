@@ -45,6 +45,35 @@ function hasAnyEnv(names) {
     return names.some(hasEnv);
 }
 
+function firstEnv(names) {
+    for (const name of names) {
+        const current = envValue(name);
+        if (current) return current;
+    }
+    return '';
+}
+
+const KUGNUS_GATEWAY_BASE_NAMES = [
+    'KUGNUS_GATEWAY_BASE_URL',
+    'KUGNUS_BASE_URL',
+    'KUGNUS_OPENAI_BASE_URL',
+    'KUGNUS_LLM_BASE_URL'
+];
+
+const KUGNUS_GATEWAY_KEY_NAMES = [
+    'KUGNUS_GATEWAY_API_KEY',
+    'KUGNUS_API_KEY',
+    'KUGNUS_OPENAI_API_KEY',
+    'KUGNUS_LLM_API_KEY'
+];
+
+const KUGNUS_GATEWAY_MODEL_NAMES = [
+    'KUGNUS_GATEWAY_MODEL',
+    'KUGNUS_MODEL',
+    'KUGNUS_OPENAI_MODEL',
+    'KUGNUS_LLM_MODEL'
+];
+
 function modelLooksLikeKugnus(model) {
     return /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(model);
 }
@@ -148,7 +177,7 @@ async function httpJson(pathname) {
 }
 
 function envPresence() {
-    const explicitGatewayReady = Boolean(envValue('KUGNUS_GATEWAY_BASE_URL') && envValue('KUGNUS_GATEWAY_API_KEY') && (envValue('KUGNUS_GATEWAY_MODEL') || envValue('KUGNUS_MODEL')));
+    const explicitGatewayReady = Boolean(firstEnv(KUGNUS_GATEWAY_BASE_NAMES) && firstEnv(KUGNUS_GATEWAY_KEY_NAMES) && firstEnv(KUGNUS_GATEWAY_MODEL_NAMES));
     const openAiGatewayAliasIntent = Boolean((envValue('OPENAI_BASE_URL') || envValue('OPENAI_API_KEY') || envValue('OPENAI_MODEL')) && openAiAliasLooksLikeKugnus());
     const openAiGatewayAliasMissing = ['OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL'].filter(name => openAiGatewayAliasIntent && !envValue(name));
     const openAiGatewayAliasReady = openAiGatewayAliasIntent && openAiGatewayAliasMissing.length === 0;
@@ -166,7 +195,7 @@ function envPresence() {
         gatewayReady,
         directReady,
         dbReady,
-        gatewayMode: explicitGatewayReady ? 'KUGNUS_GATEWAY_*' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : ''),
+        gatewayMode: explicitGatewayReady ? 'KUGNUS gateway env' : (openAiGatewayAliasReady ? 'OPENAI_* alias' : ''),
         gatewayIssue: openAiGatewayAliasMissing.length ? `OPENAI_* KUGNUS alias incomplete; missing ${openAiGatewayAliasMissing.join(', ')}` : '',
         openAiBaseConfigured: Boolean(envValue('OPENAI_BASE_URL')),
         openAiKeyConfigured: Boolean(envValue('OPENAI_API_KEY')),
@@ -197,6 +226,7 @@ addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
     detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS release gateway missing; direct LLM_BASE_URL is dev-only'),
     acceptedEnv: [
         'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL',
+        'KUGNUS_BASE_URL + KUGNUS_API_KEY + KUGNUS_MODEL',
         'OPENAI_BASE_URL + OPENAI_API_KEY + OPENAI_MODEL pointing at the public KUGNUS gateway'
     ],
     currentOpenAiEnv: {

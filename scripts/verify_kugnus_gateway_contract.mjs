@@ -208,15 +208,45 @@ async function verifyOpenAiEnvAlias(gateway) {
     }
 }
 
+async function verifyKugnusBaseAlias(gateway) {
+    const app = await startCodeDrop({
+        KUGNUS_GATEWAY_BASE_URL: '',
+        KUGNUS_GATEWAY_API_KEY: '',
+        KUGNUS_BASE_URL: gateway.baseUrl,
+        KUGNUS_API_KEY: 'fake-kugnus-base-key',
+        KUGNUS_MODEL,
+        KUGNUS_PROVIDER: 'openai',
+        LLM_BASE_URL: '',
+        LLM_MODEL: '',
+        LLM_PROVIDER: ''
+    });
+
+    try {
+        const health = await requestJson(`${app.base}/api/llm/kugnus/health`);
+        assert(health.data.ok === true, 'KUGNUS_BASE_URL alias should work for KUGNUS gateway');
+        assert(health.data.provider === 'openai', 'KUGNUS_BASE_URL alias should keep OpenAI-compatible provider');
+        assert(health.data.route === 'gateway', 'KUGNUS_BASE_URL alias health should expose gateway routing');
+        assert(health.data.model === KUGNUS_MODEL, 'KUGNUS_BASE_URL alias should use KUGNUS model');
+        assert(gateway.requests.some(req => req.auth === 'Bearer fake-kugnus-base-key'), 'KUGNUS_BASE_URL alias should pass its bearer key');
+    } catch (err) {
+        err.message = `${err.message}\nServer output:\n${app.output()}`;
+        throw err;
+    } finally {
+        await app.close();
+    }
+}
+
 const gateway = await startFakeGateway();
 try {
     await verifyExplicitKugnusGateway(gateway);
+    await verifyKugnusBaseAlias(gateway);
     await verifyOpenAiEnvAlias(gateway);
     console.log(JSON.stringify({
         gateway: 'ok',
         model: KUGNUS_MODEL,
         requests: gateway.requests.length,
         explicitKugnusGateway: 'ok',
+        kugnusBaseAlias: 'ok',
         openAiEnvAlias: 'ok'
     }, null, 2));
 } finally {

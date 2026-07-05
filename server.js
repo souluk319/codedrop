@@ -455,7 +455,9 @@ function openAiEnvKugnusAliasReady() {
 function kugnusRouteFromEnvName(envName, viaOpenAiAlias = false) {
     if (viaOpenAiAlias) return "openai-env-alias";
     if (envName === "KUGNUS_GATEWAY_BASE_URL") return "gateway";
+    if (envName === "KUGNUS_BASE_URL") return "gateway";
     if (envName === "KUGNUS_OPENAI_BASE_URL") return "gateway";
+    if (envName === "KUGNUS_LLM_BASE_URL") return "gateway";
     if (envName === "LLM_BASE_URL" || envName === "LLM_ENDPOINT") return "direct";
     if (envName) return "kugnus-env";
     return "unknown";

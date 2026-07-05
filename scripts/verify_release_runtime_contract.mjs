@@ -76,6 +76,12 @@ function writeEnvFile(gateway, mode = 'gateway') {
             'LLM_BASE_URL=http://100.99.152.52:11434',
             `LLM_MODEL=${KUGNUS_MODEL}`
         ]
+        : mode === 'kugnus-base-alias'
+            ? [
+                `KUGNUS_BASE_URL=${gateway.baseUrl}`,
+                'KUGNUS_API_KEY=fake-release-runtime-key',
+                `KUGNUS_MODEL=${KUGNUS_MODEL}`
+            ]
         : [
             `KUGNUS_GATEWAY_BASE_URL=${gateway.baseUrl}`,
             'KUGNUS_GATEWAY_API_KEY=fake-release-runtime-key',
@@ -131,6 +137,7 @@ async function runVerifier(envFile, expectedRoute) {
 const gateway = await startFakeGateway();
 const envFiles = [
     { mode: 'gateway', expectedRoute: 'gateway', file: writeEnvFile(gateway, 'gateway') },
+    { mode: 'kugnus-base-alias', expectedRoute: 'gateway', file: writeEnvFile(gateway, 'kugnus-base-alias') },
     { mode: 'openai-alias', expectedRoute: 'openai-env-alias', file: writeEnvFile(gateway, 'openai-alias') }
 ];
 

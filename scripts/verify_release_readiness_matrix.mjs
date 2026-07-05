@@ -18,6 +18,14 @@ const CLEAN_ENV_NAMES = [
     'KUGNUS_GATEWAY_API_KEY',
     'KUGNUS_GATEWAY_MODEL',
     'KUGNUS_MODEL',
+    'KUGNUS_BASE_URL',
+    'KUGNUS_API_KEY',
+    'KUGNUS_OPENAI_BASE_URL',
+    'KUGNUS_OPENAI_API_KEY',
+    'KUGNUS_OPENAI_MODEL',
+    'KUGNUS_LLM_BASE_URL',
+    'KUGNUS_LLM_API_KEY',
+    'KUGNUS_LLM_MODEL',
     'OPENAI_BASE_URL',
     'OPENAI_API_KEY',
     'OPENAI_MODEL',
@@ -75,6 +83,15 @@ const cases = [
             KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
             KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
             KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat'
+        },
+        expectOk: true
+    },
+    {
+        name: 'KUGNUS_BASE_URL alias passes',
+        env: {
+            KUGNUS_BASE_URL: 'https://llm.example.com/v1',
+            KUGNUS_API_KEY: 'kugnus-key',
+            KUGNUS_MODEL: 'gemma4:12b-it-qat'
         },
         expectOk: true
     },

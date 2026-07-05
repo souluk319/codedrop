@@ -82,6 +82,27 @@ const GPT_OPENAI_MODEL_NAMES = [
     'GPT5_4_MINI_MODEL'
 ];
 
+const KUGNUS_GATEWAY_BASE_NAMES = [
+    'KUGNUS_GATEWAY_BASE_URL',
+    'KUGNUS_BASE_URL',
+    'KUGNUS_OPENAI_BASE_URL',
+    'KUGNUS_LLM_BASE_URL'
+];
+
+const KUGNUS_GATEWAY_KEY_NAMES = [
+    'KUGNUS_GATEWAY_API_KEY',
+    'KUGNUS_API_KEY',
+    'KUGNUS_OPENAI_API_KEY',
+    'KUGNUS_LLM_API_KEY'
+];
+
+const KUGNUS_GATEWAY_MODEL_NAMES = [
+    'KUGNUS_GATEWAY_MODEL',
+    'KUGNUS_MODEL',
+    'KUGNUS_OPENAI_MODEL',
+    'KUGNUS_LLM_MODEL'
+];
+
 function modelLooksLikeKugnus(model) {
     return /gemma|kugnus|ollama|llama|qwen|mistral|local/i.test(model);
 }
@@ -105,9 +126,9 @@ function checkCommon() {
         errors.push(`DEFAULT_CHAT_ENGINE must be kugnus for release, got ${defaultEngine}`);
     }
 
-    const hasExplicitGateway = has('KUGNUS_GATEWAY_BASE_URL')
-        && has('KUGNUS_GATEWAY_API_KEY')
-        && (has('KUGNUS_GATEWAY_MODEL') || has('KUGNUS_MODEL'));
+    const hasExplicitGateway = hasAny(KUGNUS_GATEWAY_BASE_NAMES)
+        && hasAny(KUGNUS_GATEWAY_KEY_NAMES)
+        && hasAny(KUGNUS_GATEWAY_MODEL_NAMES);
     const openAiAliasIntent = (has('OPENAI_BASE_URL') || has('OPENAI_API_KEY') || has('OPENAI_MODEL')) && openAiAliasLooksLikeKugnus();
     const openAiAliasMissing = ['OPENAI_BASE_URL', 'OPENAI_API_KEY', 'OPENAI_MODEL'].filter(name => openAiAliasIntent && !has(name));
     const hasOpenAiAlias = openAiAliasIntent && openAiAliasMissing.length === 0;
@@ -118,12 +139,12 @@ function checkCommon() {
     }
 
     if (!hasExplicitGateway && !hasOpenAiAlias) {
-        errors.push('KUGNUS release requires KUGNUS_GATEWAY_* or OPENAI_* alias with local KUGNUS model');
-        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat in the deployment environment.');
+        errors.push('KUGNUS release requires KUGNUS gateway env or OPENAI_* alias with local KUGNUS model');
+        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat in the deployment environment. KUGNUS_BASE_URL/KUGNUS_API_KEY/KUGNUS_MODEL are also accepted aliases.');
         addAction('After setting gateway env, run npm run verify:kugnus-live -- --env-file=<release-env-file> and require route=gateway.');
     }
 
-    const gatewayBase = value('KUGNUS_GATEWAY_BASE_URL') || (hasOpenAiAlias ? value('OPENAI_BASE_URL') : '');
+    const gatewayBase = firstValue(KUGNUS_GATEWAY_BASE_NAMES) || (hasOpenAiAlias ? value('OPENAI_BASE_URL') : '');
     if (gatewayBase && !publicUrlLike(gatewayBase)) {
         errors.push(`KUGNUS release gateway must be public https URL, got ${gatewayBase}`);
         addAction('Use the public KUGNUS gateway URL for release; do not deploy localhost, private IP, Tailscale, or direct Ollama URLs.');
@@ -132,7 +153,7 @@ function checkCommon() {
 
     if (has('LLM_BASE_URL') && process.env.ALLOW_DIRECT_KUGNUS !== '1') {
         errors.push('LLM_BASE_URL direct KUGNUS endpoint is local/dev only; unset it for release or set ALLOW_DIRECT_KUGNUS=1 intentionally');
-        addAction('Unset LLM_BASE_URL for release after KUGNUS_GATEWAY_* is configured.');
+        addAction('Unset LLM_BASE_URL for release after KUGNUS gateway env is configured.');
     }
 
     const hasDedicatedGptFallback = hasAny(GPT_OPENAI_KEY_NAMES);

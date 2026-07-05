@@ -135,11 +135,11 @@ The server rejects non-mini OpenAI models for chat fallback. Keep high-end model
 The server resolves KUGNUS in this order:
 
 1. `KUGNUS_GATEWAY_BASE_URL` / `KUGNUS_GATEWAY_API_KEY` / `KUGNUS_GATEWAY_MODEL`
-2. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` when the model name looks like a KUGNUS/local model or `KUGNUS_USE_OPENAI_ENV=1`.
-3. Other KUGNUS-prefixed aliases.
+2. `KUGNUS_BASE_URL` / `KUGNUS_API_KEY` / `KUGNUS_MODEL` and other KUGNUS-prefixed gateway aliases.
+3. `OPENAI_BASE_URL` / `OPENAI_API_KEY` / `OPENAI_MODEL` when the model name looks like a KUGNUS/local model or `KUGNUS_USE_OPENAI_ENV=1`.
 4. `LLM_BASE_URL` / `LLM_MODEL` direct Ollama-compatible local server.
 
-For deployment, prefer the explicit `KUGNUS_GATEWAY_*` variables. If you use the OpenAI-compatible gateway alias from `local-llm-lab`, keep the full trio together:
+For deployment, prefer the explicit `KUGNUS_GATEWAY_*` variables. `KUGNUS_BASE_URL` / `KUGNUS_API_KEY` / `KUGNUS_MODEL` is accepted as a shorter alias. If you use the OpenAI-compatible gateway alias from `local-llm-lab`, keep the full trio together:
 
 ```env
 OPENAI_BASE_URL=https://llm.yourdomain.com/v1
@@ -149,9 +149,9 @@ OPENAI_MODEL=gemma4:12b-it-qat
 
 When that alias is complete, the server intentionally routes KUGNUS through the alias even if a local `LLM_BASE_URL` is still present. Release checks still block direct `LLM_BASE_URL`; remove it from production env after gateway verification.
 
-`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves both explicit `KUGNUS_GATEWAY_*` configuration and the `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias path.
+`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which starts a fake OpenAI-compatible KUGNUS gateway and proves explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, and `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias paths.
 
-After real gateway env values are present, run a live gateway check before release. The verifier accepts the explicit `KUGNUS_GATEWAY_*` variables, or a safe `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias that does not point at `api.openai.com`:
+After real gateway env values are present, run a live gateway check before release. The verifier accepts explicit `KUGNUS_GATEWAY_*`, `KUGNUS_BASE_URL` alias, or a safe `OPENAI_BASE_URL`/`OPENAI_API_KEY`/local-model alias that does not point at `api.openai.com`:
 
 ```bash
 npm run verify:kugnus-live -- --env-file=.env.production
