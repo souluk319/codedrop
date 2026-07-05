@@ -1,4 +1,4 @@
-import { spawnSync } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -107,6 +107,72 @@ function command(name, cmd, cmdArgs, options = {}) {
         stdout: (result.stdout || '').trim(),
         stderr: (result.stderr || '').trim()
     };
+}
+
+function commandStreaming(name, cmd, cmdArgs, options = {}) {
+    const started = Date.now();
+    const timeoutLimit = options.timeoutMs || timeoutMs;
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    let stdoutLineBuffer = '';
+    let stderrLineBuffer = '';
+
+    function mirrorProgress(chunk, source) {
+        const text = String(chunk || '');
+        const prefix = source === 'stderr' ? '[doctor stderr]' : '[doctor]';
+        const bufferName = source === 'stderr' ? 'stderrLineBuffer' : 'stdoutLineBuffer';
+        let buffer = (source === 'stderr' ? stderrLineBuffer : stdoutLineBuffer) + text;
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (line.startsWith('[packmaker]')) {
+                process.stderr.write(`${prefix} ${line}\n`);
+            }
+        }
+
+        if (bufferName === 'stderrLineBuffer') stderrLineBuffer = buffer;
+        else stdoutLineBuffer = buffer;
+    }
+
+    return new Promise(resolve => {
+        const child = spawn(cmd, cmdArgs, {
+            cwd: root,
+            env: { ...process.env, FORCE_COLOR: '0', ...(options.env || {}) },
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        const timer = setTimeout(() => {
+            timedOut = true;
+            child.kill('SIGTERM');
+        }, timeoutLimit);
+
+        child.stdout.on('data', chunk => {
+            const text = chunk.toString();
+            stdout += text;
+            if (options.mirrorPackMakerProgress) mirrorProgress(text, 'stdout');
+        });
+
+        child.stderr.on('data', chunk => {
+            const text = chunk.toString();
+            stderr += text;
+            if (options.mirrorPackMakerProgress) mirrorProgress(text, 'stderr');
+        });
+
+        child.on('close', code => {
+            clearTimeout(timer);
+            if (timedOut) stderr += `\n${name} timed out after ${timeoutLimit}ms`;
+            resolve({
+                name,
+                status: code === 0 && !timedOut ? 'PASS' : (options.blockedOnFailure ? 'BLOCKED' : 'FAIL'),
+                exitCode: timedOut ? null : code,
+                elapsedMs: Date.now() - started,
+                stdout: stdout.trim(),
+                stderr: stderr.trim()
+            });
+        });
+    });
 }
 
 function parseJson(text) {
@@ -306,8 +372,9 @@ if (deep) {
 }
 
 if (packmaker) {
-    const pm = command('npm.verify-packmaker-kugnus', 'npm', ['run', 'verify:packmaker:kugnus'], {
+    const pm = await commandStreaming('npm.verify-packmaker-kugnus', 'npm', ['run', 'verify:packmaker:kugnus'], {
         timeoutMs: 720_000,
+        mirrorPackMakerProgress: true,
         env: {
             PACK_MAKER_TIMEOUT_MS: '600000',
             PACK_MAKER_BATCH_TIMEOUT_MS: '180000',

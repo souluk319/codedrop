@@ -613,6 +613,8 @@ assert(productionEnvExample.includes('PACK_MAKER_BATCH_TIMEOUT_MS=180000'), 'pro
 assert(packageJson.scripts?.['verify:packmaker:kugnus'] === 'node scripts/verify_packmaker_kugnus_e2e.mjs', 'package should expose the real KUGNUS Pack Maker E2E command');
 assert(systemDoctor.includes('function commandCheckDetail'), 'system doctor should include failed command output in reports');
 assert(systemDoctor.includes('function packMakerCheckDetail'), 'system doctor should summarize successful Pack Maker KUGNUS E2E evidence');
+assert(systemDoctor.includes('function commandStreaming'), 'system doctor should stream long-running verifier progress instead of going silent');
+assert(systemDoctor.includes('mirrorPackMakerProgress'), 'system doctor should mirror Pack Maker progress lines during full checks');
 assert(systemDoctor.includes('summary.generated?.itemCount'), 'system doctor Pack Maker summary should include generated item count');
 assert(systemDoctor.includes('packMakerKugnusE2e'), 'system doctor should parse the Pack Maker KUGNUS verifier JSON payload');
 assert(systemDoctor.includes('PACKMAKER_KUGNUS_E2E_TIMEOUT_MS'), 'system doctor should run Pack Maker E2E with a realistic timeout');
