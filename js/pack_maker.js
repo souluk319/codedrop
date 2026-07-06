@@ -132,8 +132,8 @@ const PackMaker = (() => {
 
     const ENGINE_LABELS = {
         kugnus: 'KUGNUS SERVER',
-        openai: 'GPT 5.4 MINI',
-        gemini: 'GEMINI FLASH'
+        gemini: 'GEMINI 2.5 FLASH',
+        openai: 'GPT 5.4 MINI'
     };
 
     function normalizeEngineValue(value) {
@@ -387,6 +387,14 @@ const PackMaker = (() => {
         ui.engine.dispatchEvent(new Event('change'));
         closeEngineMenu();
         if (ui.engineToggle) ui.engineToggle.focus();
+    }
+
+    function submitChatForm() {
+        if (typeof ui.form.requestSubmit === 'function') {
+            ui.form.requestSubmit();
+            return;
+        }
+        ui.form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
 
     async function offerKugnusFallbackIfNeeded() {
@@ -1553,7 +1561,7 @@ const PackMaker = (() => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                ui.form.requestSubmit();
+                submitChatForm();
             }
         });
         ui.engine.addEventListener('change', () => {

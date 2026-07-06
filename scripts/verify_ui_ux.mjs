@@ -363,7 +363,10 @@ assert(pxValue(ocpLeaderboard, 'height') === 520, 'OCP leaderboard should read a
 assert(ocpLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'OCP leaderboard should not overflow short desktop viewports');
 
 const learnRow = cssBlock('.learn-lesson-row');
-assert(learnRow.includes('grid-template-columns: 22px minmax(0, 1fr) auto;'), 'learn lesson rows should keep long titles and quiz meta aligned');
+assert(learnRow.includes('grid-template-columns: 28px minmax(0, 1fr) auto;'), 'learn lesson rows should keep long titles and quiz meta aligned');
+const learnPicker = cssBlock('#learn-picker');
+assert(learnPicker.includes('width: min(860px, 92vw);'), 'learn picker should be large enough for the OCP curriculum list');
+assert(learnPicker.includes('min-height: min(720px, calc(100dvh - 92px));'), 'learn picker should expand vertically without overflowing desktop viewports');
 assert(index.includes('body.ocp-edition .learn-output'), 'learn terminal output should inherit the OCP red edition skin');
 assert(index.includes('#learn-screen.learn-session-active'), 'learn chat should use a lesson-only side panel layout');
 const learnSession = cssBlock('#learn-screen.learn-session-active');
@@ -394,7 +397,7 @@ assert(learn.includes("ui.peekBtn.textContent = session.peeked ? '정답 닫기'
 assert(index.includes('ASK TO KUGNUS SERVER'), 'learn chat should default the assistant title to KUGNUS SERVER');
 assert(index.includes('data-engine="kugnus"') && index.includes('KUGNUS SERVER'), 'learn chat should expose KUGNUS SERVER as the local engine choice');
 assert(index.includes('data-engine="openai"') && index.includes('GPT 5.4 MINI'), 'learn chat should expose GPT 5.4 MINI as an engine choice');
-assert(index.includes('data-engine="gemini"') && index.includes('GEMINI FLASH'), 'learn chat and Pack Maker should expose Gemini Flash as an engine choice');
+assert(index.includes('data-engine="gemini"') && index.includes('GEMINI 2.5 FLASH'), 'learn chat and Pack Maker should expose Gemini 2.5 Flash as an engine choice');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'learn chat hidden select should default to KUGNUS SERVER');
 assert(learn.includes('LEARN_API_BASE') && learn.includes('`${LEARN_API_BASE}/api/learn-chat/stream`'), 'learn chat should call the base-prefixed streaming server-side LLM proxy');
 assert(learn.includes("engine: ui.chatEngine.value"), 'learn chat should send the selected LLM engine');

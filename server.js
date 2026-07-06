@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import https from "https";
+import { resolve4 } from "dns/promises";
 dotenv.config({ path: [".env.local", ".env"], quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -219,6 +221,7 @@ const MAX_SUBMITTED_SCORE = 25000;
 const MAX_CHAT_MESSAGE_LEN = 1200;
 const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
+const GEMINI_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.GEMINI_TIMEOUT_MS) || 120_000, 180_000));
 const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 600_000, 600_000));
 const KUGNUS_HEALTH_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.KUGNUS_HEALTH_TIMEOUT_MS) || 12_000, 30_000));
 const CHAT_ENGINES = new Set(["kugnus", "openai", "gemini"]);
@@ -526,6 +529,15 @@ function geminiContentUrl(model, stream = false) {
     return `${baseUrl}/models/${encodeURIComponent(model)}:${method}`;
 }
 
+function geminiDisplayLabel(model) {
+    const id = String(model || "gemini-2.5-flash").trim();
+    if (!id) return "GEMINI";
+    return id
+        .replace(/^gemini[-_]?/i, "GEMINI ")
+        .replace(/[-_]+/g, " ")
+        .toUpperCase();
+}
+
 function safeLlmTargetUrlParts(url) {
     if (process.env.NODE_ENV === "production" && !envFlag(process.env.LLM_TARGET_DIAGNOSTICS)) return undefined;
     try {
@@ -533,6 +545,99 @@ function safeLlmTargetUrlParts(url) {
         return { host: parsed.host, path: parsed.pathname };
     } catch {
         return { host: "", path: "" };
+    }
+}
+
+function isKugnusGatewayTarget(target) {
+    return target?.engine === "kugnus" && target?.route === "gateway" && target?.provider === "openai";
+}
+
+function shouldRetryGatewayWithResolve4(target, err) {
+    if (!isKugnusGatewayTarget(target)) return false;
+    const code = err?.cause?.code || err?.code || "";
+    const message = String(err?.message || "");
+    return code === "ENOTFOUND"
+        || code === "EAI_AGAIN"
+        || message === "fetch failed"
+        || /ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(message);
+}
+
+function httpsTextRequestWithLookup(urlString, { method = "GET", headers = {}, body = "", signal } = {}, address) {
+    return new Promise((resolve, reject) => {
+        const url = new URL(urlString);
+        const request = https.request(url, {
+            method,
+            headers,
+            lookup(hostname, options, callback) {
+                if (typeof options === "function") {
+                    callback = options;
+                    options = {};
+                }
+                if (options?.all) {
+                    callback(null, [{ address, family: 4 }]);
+                    return;
+                }
+                callback(null, address, 4);
+            }
+        }, response => {
+            const chunks = [];
+            response.on("data", chunk => chunks.push(chunk));
+            response.on("end", () => {
+                resolve({
+                    ok: response.statusCode >= 200 && response.statusCode < 300,
+                    status: response.statusCode || 0,
+                    text: Buffer.concat(chunks).toString("utf8"),
+                    dnsFallback: true
+                });
+            });
+        });
+
+        request.on("error", reject);
+        request.on("close", () => {
+            if (signal) signal.removeEventListener("abort", abort);
+        });
+
+        const abort = () => {
+            request.destroy(new Error("Request aborted"));
+        };
+        if (signal) {
+            if (signal.aborted) return abort();
+            signal.addEventListener("abort", abort, { once: true });
+        }
+
+        if (body) request.write(body);
+        request.end();
+    });
+}
+
+async function httpsTextRequestWithResolve4(urlString, options = {}) {
+    const url = new URL(urlString);
+    const addresses = await resolve4(url.hostname);
+    if (!addresses.length) throw new Error(`DNS resolve4 returned no addresses for ${url.hostname}`);
+
+    let lastError;
+    for (const address of addresses) {
+        try {
+            return await httpsTextRequestWithLookup(urlString, options, address);
+        } catch (err) {
+            lastError = err;
+        }
+    }
+    throw lastError || new Error(`KUGNUS gateway DNS fallback failed for ${url.hostname}`);
+}
+
+async function fetchLlmText(target, url, options = {}) {
+    try {
+        const response = await fetch(url, options);
+        return {
+            ok: response.ok,
+            status: response.status,
+            text: await response.text().catch(() => ""),
+            dnsFallback: false
+        };
+    } catch (err) {
+        if (!shouldRetryGatewayWithResolve4(target, err)) throw err;
+        return httpsTextRequestWithResolve4(url, options);
     }
 }
 
@@ -581,7 +686,7 @@ function buildLlmTarget(engine = "kugnus") {
 
         return {
             engine: "gemini",
-            label: "GEMINI FLASH",
+            label: geminiDisplayLabel(model),
             provider: "gemini",
             route: "google",
             url: geminiContentUrl(model, false),
@@ -2476,17 +2581,22 @@ async function callLearnLlm(messages, engine) {
     const target = buildLlmTarget(engine);
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), target.provider === "gemini" ? GEMINI_TIMEOUT_MS : LLM_TIMEOUT_MS);
 
     try {
-        const response = await fetch(target.url, {
+        const response = await fetchLlmText(target, target.url, {
             method: "POST",
             headers: llmHeaders(target),
             body: JSON.stringify(llmPayload(target, messages)),
             signal: controller.signal
         });
 
-        const data = await response.json().catch(() => ({}));
+        let data = {};
+        try {
+            data = response.text ? JSON.parse(response.text) : {};
+        } catch {
+            data = {};
+        }
         if (!response.ok) {
             const err = new Error(data.error?.message || data.error || `LLM request failed (${response.status})`);
             err.status = response.status >= 500 ? 502 : response.status;
@@ -2601,12 +2711,65 @@ function parseStreamDelta(provider, data) {
 }
 
 async function readLearnLlmStream(target, messages, signal, onDelta, options = {}) {
-    const response = await fetch(target.streamUrl || target.url, {
-        method: "POST",
-        headers: llmHeaders(target),
-        body: JSON.stringify(llmPayload(target, messages, true, options)),
-        signal
-    });
+    if (target.provider === "gemini") {
+        const response = await fetch(target.url, {
+            method: "POST",
+            headers: llmHeaders(target),
+            body: JSON.stringify(llmPayload(target, messages, false, options)),
+            signal
+        });
+
+        const text = await response.text().catch(() => "");
+        if (!response.ok) {
+            let message = `LLM request failed (${response.status})`;
+            try {
+                const data = JSON.parse(text);
+                message = data.error?.message || data.error || message;
+            } catch (e) {
+                if (text.trim()) message = text.trim().slice(0, 240);
+            }
+            const err = new Error(message);
+            err.status = response.status >= 500 ? 502 : response.status;
+            throw err;
+        }
+
+        const data = text ? JSON.parse(text) : {};
+        const answer = extractLlmAnswer(target.provider, data).trim();
+        if (answer) onDelta(answer);
+        return answer;
+    }
+
+    let response;
+    try {
+        response = await fetch(target.streamUrl || target.url, {
+            method: "POST",
+            headers: llmHeaders(target),
+            body: JSON.stringify(llmPayload(target, messages, true, options)),
+            signal
+        });
+    } catch (err) {
+        if (!shouldRetryGatewayWithResolve4(target, err)) throw err;
+        const fallback = await httpsTextRequestWithResolve4(target.url, {
+            method: "POST",
+            headers: llmHeaders(target),
+            body: JSON.stringify(llmPayload(target, messages, false, options)),
+            signal
+        });
+        if (!fallback.ok) {
+            const error = new Error(`LLM request failed (${fallback.status})`);
+            error.status = fallback.status >= 500 ? 502 : fallback.status;
+            throw error;
+        }
+        let data = {};
+        try {
+            data = fallback.text ? JSON.parse(fallback.text) : {};
+        } catch {
+            data = {};
+        }
+        const answer = extractLlmAnswer(target.provider, data).trim();
+        if (answer) onDelta(answer);
+        return answer;
+    }
 
     if (!response.ok) {
         const text = await response.text().catch(() => "");
@@ -2690,14 +2853,14 @@ async function readLearnLlmStream(target, messages, signal, onDelta, options = {
 }
 
 async function callPackMakerLlmOnce(target, messages, signal, options = {}) {
-    const response = await fetch(target.url, {
+    const response = await fetchLlmText(target, target.url, {
         method: "POST",
         headers: llmHeaders(target),
         body: JSON.stringify(llmPayload(target, messages, false, options)),
         signal
     });
 
-    const text = await response.text().catch(() => "");
+    const text = response.text || "";
     if (!response.ok) {
         let message = `LLM request failed (${response.status})`;
         try {
@@ -2804,7 +2967,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
             });
         }
 
-        const response = await fetch(target.url, {
+        const response = await fetchLlmText(target, target.url, {
             method: "POST",
             headers: llmHeaders(target),
             body: JSON.stringify(llmPayload(target, [
@@ -2813,7 +2976,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
             signal: controller.signal
         });
 
-        const text = await response.text().catch(() => "");
+        const text = response.text || "";
         if (!response.ok) {
             return res.json({
                 ok: false,
@@ -2897,7 +3060,7 @@ app.post("/api/learn-chat/stream", rateLimit("learn-chat-stream", 40, 60_000), a
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), LLM_TIMEOUT_MS);
+    const timeout = setTimeout(() => controller.abort(), target.provider === "gemini" ? GEMINI_TIMEOUT_MS : LLM_TIMEOUT_MS);
     let finished = false;
 
     res.on("close", () => {
@@ -2979,7 +3142,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
             writeNdjson(res, "meta", {
                 engine,
                 route: "not-needed",
-                label: engine === "openai" ? "GPT 5.4 mini" : (engine === "gemini" ? "GEMINI FLASH" : "KUGNUS SERVER")
+                label: target.label || (engine === "openai" ? "GPT 5.4 mini" : (engine === "gemini" ? geminiDisplayLabel(target.model) : "KUGNUS SERVER"))
             });
             writeNdjson(res, "status", { text: "PACK BRIEF REQUIRED" });
             writeNdjson(res, "delta", { text: answer });

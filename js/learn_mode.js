@@ -335,7 +335,7 @@ const LearnMode = (() => {
             e.stopPropagation();
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                ui.chatForm.requestSubmit();
+                submitChatForm();
             }
         });
         ui.chatClear.addEventListener('click', () => resetChat(true));
@@ -372,8 +372,8 @@ const LearnMode = (() => {
     let chatEngineOverride = null;
     const CHAT_ENGINE_LABELS = {
         kugnus: 'KUGNUS SERVER',
-        openai: 'GPT 5.4 MINI',
-        gemini: 'GEMINI FLASH'
+        gemini: 'GEMINI 2.5 FLASH',
+        openai: 'GPT 5.4 MINI'
     };
 
     function normalizeChatEngineValue(value) {
@@ -489,6 +489,14 @@ const LearnMode = (() => {
         ui.chatEngine.dispatchEvent(new Event('change'));
         closeChatEngineMenu();
         ui.chatEngineToggle.focus();
+    }
+
+    function submitChatForm() {
+        if (typeof ui.chatForm.requestSubmit === 'function') {
+            ui.chatForm.requestSubmit();
+            return;
+        }
+        ui.chatForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     }
 
     async function offerKugnusFallbackIfNeeded() {

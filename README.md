@@ -135,6 +135,7 @@ Gemini can be enabled as a third comparison engine in Learn Chat and Pack Maker:
 ```env
 GEMINI_API_KEY=<GEMINI_API_KEY>
 GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_MS=120000
 ```
 
 Pack Maker search and future embedding/RAG settings:
