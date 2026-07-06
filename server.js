@@ -2043,6 +2043,40 @@ async function tableColumnExists(tableName, columnName) {
     return Number(rows?.[0]?.count || 0) > 0;
 }
 
+const REQUIRED_SCHEMA_COLUMNS = {
+    users: ["id", "nickname", "password", "created_at"],
+    leaderboard: ["id", "user_id", "score", "wpm", "accuracy", "difficulty", "pack", "created_at"],
+    custom_packs: ["id", "owner_id", "title", "description", "status", "review_reason", "created_at", "updated_at"],
+    custom_pack_items: ["id", "pack_id", "term", "description", "sources_json", "sort_order", "created_at"],
+    custom_pack_scores: ["id", "pack_id", "user_id", "score", "wpm", "accuracy", "difficulty", "created_at"]
+};
+
+function recoverableSchemaError(err) {
+    return /foreign key|constraint|incompatible|referencing column/i.test(String(err?.message || ""));
+}
+
+async function requiredDatabaseSchemaPresent() {
+    const expected = [];
+    Object.entries(REQUIRED_SCHEMA_COLUMNS).forEach(([tableName, columns]) => {
+        columns.forEach(columnName => expected.push({ tableName, columnName }));
+    });
+
+    const tableNames = Object.keys(REQUIRED_SCHEMA_COLUMNS);
+    const [rows] = await db.query(`
+        SELECT TABLE_NAME, COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME IN (${tableNames.map(() => "?").join(",")})
+    `, tableNames);
+
+    const present = new Set(rows.map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
+    const missing = expected
+        .filter(item => !present.has(`${item.tableName}.${item.columnName}`))
+        .map(item => `${item.tableName}.${item.columnName}`);
+
+    return { ok: missing.length === 0, missing };
+}
+
 async function ensureTableColumn(tableName, columnName, columnDefinition) {
     if (await tableColumnExists(tableName, columnName)) return;
     await db.query(`ALTER TABLE ${sqlIdentifier(tableName)} ADD COLUMN ${columnDefinition}`);
@@ -2093,6 +2127,16 @@ async function ensureDatabaseSchema() {
             await ensureTableColumn("custom_pack_scores", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
         })().catch(err => {
             databaseSchemaReady = null;
+            if (recoverableSchemaError(err)) {
+                return requiredDatabaseSchemaPresent().then(result => {
+                    if (result.ok) {
+                        console.warn(`CodeDrop DB schema check recovered after constraint warning: ${err.message}`);
+                        return undefined;
+                    }
+                    err.message = `${err.message}; required schema missing: ${result.missing.join(", ")}`;
+                    throw err;
+                });
+            }
             throw err;
         });
     }
