@@ -5,8 +5,31 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "doctor": "node scripts/system_doctor.mjs",
+    "doctor:local": "node scripts/system_doctor.mjs --skip-release",
+    "doctor:deep": "node scripts/system_doctor.mjs --deep",
+    "doctor:full": "node scripts/system_doctor.mjs --deep --packmaker",
+    "doctor:local:full": "node scripts/system_doctor.mjs --deep --packmaker --skip-release",
+    "doctor:release": "node scripts/system_doctor.mjs --deep --strict",
+    "doctor:release:full": "node scripts/system_doctor.mjs --deep --packmaker --strict",
+    "start": "node server.js",
+    "test": "npm run verify",
+    "verify": "node scripts/verify_all.mjs",
+    "verify:5x": "node scripts/verify_5x.mjs",
+    "verify:db": "node scripts/verify_db_e2e.mjs",
+    "verify:kugnus-gateway": "node scripts/verify_kugnus_gateway_contract.mjs",
+    "verify:kugnus-live": "node scripts/verify_kugnus_gateway_live.mjs",
+    "verify:packmaker:kugnus": "node scripts/verify_packmaker_kugnus_e2e.mjs",
+    "verify:release-matrix": "node scripts/verify_release_readiness_matrix.mjs",
+    "verify:release-runtime-contract": "node scripts/verify_release_runtime_contract.mjs",
+    "verify:release-runtime": "node scripts/verify_release_runtime_route.mjs",
+    "verify:docker": "node scripts/verify_docker_image.mjs",
+    "audit:prod": "npm audit --omit=dev --audit-level=moderate",
+    "release:secret": "node scripts/generate_session_secret.mjs",
+    "release:check": "node scripts/check_release_readiness.mjs",
+    "db:local:up": "docker compose -f docker-compose.local.yml up -d",
+    "db:local:down": "docker compose -f docker-compose.local.yml down",
+    "db:local:reset": "docker compose -f docker-compose.local.yml down -v && docker compose -f docker-compose.local.yml up -d"
   },
   "keywords": [],
   "author": "",
@@ -17,5 +40,9 @@
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "mysql2": "^3.15.3"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.4.2",
+    "qs": "^6.15.3"
   }
 }

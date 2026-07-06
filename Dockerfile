@@ -11,8 +11,8 @@ WORKDIR /opt/app-root/src
 # 오픈시프트는 보안상 랜덤한 사용자로 실행되는데, 그룹이 0(root)이어야 파일 수정 권한이 생깁니다.
 COPY --chown=1001:0 package*.json ./
 
-# 4. 의존성 설치
-RUN npm install
+# 4. lockfile 기반 production 의존성 설치
+RUN npm ci --omit=dev
 
 # 5. 전체 소스는 나중에 복사 (빌드 효율성 위해)
 COPY --chown=1001:0 . .

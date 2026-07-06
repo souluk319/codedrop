@@ -1,0 +1,113 @@
+name: Verify CodeDrop
+
+on:
+  push:
+    branches:
+      - main
+      - feature/**
+      - kugnus/**
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare local env
+        run: |
+          cp .env.local.example .env
+          {
+            echo "KUGNUS_GATEWAY_BASE_URL=http://127.0.0.1:18790/v1"
+            echo "KUGNUS_GATEWAY_API_KEY=ci-fake-kugnus-key"
+            echo "KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat"
+            echo "DUCKDUCKGO_API_KEY=ci-fake-duckduckgo-key"
+          } >> .env
+
+      - name: Start local MySQL
+        run: docker compose -f docker-compose.local.yml up -d
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..60}; do
+            status="$(docker inspect -f '{{.State.Health.Status}}' codedrop-local-mysql 2>/dev/null || true)"
+            if [ "$status" = "healthy" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f docker-compose.local.yml logs mysql
+          exit 1
+
+      - name: Verify static, content, gateway contract, and server smoke
+        run: npm run verify
+
+      - name: Verify database E2E
+        run: npm run verify:db
+
+      - name: Production dependency audit
+        run: npm run audit:prod
+
+      - name: Verify production Docker image builds
+        run: npm run verify:docker
+
+      - name: Start fake KUGNUS gateway
+        run: |
+          node scripts/ci_fake_kugnus_gateway.mjs > /tmp/kugnus-ci.log 2>&1 &
+          echo "$!" > /tmp/kugnus-ci.pid
+          for i in {1..20}; do
+            if grep -q "CI fake KUGNUS gateway listening" /tmp/kugnus-ci.log; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/kugnus-ci.log
+          exit 1
+
+      - name: Start app for doctor
+        run: |
+          npm start > /tmp/codedrop-ci.log 2>&1 &
+          echo "$!" > /tmp/codedrop-ci.pid
+          for i in {1..40}; do
+            if curl -fsS http://127.0.0.1:3001/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/codedrop-ci.log
+          exit 1
+
+      - name: Run strict local system doctor
+        run: npm run doctor:local -- --base-url=http://127.0.0.1:3001 --strict
+
+      - name: Stop app
+        if: always()
+        run: |
+          if [ -f /tmp/codedrop-ci.pid ]; then
+            kill "$(cat /tmp/codedrop-ci.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop fake KUGNUS gateway
+        if: always()
+        run: |
+          if [ -f /tmp/kugnus-ci.pid ]; then
+            kill "$(cat /tmp/kugnus-ci.pid)" 2>/dev/null || true
+          fi
+
+      - name: Stop local MySQL
+        if: always()
+        run: docker compose -f docker-compose.local.yml down -v

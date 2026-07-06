@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: codedrop
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEFAULT_CHAT_ENGINE
+        value: kugnus
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_SSL
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: PACK_ADMIN_NICKNAMES
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: REVIEW_NOTIFY_EMAIL
+        value: souluk319@gmail.com
+      - key: MAIL_FROM
+        value: CodeDrop <onboarding@resend.dev>
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: KUGNUS_GATEWAY_BASE_URL
+        sync: false
+      - key: KUGNUS_GATEWAY_API_KEY
+        sync: false
+      - key: KUGNUS_GATEWAY_MODEL
+        value: gemma4:12b-it-qat
+      - key: PACK_MAKER_TIMEOUT_MS
+        value: "600000"
+      - key: PACK_MAKER_BATCH_TIMEOUT_MS
+        value: "180000"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-5.4-mini
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: DUCKDUCKGO_API_KEY
+        sync: false
+      - key: EMBEDDING_MODEL
+        value: embeddinggemma:latest
+      - key: EMBEDDING_DIMENSIONS
+        value: "768"

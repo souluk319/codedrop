@@ -1,134 +1,414 @@
-# CodeDrop: Neon Cyberpunk Typing Game !!
+# CodeDrop
 
-![CodeDrop Banner](https://img.shields.io/badge/Status-Live-00f3ff?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-bc13fe?style=for-the-badge)
+Cyberpunk typing game and EX280 study suite.
 
-**Play Now:** [https://codedrop-se9n.onrender.com/](https://codedrop-se9n.onrender.com/)
+CodeDrop started as a falling-code typing game. It now has three product layers:
 
-**Policies & Review Pages:**
-- Privacy Policy: [https://codedrop-se9n.onrender.com/privacy.html](https://codedrop-se9n.onrender.com/privacy.html)
-- Terms of Service: [https://codedrop-se9n.onrender.com/terms.html](https://codedrop-se9n.onrender.com/terms.html)
-- Data Deletion: [https://codedrop-se9n.onrender.com/data-deletion.html](https://codedrop-se9n.onrender.com/data-deletion.html)
-- Meta Review Notes: [https://codedrop-se9n.onrender.com/meta-review.html](https://codedrop-se9n.onrender.com/meta-review.html)
+- **CODEDROP**: short-form falling word typing with official packs and custom packs.
+- **OCP Edition**: EX280/OpenShift study modes, including learn mode, scenario practice, mock labs, and exam mode.
+- **Pack Maker**: search-grounded custom data pack generation through KUGNUS SERVER or GPT mini fallback.
 
----
+Live production currently runs on the Node/Express backend with MySQL-compatible storage. A Firebase migration can move Hosting/Auth/Firestore later, but LLM/search features still need a server-side function because API keys must not be exposed in browser code.
 
-## 🇬🇧 English Description
+## Current Verified Flow
 
-### ⌨️ Codedrop: Coding Terminology Typing Game
-Codedrop is a web-based typing practice game where you score points by quickly typing coding terms falling from the sky. Themed around keywords, library names, and system terms familiar to developers, it offers both learning and fun.
+Before shipping a release candidate, verify these gates:
 
-### 🎯 Planning Intent & Target
-**Target:** Novice developers who are slow at typing and juniors who want to get familiar with keywords of specific languages.
+```bash
+npm run verify
+curl http://localhost:3001/ready
+curl http://localhost:3001/api/llm/kugnus/health
+npm run doctor:full -- --base-url=http://127.0.0.1:3001
+```
 
-**Goal:** Beyond simple typing, naturally familiarize users with special characters and keyword combinations frequently used in coding.
+Expected:
 
-### Key Features
-- **Cyberpunk Aesthetic**: Immersive neon visuals with CRT scanlines, glassmorphism, and dynamic background effects.
-- **Multiple Game Modes**:
-  - **Python**: Practice built-ins, standard library modules, and common methods.
-  - **JavaScript**: Master ES6+ syntax, DOM API, and frameworks.
-  - **HTTP/Network**: Type status codes, headers, and protocol terms.
-  - **CLI**: Get comfortable with Git, Docker, and Shell commands.
-- **Dynamic Difficulty**: Choose from EASY (Safe Mode), NORMAL (Standard), or DEVELOPER (Overclock) to match your skill level.
-- **Global Leaderboard**: Compete with other agents worldwide. Scores are tracked in real-time via a cloud database.
-- **Immersive Audio**: Background music and reactive sound effects for typing, errors, and power-ups.
+- `npm run verify` passes.
+- `/ready` returns `{"server":"ok","db":"ok"}`.
+- KUGNUS health returns `{ "ok": true, ... }`.
+- `doctor:full` runs static checks, server/DB readiness, release diagnostics, and the real KUGNUS Pack Maker E2E. It may still report `BLOCKED` for release if public gateway/session/origin env is not configured.
+- Browser E2E proves Pack Maker generation, save, SELECT PACK selection, DROP play, OCP Learn chat, README, MUSIC, and console errors.
+- Use `npm run doctor:release -- --base-url=<deployed-or-local-url> --env-file=<release-env-file>` as the fail-fast release gate. It exits non-zero on `FAIL` or `BLOCKED`.
 
-### Tech Stack
-- **Frontend**: HTML5, CSS3 (Vanilla), JavaScript (ES6+)
-- **Backend**: Node.js, Express.js
-- **Database**: MySQL (TiDB Cloud)
-- **Deployment**: Render
+## Features
 
-### Installation (Local Development)
+- **Guest-first start**: users can inspect and play official packs without signing in.
+- **Login-gated server features**: Pack Maker generation/save, custom pack ranking, public review submission, official score upload, and account deletion require login.
+- **Official DROP packs**: Python, JavaScript, HTTP/Network, Terminal, Linux, OpenShift, Vocabulary, and Mix.
+- **Custom packs**: saved packs are loaded into the normal DROP flow and use separate pack-specific leaderboards.
+- **OCP Edition**:
+  - Learn Mode with chat assistant.
+  - CLI DROP fixed to OpenShift CLI terms.
+  - Scenario practice.
+  - Mock Lab.
+  - Exam mode.
+  - Study dashboard and review flow.
+- **KUGNUS SERVER default**:
+  - Learn chat and Pack Maker default to KUGNUS.
+  - GPT mini fallback is allowed only after an explicit fallback decision.
+- **README manual**:
+  - EN/KOR toggle.
+  - Contact links for GitHub, www.kugnus.com, blog, and email.
+- **MUSIC island UI**:
+  - Bottom-right compact/expanded player with SoundCloud fallback view.
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/codedrop.git
-   cd codedrop
-   ```
+## Local Setup
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+cp .env.local.example .env.local
+npm run db:local:up
+npm start
+```
 
-3. **Configure Environment Variables**
-   Create a `.env` file in the root directory:
-   ```env
-   DB_HOST=your-tidb-host
-   DB_PORT=4000
-   DB_USER=your-db-user
-   DB_PASSWORD=your-db-password
-   DB_NAME=codedrop_db
-   ```
+Open:
 
-4. **Run the server**
-   ```bash
-   npm start
-   ```
-   Access the game at `http://localhost:3001`.
+```text
+http://localhost:3001
+```
 
----
+Check readiness:
 
-## 🇰🇷 한국어 설명 (Korean Description)
+```bash
+curl http://localhost:3001/ready
+```
 
-### ⌨️ Codedrop: Coding Terminology Typing Game
-Codedrop은 하늘에서 떨어지는 코딩 용어들을 빠르게 입력하여 점수를 얻는 웹 기반 타자 연습 게임입니다. 개발자들에게 익숙한 예약어, 라이브러리명, 시스템 용어 등을 테마로 하여 학습과 재미를 동시에 제공합니다.
+Expected:
 
-### 🎯 기획 의도 및 타겟
-**Target:** 키보드 입력이 서툰 입문 개발자 및 특정 언어의 예약어에 익숙해지고 싶은 주니어.
+```json
+{"server":"ok","db":"ok"}
+```
 
-**Goal:** 단순 타이핑을 넘어, 코딩에 자주 쓰이는 특수 문자와 예약어 조합을 자연스럽게 손에 익히게 함.
+Reset local DB:
 
-### 주요 기능
-- **사이버펑크 디자인**: CRT 스캔라인, 글래스모피즘, 역동적인 배경 효과가 어우러진 네온 비주얼.
-- **다양한 게임 모드**:
-  - **Python**: 내장 함수, 표준 라이브러리, 자주 쓰이는 메서드 연습.
-  - **JavaScript**: ES6+ 문법, DOM API, 프레임워크 용어 마스터.
-  - **HTTP/Network**: 상태 코드, 헤더, 프로토콜 용어 입력.
-  - **CLI**: Git, Docker, Shell 명령어 숙달.
-- **동적 난이도**: EASY (안전 모드), NORMAL (표준), DEVELOPER (오버클럭) 중 자신의 실력에 맞는 난이도 선택.
-- **글로벌 리더보드**: 전 세계의 에이전트들과 경쟁하세요. 점수는 클라우드 데이터베이스에 실시간으로 기록됩니다.
-- **몰입형 오디오**: 배경 음악과 타자, 오류, 파워업에 반응하는 효과음.
+```bash
+npm run db:local:reset
+```
 
-### 기술 스택
-- **프론트엔드**: HTML5, CSS3 (Vanilla), JavaScript (ES6+)
-- **백엔드**: Node.js, Express.js
-- **데이터베이스**: MySQL (TiDB Cloud)
-- **배포**: Render
+## Environment
 
-### 설치 및 실행 (로컬 개발)
+Use `.env.local.example` for local development and `.env.production.example` as the deployment checklist. Do not commit real `.env` or secret-filled production files.
 
-1. **저장소 복제 (Clone)**
-   ```bash
-   git clone https://github.com/yourusername/codedrop.git
-   cd codedrop
-   ```
+Generate the production session secret with:
 
-2. **의존성 설치**
-   ```bash
-   npm install
-   ```
+```bash
+npm run release:secret
+```
 
-3. **환경 변수 설정**
-   루트 디렉토리에 `.env` 파일을 생성하고 다음 내용을 작성하세요:
-   ```env
-   DB_HOST=your-tidb-host
-   DB_PORT=4000
-   DB_USER=your-db-user
-   DB_PASSWORD=your-db-password
-   DB_NAME=codedrop_db
-   ```
+Minimum local DB variables:
 
-4. **서버 실행**
-   ```bash
-   npm start
-   ```
-   브라우저에서 `http://localhost:3001`로 접속하여 게임을 실행합니다.
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=codedrop
+DB_PASSWORD=codedrop_pw
+DB_NAME=codedrop_db
+DB_SSL=false
+SESSION_SECRET=codedrop-local-dev-session-secret-change-for-release
+ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
+PACK_ADMIN_NICKNAMES=test
+DEFAULT_CHAT_ENGINE=kugnus
+```
 
----
+KUGNUS SERVER uses the public OpenAI-compatible gateway. CodeDrop prefers the
+canonical `KUGNUS_GATEWAY_*` variables for this path:
 
-<div align="center">
-  <p>Developed by <strong>Kugnus</strong></p>
-  <p>© 2025 CodeDrop. All Rights Reserved.</p>
-</div>
+```env
+KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1
+KUGNUS_GATEWAY_API_KEY=<KUGNUS_GATEWAY_API_KEY>
+KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat
+```
+
+`KUGNUS_CHAT_MODEL` is accepted as an alias for `KUGNUS_GATEWAY_MODEL` when
+copying values from the public gateway project. The exact KUGNUS gateway handoff
+template is `.env.kugnus-gateway.example`.
+
+GPT fallback is separate and mini-only:
+
+```env
+OPENAI_API_KEY=<OPENAI_API_KEY>
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+Gemini can be enabled as a third comparison engine in Learn Chat and Pack Maker:
+
+```env
+GEMINI_API_KEY=<GEMINI_API_KEY>
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_TIMEOUT_MS=120000
+```
+
+Pack Maker search and future embedding/RAG settings:
+
+```env
+DUCKDUCKGO_API_KEY=<DUCKDUCKGO_API_KEY>
+EMBEDDING_MODEL=embeddinggemma:latest
+EMBEDDING_DIMENSIONS=768
+```
+
+`KUGNUS_EMBED_MODEL` is accepted as an alias for future embedding/RAG wiring.
+
+The server rejects non-mini OpenAI models for chat fallback. Keep high-end models out of this app path.
+
+## KUGNUS Routing
+
+The server resolves KUGNUS from exactly one contract:
+`KUGNUS_GATEWAY_BASE_URL`, `KUGNUS_GATEWAY_API_KEY`, and
+`KUGNUS_GATEWAY_MODEL` or its public-gateway alias `KUGNUS_CHAT_MODEL`.
+`OPENAI_*` is GPT fallback only. Direct Ollama/private environment names are
+intentionally not part of the app contract anymore.
+
+`npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which
+starts a fake OpenAI-compatible KUGNUS gateway and proves the explicit
+`KUGNUS_GATEWAY_*` path. You can also run that contract directly:
+
+```bash
+npm run verify:kugnus-gateway
+```
+
+After real gateway env values are present, run a live gateway check before release:
+
+```bash
+npm run verify:kugnus-live -- --env-file=.env.production
+npm run verify:release-runtime -- --env-file=.env.production
+```
+
+Passing output must include:
+
+```json
+{
+  "kugnusGatewayLive": "ok",
+  "model": "gemma4:12b-it-qat"
+}
+```
+
+`verify:release-runtime` must report `route` as `gateway`.
+
+## Pack Maker QA Prompt
+
+Baseline prompt:
+
+```text
+자동차 정비소에 취직하는데 한글로된 자동차정비에 자주등장하는 자동차부품 단어 50개만 뽑아서 카 파츠 팩 만들어줘
+```
+
+Passing criteria:
+
+- title is `카 파츠 팩`.
+- exactly 50 rows.
+- Korean terms are present in all rows.
+- no duplicate terms.
+- sources are attached.
+- `SAVE MY PACK` succeeds.
+- saved pack appears in SELECT PACK.
+- DROP uses the custom pack terms.
+- typed custom term shows score/combo update and description toast.
+
+## Scripts
+
+```bash
+npm start              # Run server
+npm run verify         # Full static/content/server smoke verification
+npm run verify:5x      # Repeat verification
+npm run verify:db      # Local DB E2E: register, custom pack, score, withdraw
+npm run verify:packmaker:kugnus
+                       # Real KUGNUS E2E: vague prompt gate + 50 Korean auto-parts pack + save + custom leaderboard
+npm run doctor:local   # Fast local runtime doctor; skips deployment env preflight
+npm run doctor:local:full
+                       # Local product doctor: deep checks + KUGNUS Pack Maker, skips deployment env preflight
+npm run doctor:full     # Deep system doctor plus release preflight; BLOCKED until production env is filled
+npm run doctor:release  # Fail-fast doctor for release gates; exits non-zero on FAIL/BLOCKED
+npm run doctor:release:full
+                       # Fail-fast release gate; runs slow Pack Maker E2E only after preflight passes
+npm run verify:docker # Build the production Docker image and probe /health
+npm run release:secret # Print a random SESSION_SECRET for deployment env
+npm run release:check  # Fail-fast release environment preflight
+npm run db:local:up    # Start local MySQL
+npm run db:local:down  # Stop local MySQL
+npm run db:local:reset # Reset local MySQL data
+```
+
+## Deployment Notes
+
+Current production-compatible shape:
+
+```text
+Node/Express server
+MySQL-compatible DB
+KUGNUS public gateway
+GPT mini fallback
+```
+
+KUGNUS routing must go through the configured gateway contract.
+
+Render/Docker deployment is described by `render.yaml` at the repository root.
+It builds the checked-in `Dockerfile`, probes `/health`, and waits for CI checks
+before auto-deploying. Deployment-specific values are intentionally `sync: false`
+so Render prompts for them instead of storing production URLs, DB credentials, or
+API keys in git.
+
+Before syncing the Render Blueprint, fill these in the Render environment UI:
+
+```text
+DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL
+SESSION_SECRET
+ALLOWED_ORIGINS
+PACK_ADMIN_NICKNAMES
+KUGNUS_GATEWAY_BASE_URL
+KUGNUS_GATEWAY_API_KEY
+OPENAI_API_KEY
+DUCKDUCKGO_API_KEY
+```
+
+`KUGNUS_GATEWAY_BASE_URL` must be the public HTTPS gateway URL, not a Tailscale,
+localhost, or direct Ollama address.
+
+### Deploy under www.kugnus.com/games/codedrop
+
+CodeDrop is prepared to live under this public path:
+
+```text
+https://www.kugnus.com/games/codedrop/
+```
+
+The app uses browser routes below that base path, for example:
+
+```text
+/games/codedrop/
+/games/codedrop/pack-maker
+/games/codedrop/key-test
+/games/codedrop/ocp
+/games/codedrop/ocp/dashboard
+/games/codedrop/ocp/scenario
+```
+
+All of those paths must serve the CodeDrop app. The backend already returns
+`index.html` for `/games/codedrop/*`, serves assets under
+`/games/codedrop/js`, `/games/codedrop/assets`, and `/games/codedrop/sound`,
+and accepts API/auth calls under the same base path so the game can coexist with
+the main `www.kugnus.com` site.
+
+If `www.kugnus.com` is a reverse proxy in front of this Node service, route the
+game base path to the CodeDrop backend:
+
+```text
+/games/codedrop/*                  -> CodeDrop backend
+/games/codedrop/api/*              -> CodeDrop backend
+/games/codedrop/login              -> CodeDrop backend
+/games/codedrop/register           -> CodeDrop backend
+/games/codedrop/withdraw           -> CodeDrop backend
+/games/codedrop/submit             -> CodeDrop backend
+/games/codedrop/leaderboard        -> CodeDrop backend
+```
+
+Keep the root `/health` and `/ready` endpoints available on the backend service
+for platform health checks. They do not need to be public pages on
+`www.kugnus.com`.
+
+Example Nginx shape:
+
+```nginx
+location ^~ /games/codedrop/ {
+    proxy_pass https://codedrop-backend.example.com;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+Example Caddy shape:
+
+```caddyfile
+handle /games/codedrop/* {
+    reverse_proxy https://codedrop-backend.example.com
+}
+```
+
+Do not use `handle_path` for this route unless you also rewrite the path back to
+`/games/codedrop/*`; direct browser routes such as `/games/codedrop/pack-maker`
+must arrive at the backend with the base path intact.
+
+For this domain, production `ALLOWED_ORIGINS` should include exactly:
+
+```text
+https://www.kugnus.com
+```
+
+Firebase migration target:
+
+```text
+Firebase Hosting  -> static UI
+Firebase Auth     -> anonymous/member identity
+Firestore         -> profiles, leaderboards, pack metadata
+Cloud Functions   -> Pack Maker search, KUGNUS/GPT calls, private API keys
+```
+
+Do not move LLM keys or DuckDuckGo/search credentials into browser code.
+
+See `FIREBASE_MIGRATION.md` before starting the migration. It lists the exact
+Firebase Console inputs, Firestore collections, rules boundaries, server API
+layer, and E2E gates required before Firebase can replace the current release
+shape.
+
+Run release preflight before deploying the current Node backend:
+
+```bash
+DEPLOY_TARGET=node npm run release:check
+```
+
+To validate a filled production env file locally before entering values in the deployment dashboard:
+
+```bash
+RELEASE_ENV_FILE=.env.production DEPLOY_TARGET=node npm run release:check
+```
+
+When `RELEASE_ENV_FILE` or `--env-file` is provided, release tooling treats that
+file as authoritative and lets it override stale shell environment values. This
+keeps local/Tailscale KUGNUS settings from leaking into a production preflight.
+
+This intentionally fails if release env does not provide a public `https://` KUGNUS gateway. For a future Firebase release:
+
+```bash
+DEPLOY_TARGET=firebase npm run release:check
+```
+
+That target requires `firebase.json`, `.firebaserc` with the real Firebase
+project id, `firestore.rules`, and a Functions/Cloud Run API layer for KUGNUS,
+DuckDuckGo, Pack Maker, and private keys.
+
+When a release preflight fails, inspect the JSON `nextActions` field first. It is
+the deployment punch list, not just a generic error dump.
+
+## System Doctor
+
+Use the doctor command when the local app feels inconsistent and you need a single evidence report:
+
+```bash
+npm run doctor
+```
+
+The output groups checks as `PASS`, `SKIPPED`, `WARN`, `BLOCKED`, or `FAIL`.
+It reports the active KUGNUS route and DB readiness. Use the local variants
+when you want product/runtime evidence without deployment env noise:
+
+```bash
+npm run doctor:local
+npm run doctor:local:full
+```
+
+`doctor:local` and `doctor:local:full` mark `release.preflight` as `SKIPPED`;
+that is expected. `doctor:local:full` includes the slow real KUGNUS Pack Maker
+50-item E2E.
+
+For release candidates, use the strict variants so `BLOCKED` cannot be missed:
+
+```bash
+npm run doctor:release -- --base-url=http://127.0.0.1:3001 --env-file=.env.production
+npm run doctor:release:full -- --base-url=http://127.0.0.1:3001 --env-file=.env.production
+```
+
+`doctor:release` fails the command when the app is still using local direct KUGNUS, missing the public gateway, missing production session/origin values, or running a server route that does not match the configured release route.
+Strict release doctor stops at a blocked release preflight before running slow or mutating local E2E checks, so the first failing deployment condition stays visible.
+
+## Product Rules
+
+See `AGENTS.md` for the working product and verification rules used during implementation.
