@@ -5,6 +5,7 @@ const root = process.cwd();
 const index = read('index.html');
 const game = read('js/game.js');
 const packMaker = read('js/pack_maker.js');
+const adminPacks = read('js/admin_packs.js');
 const server = read('server.js');
 const dashboard = read('js/dashboard.js');
 const stats = read('js/study_stats.js');
@@ -68,6 +69,9 @@ function assertUniqueIds(html) {
 }
 
 assertUniqueIds(index);
+assert(index.includes('rel="icon" type="image/svg+xml" href="/games/codedrop/assets/favicon.svg"'), 'favicon link should point at the subpath-safe CodeDrop icon');
+assert(fs.existsSync(path.join(root, 'assets/favicon.svg')), 'CodeDrop favicon asset file is missing');
+assert(read('assets/favicon.svg').includes('CodeDrop CD favicon'), 'CodeDrop favicon should be the retro CD icon asset');
 
 function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -126,6 +130,7 @@ const expectedOrder = [
     'js/learn_mode.js',
     'js/dashboard.js',
     'js/pack_maker.js',
+    'js/admin_packs.js',
     'js/keyboard_test.js'
 ];
 
@@ -297,9 +302,10 @@ assert(game.includes('LearnMode.openPicker()'), 'LEARN mode route is missing');
 assert(index.includes('mode-choice-wide'), 'learn tile should span the mode grid');
 assert(index.includes('id="session-mode" value="MISSION"'), 'DROP should default to mission mode');
 assert(index.includes('id="study-time-input"') && index.includes('MINUTES (blank = infinite)'), 'study mode should expose optional duration input');
+assert(index.includes('id="study-timer-display"') && index.includes('body.study-active .study-timer-item'), 'study mode should expose a dedicated HUD timer beside lives');
 assert(index.includes('.session-toggle-btn.active'), 'study mode toggle should have an active visual state');
 assert(game.includes('function isStudyMode()'), 'study mode state helper is missing');
-assert(game.includes('state.studyEndsAt') && game.includes('formatStudyTime(state.studyEndsAt - Date.now())'), 'study mode HUD should show remaining time when a duration is set');
+assert(game.includes('function updateStudyTimerHUD()') && game.includes('state.studyEndsAt - Date.now()') && game.includes('Date.now() - state.startTime'), 'study mode HUD should show countdown or elapsed timer');
 assert(game.includes('isStudyMode() || state.spawnedCount < 100'), 'study mode should bypass the 100-word mission cap');
 assert(game.includes('if (isStudyMode())') && game.includes("els.hud.lives.textContent = '∞'"), 'study mode should not spend the three life hearts');
 assert(game.includes('t(\'score.studyMode\')'), 'study mode results should not upload leaderboard scores');
@@ -441,6 +447,10 @@ assert(server.includes('DUCKDUCKGO_API_KEY'), 'future web search should support 
 assert(server.includes('duckDuckGoConfig()'), 'DuckDuckGo config helper is missing');
 assert(server.includes('duckDuckGoHtmlSearch'), 'Pack Maker search should fall back to DuckDuckGo HTML results when Instant Answer is empty');
 assert(server.includes('normalizeDuckDuckGoHref'), 'DuckDuckGo HTML result redirect URLs should be normalized before becoming sources');
+assert(server.includes('async function wikipediaSearch'), 'Pack Maker should enrich search grounding with Wikipedia');
+assert(server.includes('async function wikidataSearch'), 'Pack Maker should enrich search grounding with Wikidata entity search');
+assert(server.includes('async function collectPackMakerSources'), 'Pack Maker should merge multiple grounding sources before LLM generation');
+assert(server.includes('mergePackMakerSources(wikipediaResults, wikidataResults, duckResults)'), 'Pack Maker source merge should prioritize Wikipedia/Wikidata before broad DuckDuckGo results');
 
 const dashboardCard = cssBlock('.dashboard-card');
 assert(dashboardCard.includes('max-height: calc(100dvh - 80px);'), 'dashboard card should be scrollable inside the viewport');
@@ -523,6 +533,21 @@ assert(packMaker.includes("throw new Error('Pack detail is empty')"), 'pack make
 assert(packMaker.includes('select.dispatchEvent(new Event(\'change\', { bubbles: true }))'), 'saved custom packs should dispatch native select change after being selected');
 assert(packMaker.includes('function showSaveSuccessNotice'), 'pack maker save should show an explicit success notice');
 assert(packMaker.includes('PACK SAVED'), 'pack maker save notice should use a clear saved title');
+const packMakerShell = cssBlock('.pack-maker-shell');
+assert(packMakerShell.includes('width: min(1680px, calc(100vw - 88px));'), 'pack maker shell should be wide enough for 50-item editing');
+assert(packMakerShell.includes('minmax(0, 1.48fr)'), 'pack maker editor panel should stay inside the shell and let its table scroll');
+const packMakerTableWrap = cssBlock('.pack-maker-table-wrap');
+assert(packMakerTableWrap.includes('overflow: auto;') && packMakerTableWrap.includes('scrollbar-gutter: stable both-edges;'), 'pack maker table should scroll cleanly when rows or columns overflow');
+const packMakerTable = cssBlock('.pack-maker-table');
+assert(packMakerTable.includes('min-width: 760px;') && packMakerTable.includes('table-layout: fixed;'), 'pack maker table should keep source fields visible inside a stable editable grid');
+const packMakerActionColumn = cssBlock('.pack-maker-table th:last-child,\n        .pack-maker-table td:last-child');
+assert(packMakerActionColumn.includes('position: sticky;') && packMakerActionColumn.includes('right: 0;'), 'pack maker row action column should stay visible while the editor table scrolls');
+const packMakerSourceCell = cssBlock('.pack-maker-source-cell');
+assert(packMakerSourceCell.includes('display: table-cell;'), 'pack maker source cell should participate in table column sizing');
+assert(!packMakerSourceCell.includes('display: grid;'), 'pack maker source td should not break table layout with grid display');
+assert(index.includes('class="pack-maker-review-note"'), 'pack maker should explain public review before submission');
+assert(game.includes("'packMaker.submit': '공개 요청'"), 'pack maker public listing action should use natural Korean copy');
+assert(game.includes('운영자 검수 후'), 'pack maker public listing copy should clarify operator review');
 assert(index.includes('#music-widget.widget-overlap'), 'music widget should only fade when it overlaps falling words');
 assert(index.includes('#readme-widget.widget-overlap'), 'readme widget should only fade when it overlaps falling words');
 assert(index.includes('--corner-widget-size: 60px;'), 'bottom corner widgets should share one size token');
@@ -601,12 +626,24 @@ assert(server.includes('function buildPackMakerFillMessages'), 'pack maker shoul
 assert(server.includes('generatePackMakerFillDraft'), 'pack maker should repair low-yield batches instead of blindly continuing');
 assert(server.includes('PACK_REPAIR_ATTEMPTS'), 'pack maker should retry/repair drafts that are short');
 assert(server.includes('draftMeetsPackIntent'), 'pack maker should verify draft count/language before success');
+assert(server.includes('function packDomainProfile'), 'pack maker should classify prompt domains before building generation prompts');
+assert(server.includes('"country_names"'), 'pack maker should have a dedicated country-name domain profile');
+assert(server.includes('packMakerSearchQuery(intent, message)'), 'pack maker search query should be derived from the parsed domain intent');
+assert(server.includes('const mode = body?.mode === "revision" ? "revision" : "new";'), 'pack maker server should distinguish fresh generation from draft revision');
+assert(server.includes('useContext ? sanitizeChatHistory(body?.history) : []'), 'fresh pack maker generation should ignore stale chat history');
+assert(server.includes('useContext ? normalizeDraftFromLlm(body?.draft || {}, searchResults) : normalizeDraftFromLlm({}, searchResults)'), 'fresh pack maker generation should ignore stale draft context');
+assert(!server.includes('자동차 현장 용어'), 'generic Korean pack language instruction must not force car-repair terms');
+assert(!server.includes('관련 자동차 정비 용어입니다.'), 'generic Pack Maker fallback descriptions must not mention car repair');
 assert(server.includes('DRAFT SHORT'), 'pack maker should fail visibly when the target draft is still short');
 assert(server.includes('writeNdjson(res, "status"'), 'pack maker stream should send generation status events');
 assert(!server.includes('{ maxTokens: 2200 }'), 'pack maker should not use a fixed 2200-token budget for every pack');
 assert(server.includes('app.post("/api/packs", authUser'), 'custom pack save endpoint should require auth');
 assert(server.includes('app.get("/api/packs?') === false, 'custom pack list should not be hardcoded as a static route');
 assert(server.includes('PACK_ADMIN_NICKNAMES'), 'pack review should be guarded by admin nicknames');
+assert(server.includes('app.get("/api/admin/packs"'), 'admin pack review queue endpoint is missing');
+assert(server.includes('sendPackReviewEmail(req, row, items, req.user)'), 'public review submission should trigger admin email notification');
+assert(server.includes('https://api.resend.com/emails'), 'review email should use the configured server-side email API');
+assert(server.includes('renderPackReviewEmail'), 'review email should render an HTML review template');
 assert(server.includes('custom_pack_scores'), 'custom pack scores should be stored separately from official leaderboard');
 assert(server.includes('function dbSslConfig()'), 'server should allow local Docker DB SSL configuration');
 assert(server.includes('process.env.DB_SSL'), 'server DB SSL should be configurable for local Docker MySQL');
@@ -761,7 +798,30 @@ assert(server.includes('function fallbackItemDescription'), 'Pack Maker term swe
 assert(localEnvExample.includes('OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
+assert(index.includes('<script src="js/admin_packs.js"></script>'), 'admin pack review script tag is missing');
 assert(index.includes('<script src="js/keyboard_test.js"></script>'), 'keyboard test script tag is missing');
+assert(index.includes('id="admin-pack-screen"'), 'admin pack review overlay is missing');
+assert(index.includes('id="admin-pack-close" href="/games/codedrop/"'), 'admin review HOME should be a real home link fallback');
+assert(game.includes("adminPacks: '/admin/packs'"), 'app router should expose /admin/packs route');
+assert(game.includes("window.AdminPacks?.open()"), 'app router should open admin pack review screen');
+assert(adminPacks.includes("requestJson(`/api/admin/packs?status="), 'admin pack review UI should load server review queue');
+assert(adminPacks.includes("requestJson(`/api/packs/${id}/review`"), 'admin pack review UI should call review endpoint');
+assert(enI18nKeys.includes('admin.title') && enI18nKeys.includes('admin.approve') && enI18nKeys.includes('admin.reject'), 'admin review screen should be covered by global i18n keys');
+assert(game.includes("setText('.admin-pack-title', 'admin.title')"), 'admin review static text should sync with the global language mode');
+assert(adminPacks.includes("window.addEventListener('codedrop:language', syncLanguage)"), 'admin review dynamic content should re-render when README language toggles');
+assert(adminPacks.includes("function tr(key, replacements = {})"), 'admin review UI should use the shared i18n translator instead of hardcoded copy');
+assert(adminPacks.includes("window.location.assign('/games/codedrop/')"), 'admin review HOME should explicitly navigate to the app home when JS is active');
+assert(adminPacks.includes('function renderLoginPrompt'), 'admin review screen should render an inline admin login prompt when opened from email while logged out');
+assert(adminPacks.includes("fetch(apiPath('/login')"), 'admin review login prompt should authenticate without leaving the review page');
+assert(adminPacks.includes('function intentFromUrl') && adminPacks.includes('maybeRunIntent'), 'email approve/reject links should carry intent through to the selected pack');
+assert(adminPacks.includes('reviewPack(id, intent)'), 'email approve/reject intent should open the matching review confirmation after login');
+assert(adminPacks.includes('class="admin-login-card"'), 'admin review should render the login card from JavaScript');
+assert(cssBlock('.admin-login-card').includes('width: min(520px, 100%);'), 'admin review login prompt styles are missing');
+assert(index.includes('id="confirm-input" autocomplete="off"'), 'generic command dialog input should not mask ordinary text such as reject reasons');
+assert(game.includes("inputType = 'text'"), 'command dialog should default to visible text input');
+assert(game.includes("inputType: 'password'"), 'password-only command dialog calls should opt into masking explicitly');
+assert(index.includes('id="pack-maker-review-alerts"'), 'Pack Maker should expose public request status/rejection reasons to the submitter');
+assert(packMaker.includes('reviewReason') && packMaker.includes('renderReviewAlerts'), 'Pack Maker should render stored review reasons from custom pack status');
 assert(index.includes('id="keyboard-test-screen"'), 'keyboard test overlay is missing');
 assert(index.includes('id="keyboard-test-btn"'), 'keyboard test menu button is missing');
 assert(index.includes('id="keytest-board"'), 'keyboard test board root is missing');
@@ -806,6 +866,12 @@ assert(packMaker.includes('function isObsoleteKugnusRouteEntry'), 'pack maker sh
 assert(packMaker.includes('previous.role === \'user\'') && packMaker.includes("cleaned[cleaned.length - 1] = item"), 'pack maker should collapse orphan consecutive user messages after stale route cleanup');
 assert(packMaker.includes('/\\bProvider:\\s*OLLAMA\\b/i'), 'pack maker should remove obsolete OLLAMA route chat entries');
 assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
+assert(packMaker.includes('function isDraftRevisionRequest'), 'pack maker should distinguish fresh generation from existing draft revision');
+assert(packMaker.includes('stateRef.submitting'), 'pack maker should block duplicate submits before streaming starts');
+assert(packMaker.includes("mode === 'revision' ? (context.history || []) : []"), 'fresh Pack Maker requests should not send stale chat history');
+assert(packMaker.includes("mode === 'revision' ? (context.draft || emptyDraft()) : emptyDraft()"), 'fresh Pack Maker requests should not send stale draft context');
+assert(packMaker.includes('requestId !== stateRef.activeRequestId'), 'pack maker should ignore stale stream events from obsolete requests');
+assert(packMaker.includes('searchNoticeShown'), 'pack maker should display search status at most once per request');
 assert(packMaker.includes('function answerLocalBrief'), 'pack maker should answer brief/how-to prompts before auth or pack generation');
 assert(packMaker.includes('function isConnectionProbe'), 'pack maker should classify connection/status prompts separately from pack generation');
 assert(packMaker.includes('function freshKugnusStatus'), 'pack maker connection prompts should run a fresh KUGNUS health check');
@@ -848,7 +914,10 @@ assert(game.includes('function toggleMusicTrackList'), 'music island should show
 assert(game.includes('function updateSoundCloudMetadata'), 'music island should update current track and queue metadata when possible');
 assert(game.includes('function switchMusicWidgetUi'), 'music player should switch between island and SoundCloud views');
 assert(!index.includes('id="global-lang-toggle"'), 'global language toggle should not appear on the page ceiling');
-assert(!index.includes('body[data-app-lang='), 'language state should stay inside the README manual');
+assert(game.includes('document.body.dataset.appLang = lang'), 'README language toggle should drive the shared app language state');
+assert(index.includes('--font-korean-ui'), 'Korean UI font stack should be explicit instead of falling back to browser defaults');
+assert(index.includes('Pretendard'), 'Korean UI should load/use Pretendard for polished Hangul rendering');
+assert(index.includes('body[data-app-lang="ko"]'), 'Korean app mode should have dedicated typography tuning');
 assert(index.includes('class="readme-lang-toggle"'), 'system manual should include an EN/KR language toggle');
 assert(index.includes('data-readme-lang="ko"'), 'system manual Korean toggle is missing');
 assert(index.includes('시스템 매뉴얼'), 'system manual should include Korean copy');
@@ -979,6 +1048,9 @@ assert(fs.existsSync(path.join(root, 'scripts/ci_fake_kugnus_gateway.mjs')), 'CI
 assert(localEnvExample.includes('SESSION_SECRET='), '.env.local.example should document SESSION_SECRET for stable sessions');
 assert(localEnvExample.includes('ALLOWED_ORIGINS='), '.env.local.example should document ALLOWED_ORIGINS for release preflight');
 assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example should document pack admin configuration');
+assert(localEnvExample.includes('REVIEW_NOTIFY_EMAIL=souluk319@gmail.com'), '.env.local.example should document public review notification recipient');
+assert(productionEnvExample.includes('RESEND_API_KEY='), '.env.production.example should document review email API key');
+assert(productionEnvExample.includes('PUBLIC_APP_URL=https://www.kugnus.com/games/codedrop'), '.env.production.example should document public app URL for review links');
 assert(/(^|\n)KUGNUS_GATEWAY_BASE_URL=\s*(\n|$)/.test(localEnvExample), '.env.local.example should not activate a fake KUGNUS gateway URL by default');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document the public KUGNUS gateway key');
 assert(productionEnvExample.includes('NODE_ENV=production'), '.env.production.example should be explicitly production-scoped');

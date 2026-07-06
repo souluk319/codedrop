@@ -5,9 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CodeDrop: Neon Cyberpunk</title>
+    <link rel="icon" type="image/svg+xml" href="/games/codedrop/assets/favicon.svg">
     <base href="/games/codedrop/">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Orbitron:wght@400;700;900&display=swap');
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 
         :root {
             --bg-color: #050505;
@@ -18,8 +20,9 @@
             --text-color: #e0e6ed;
             --danger-color: #ff2a6d;
             --success-color: #05ffa1;
-            --font-code: 'JetBrains Mono', monospace;
-            --font-display: 'Orbitron', sans-serif;
+            --font-korean-ui: 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            --font-code: 'JetBrains Mono', 'Pretendard', 'Noto Sans KR', 'Apple SD Gothic Neo', monospace;
+            --font-display: 'Orbitron', 'Pretendard', 'Noto Sans KR', sans-serif;
             --corner-widget-size: 60px;
             --corner-widget-offset: 24px;
             --music-island-safe-width: calc(100vw - (var(--corner-widget-offset) * 2) - 12px);
@@ -52,6 +55,47 @@
 
         body.game-active {
             --corner-widget-offset: 28px;
+        }
+
+        body[data-app-lang="ko"] {
+            word-break: keep-all;
+        }
+
+        body[data-app-lang="ko"] p,
+        body[data-app-lang="ko"] label,
+        body[data-app-lang="ko"] input,
+        body[data-app-lang="ko"] textarea,
+        body[data-app-lang="ko"] select,
+        body[data-app-lang="ko"] .guest-note,
+        body[data-app-lang="ko"] .mode-info,
+        body[data-app-lang="ko"] .pack-maker-review-note,
+        body[data-app-lang="ko"] .admin-pack-subtitle,
+        body[data-app-lang="ko"] .admin-pack-empty,
+        body[data-app-lang="ko"] .admin-pack-list-meta,
+        body[data-app-lang="ko"] .admin-pack-table,
+        body[data-app-lang="ko"] .admin-login-card,
+        body[data-app-lang="ko"] .confirm-message {
+            font-family: var(--font-korean-ui);
+            letter-spacing: 0.01em;
+            line-height: 1.55;
+        }
+
+        body[data-app-lang="ko"] .admin-pack-title,
+        body[data-app-lang="ko"] .admin-login-title,
+        body[data-app-lang="ko"] #confirm-title,
+        body[data-app-lang="ko"] #readme-box[data-manual-lang="ko"] h2 {
+            font-family: var(--font-korean-ui);
+            letter-spacing: 0.045em;
+            font-weight: 800;
+        }
+
+        body[data-app-lang="ko"] .admin-pack-badge,
+        body[data-app-lang="ko"] .btn-small,
+        body[data-app-lang="ko"] .edition-btn,
+        body[data-app-lang="ko"] .mode-card,
+        body[data-app-lang="ko"] .pack-maker-chat-message,
+        body[data-app-lang="ko"] .learn-chat-message {
+            word-break: keep-all;
         }
 
         /* --- Background Effects --- */
@@ -280,6 +324,12 @@
             gap: 40px;
         }
 
+        .hud-center-group {
+            min-width: 230px;
+            justify-content: center;
+            gap: 28px;
+        }
+
         .hud-item {
             display: flex;
             flex-direction: column;
@@ -307,6 +357,28 @@
             text-shadow: 0 0 10px var(--danger-color);
             font-size: 1.8rem;
             letter-spacing: 5px;
+        }
+
+        body.study-active #lives-display {
+            color: var(--success-color);
+            text-shadow: 0 0 12px var(--success-color);
+            letter-spacing: 0;
+        }
+
+        .study-timer-item {
+            display: none;
+        }
+
+        body.study-active .study-timer-item {
+            display: flex;
+        }
+
+        #study-timer-display {
+            color: var(--primary-neon);
+            text-shadow: 0 0 10px var(--primary-neon);
+            font-size: 1.35rem;
+            min-width: 82px;
+            text-align: center;
         }
 
         /* --- Game Area --- */
@@ -1586,15 +1658,15 @@
 
         #pack-maker-screen {
             --pack-maker-safe-bottom: calc(var(--corner-widget-size) + var(--corner-widget-offset) + 24px);
-            padding: clamp(20px, 3vw, 42px) clamp(20px, 3vw, 42px) var(--pack-maker-safe-bottom);
+            padding: clamp(18px, 2.4vw, 36px) clamp(18px, 2.4vw, 36px) var(--pack-maker-safe-bottom);
             gap: 18px;
         }
 
         .pack-maker-shell {
-            width: min(1320px, 94vw);
-            height: min(760px, calc(100dvh - var(--pack-maker-safe-bottom) - 92px));
+            width: min(1680px, calc(100vw - 88px));
+            height: min(820px, calc(100dvh - var(--pack-maker-safe-bottom) - 78px));
             display: grid;
-            grid-template-columns: minmax(330px, 0.9fr) minmax(520px, 1.35fr);
+            grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.48fr);
             gap: 18px;
         }
 
@@ -1614,7 +1686,7 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 16px;
-            width: min(1320px, 94vw);
+            width: min(1680px, calc(100vw - 88px));
         }
 
         .pack-maker-title {
@@ -1880,13 +1952,15 @@
             flex: 1;
             min-height: 0;
             overflow: auto;
+            scrollbar-gutter: stable both-edges;
             padding: 14px;
         }
 
         .pack-maker-table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 820px;
+            min-width: 760px;
+            table-layout: fixed;
         }
 
         .pack-maker-table th,
@@ -1909,9 +1983,54 @@
             width: 44px;
         }
 
+        .pack-maker-table th:nth-child(1),
+        .pack-maker-table td:nth-child(1) {
+            width: 52px;
+        }
+
+        .pack-maker-table th:nth-child(2),
+        .pack-maker-table td:nth-child(2) {
+            width: 24%;
+        }
+
+        .pack-maker-table th:nth-child(3),
+        .pack-maker-table td:nth-child(3) {
+            width: 33%;
+        }
+
+        .pack-maker-table th:nth-child(4),
+        .pack-maker-table td:nth-child(4) {
+            width: 35%;
+        }
+
+        .pack-maker-table th:nth-child(5),
+        .pack-maker-table td:nth-child(5) {
+            width: 76px;
+        }
+
+        .pack-maker-table th:last-child,
+        .pack-maker-table td:last-child {
+            position: sticky;
+            right: 0;
+            z-index: 2;
+            background: linear-gradient(90deg, rgba(5, 5, 10, 0.72), rgba(5, 5, 10, 0.96) 32%);
+            box-shadow: -10px 0 16px rgba(5, 5, 10, 0.82);
+        }
+
+        .pack-maker-table th:last-child {
+            z-index: 3;
+        }
+
         .pack-maker-source-cell {
-            display: grid;
-            gap: 6px;
+            display: table-cell;
+        }
+
+        .pack-maker-source-cell input {
+            display: block;
+        }
+
+        .pack-maker-source-cell input+input {
+            margin-top: 6px;
         }
 
         .pack-maker-row-btn {
@@ -1928,6 +2047,332 @@
 
         .pack-maker-footer .btn-small {
             min-width: 140px;
+        }
+
+        .pack-maker-action-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .pack-maker-review-note {
+            align-self: center;
+            max-width: 430px;
+            color: rgba(224, 230, 237, 0.62);
+            font-size: 0.7rem;
+            line-height: 1.45;
+            letter-spacing: 0.6px;
+        }
+
+        .pack-maker-review-alerts {
+            margin: 0 20px 14px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .pack-maker-review-alerts.hidden {
+            display: none;
+        }
+
+        .pack-maker-review-alert {
+            border: 1px solid rgba(255, 190, 0, 0.38);
+            border-radius: 6px;
+            background: linear-gradient(135deg, rgba(255, 190, 0, 0.12), rgba(5, 5, 10, 0.86));
+            padding: 10px 12px;
+            color: rgba(224, 230, 237, 0.82);
+            font-family: var(--font-code);
+            font-size: 0.7rem;
+            line-height: 1.45;
+            letter-spacing: 0.4px;
+        }
+
+        .pack-maker-review-alert strong {
+            display: block;
+            color: var(--secondary-neon);
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 1.4px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .pack-maker-review-alert.rejected {
+            border-color: rgba(255, 46, 99, 0.58);
+            background: linear-gradient(135deg, rgba(255, 46, 99, 0.14), rgba(5, 5, 10, 0.88));
+        }
+
+        .pack-maker-review-alert.rejected strong {
+            color: var(--danger-color);
+            text-shadow: 0 0 10px rgba(255, 46, 99, 0.38);
+        }
+
+        .pack-maker-review-alert.approved {
+            border-color: rgba(57, 255, 20, 0.42);
+            background: linear-gradient(135deg, rgba(57, 255, 20, 0.12), rgba(5, 5, 10, 0.88));
+        }
+
+        /* --- Admin Pack Review --- */
+        #admin-pack-screen {
+            padding: clamp(18px, 2.4vw, 36px);
+            gap: 18px;
+        }
+
+        .admin-pack-head,
+        .admin-pack-shell {
+            width: min(1480px, calc(100vw - 88px));
+        }
+
+        .admin-pack-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 14px;
+            border-top: 1px solid rgba(0, 243, 255, 0.2);
+        }
+
+        .admin-pack-title {
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 4vw, 4rem);
+            letter-spacing: 4px;
+            text-shadow: 0 0 20px var(--primary-neon);
+        }
+
+        .admin-pack-subtitle,
+        #admin-pack-status {
+            color: rgba(224, 230, 237, 0.72);
+            font-family: var(--font-code);
+            letter-spacing: 1.5px;
+        }
+
+        #admin-pack-status.danger {
+            color: var(--danger-color);
+            text-shadow: 0 0 12px var(--danger-color);
+        }
+
+        .admin-pack-shell {
+            height: min(760px, calc(100dvh - 150px));
+            display: grid;
+            grid-template-columns: minmax(300px, 0.45fr) minmax(0, 1fr);
+            gap: 18px;
+            min-height: 0;
+        }
+
+        .admin-pack-panel {
+            min-height: 0;
+            border: 1px solid rgba(0, 243, 255, 0.42);
+            border-radius: 8px;
+            background: rgba(5, 5, 10, 0.88);
+            box-shadow: 0 0 24px rgba(0, 243, 255, 0.14), inset 0 0 28px rgba(0, 0, 0, 0.55);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .admin-pack-toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 16px;
+            border-bottom: 1px solid rgba(0, 243, 255, 0.18);
+        }
+
+        .admin-pack-toolbar select {
+            flex: 1;
+            background: #050505;
+            border: 1px solid rgba(0, 243, 255, 0.55);
+            color: var(--text-light);
+            font-family: var(--font-code);
+            padding: 10px 12px;
+        }
+
+        .admin-pack-list {
+            overflow: auto;
+            padding: 12px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .admin-pack-list-item {
+            text-align: left;
+            border: 1px solid rgba(188, 19, 254, 0.4);
+            border-radius: 8px;
+            background: rgba(188, 19, 254, 0.08);
+            color: var(--text-light);
+            padding: 12px;
+            font-family: var(--font-code);
+            cursor: pointer;
+        }
+
+        .admin-pack-list-item.active,
+        .admin-pack-list-item:hover {
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 14px rgba(0, 243, 255, 0.24);
+        }
+
+        .admin-pack-list-title {
+            color: #fff;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .admin-pack-list-meta,
+        .admin-pack-empty {
+            color: rgba(224, 230, 237, 0.62);
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            line-height: 1.5;
+        }
+
+        .admin-pack-empty {
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+
+        .admin-login-card {
+            margin: auto;
+            width: min(520px, 100%);
+            border: 1px solid rgba(0, 243, 255, 0.52);
+            border-radius: 8px;
+            background:
+                linear-gradient(180deg, rgba(0, 243, 255, 0.08), rgba(188, 19, 254, 0.06)),
+                rgba(5, 5, 10, 0.92);
+            box-shadow: 0 0 22px rgba(0, 243, 255, 0.18), inset 0 0 26px rgba(0, 0, 0, 0.62);
+            padding: 22px;
+            font-family: var(--font-code);
+        }
+
+        .admin-login-title {
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 1.35rem;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+        }
+
+        .admin-login-card p {
+            color: rgba(224, 230, 237, 0.72);
+            line-height: 1.6;
+            margin: 0 0 16px;
+        }
+
+        .admin-login-form {
+            display: grid;
+            gap: 12px;
+        }
+
+        .admin-login-form input {
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            background: rgba(0, 0, 0, 0.72);
+            border: 1px solid rgba(0, 243, 255, 0.45);
+            border-radius: 6px;
+            color: var(--text-light);
+            font-family: var(--font-code);
+            padding: 12px 14px;
+        }
+
+        .admin-login-form input:focus {
+            outline: none;
+            border-color: var(--primary-neon);
+            box-shadow: 0 0 14px rgba(0, 243, 255, 0.24);
+        }
+
+        .admin-login-error {
+            margin-top: 14px;
+            color: var(--danger-color);
+            font-family: var(--font-code);
+            line-height: 1.5;
+        }
+
+        .admin-pack-detail {
+            min-height: 0;
+            overflow: auto;
+            padding: 18px;
+        }
+
+        .admin-pack-detail-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 14px;
+            align-items: start;
+            margin-bottom: 16px;
+        }
+
+        .admin-pack-detail h2 {
+            color: #fff;
+            font-family: var(--font-display);
+            letter-spacing: 2px;
+            margin: 0 0 8px;
+        }
+
+        .admin-pack-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .admin-pack-badge {
+            border: 1px solid rgba(0, 243, 255, 0.5);
+            color: var(--primary-neon);
+            border-radius: 999px;
+            padding: 6px 10px;
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+        }
+
+        .admin-pack-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .admin-pack-table-wrap {
+            border: 1px solid rgba(188, 19, 254, 0.28);
+            border-radius: 8px;
+            overflow: auto;
+            max-height: 520px;
+        }
+
+        .admin-pack-table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-family: var(--font-code);
+        }
+
+        .admin-pack-table th,
+        .admin-pack-table td {
+            border-bottom: 1px solid rgba(188, 19, 254, 0.16);
+            padding: 10px;
+            color: var(--text-light);
+            vertical-align: top;
+        }
+
+        .admin-pack-table th {
+            color: var(--secondary-neon);
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            letter-spacing: 1.5px;
+        }
+
+        .admin-pack-table th:nth-child(1),
+        .admin-pack-table td:nth-child(1) {
+            width: 52px;
+            color: rgba(224, 230, 237, 0.55);
+        }
+
+        .admin-pack-table th:nth-child(2),
+        .admin-pack-table td:nth-child(2) {
+            width: 22%;
+            color: #fff;
+            font-weight: 800;
+        }
+
+        .admin-pack-table a {
+            color: var(--primary-neon);
+            word-break: break-all;
         }
 
         /* --- Keyboard Test --- */
@@ -2214,6 +2659,17 @@
 
             .pack-maker-footer>div {
                 flex-wrap: wrap;
+            }
+
+            .admin-pack-shell {
+                width: 94vw;
+                height: min(760px, calc(100vh - 110px));
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(220px, 0.45fr) minmax(0, 1fr);
+            }
+
+            .admin-pack-head {
+                width: 94vw;
             }
         }
 
@@ -5353,9 +5809,15 @@
             </div>
         </div>
 
-        <div class="hud-item">
-            <span class="hud-label">Lives</span>
-            <span class="hud-value" id="lives-display">♥♥♥</span>
+        <div class="hud-group hud-center-group">
+            <div class="hud-item">
+                <span class="hud-label">Lives</span>
+                <span class="hud-value" id="lives-display">♥♥♥</span>
+            </div>
+            <div class="hud-item study-timer-item" id="study-timer-item">
+                <span class="hud-label">Timer</span>
+                <span class="hud-value" id="study-timer-display">00:00</span>
+            </div>
         </div>
 
         <div class="hud-group">
@@ -5646,7 +6108,7 @@
         <div class="card confirm-card">
             <h2 id="confirm-title">CONFIRM</h2>
             <p class="confirm-message" id="confirm-message"></p>
-            <input class="confirm-input hidden" type="password" id="confirm-input" autocomplete="current-password"
+            <input class="confirm-input hidden" type="text" id="confirm-input" autocomplete="off"
                 spellcheck="false" placeholder="PASSWORD">
             <div class="confirm-error" id="confirm-error"></div>
             <div class="scenario-actions" style="justify-content: flex-end;">
@@ -5707,6 +6169,7 @@
                     <input id="pack-maker-title" maxlength="60" placeholder="PACK TITLE">
                     <textarea id="pack-maker-description" maxlength="240" placeholder="PACK DESCRIPTION"></textarea>
                 </div>
+                <div class="pack-maker-review-alerts hidden" id="pack-maker-review-alerts"></div>
                 <div class="pack-maker-table-wrap">
                     <table class="pack-maker-table" id="pack-maker-item-table">
                         <thead>
@@ -5723,10 +6186,46 @@
                 </div>
                 <div class="pack-maker-footer">
                     <button class="btn-small" id="pack-maker-add-item" type="button">ADD ITEM</button>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-small" id="pack-maker-save" type="button">SAVE MY PACK</button>
-                        <button class="btn-small" id="pack-maker-submit" type="button">SUBMIT PUBLIC REVIEW</button>
+                    <div class="pack-maker-review-note">
+                        SAVE MY PACK is playable immediately. REQUEST PUBLIC LISTING appears in Public Packs
+                        after operator review.
                     </div>
+                    <div class="pack-maker-action-group">
+                        <button class="btn-small" id="pack-maker-save" type="button">SAVE MY PACK</button>
+                        <button class="btn-small" id="pack-maker-submit" type="button">REQUEST PUBLIC LISTING</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Admin Pack Review Screen -->
+    <div id="admin-pack-screen" class="overlay hidden">
+        <div class="admin-pack-head">
+            <div>
+                <div class="admin-pack-title">PACK REVIEW</div>
+                <div class="admin-pack-subtitle">Operator queue for packs requested for public listing</div>
+                <div id="admin-pack-status">REVIEW QUEUE</div>
+            </div>
+            <a class="btn-small" id="admin-pack-close" href="/games/codedrop/">HOME</a>
+        </div>
+
+        <div class="admin-pack-shell">
+            <section class="admin-pack-panel" aria-label="Pending public pack list">
+                <div class="admin-pack-toolbar">
+                    <select id="admin-pack-status-filter" aria-label="Review status filter">
+                        <option value="pending" selected>PENDING</option>
+                        <option value="approved">APPROVED</option>
+                        <option value="rejected">REJECTED</option>
+                    </select>
+                    <button class="btn-small" id="admin-pack-refresh" type="button">REFRESH</button>
+                </div>
+                <div class="admin-pack-list" id="admin-pack-list"></div>
+            </section>
+
+            <section class="admin-pack-panel" aria-label="Selected public pack detail">
+                <div class="admin-pack-detail" id="admin-pack-detail">
+                    <div class="admin-pack-empty">Select a submitted pack to review.</div>
                 </div>
             </section>
         </div>
@@ -6182,6 +6681,7 @@
     <script src="js/learn_mode.js"></script>
     <script src="js/dashboard.js"></script>
     <script src="js/pack_maker.js"></script>
+    <script src="js/admin_packs.js"></script>
     <script src="js/keyboard_test.js"></script>
 
 

@@ -17,8 +17,11 @@ const PackMaker = (() => {
         mine: [],
         public: [],
         busy: false,
+        submitting: false,
         abort: null,
         activeMessage: null,
+        activeRequestId: 0,
+        requestSeq: 0,
         stopByUser: false,
         autoStick: true,
         internalScroll: false,
@@ -38,6 +41,10 @@ const PackMaker = (() => {
 
     function authHeaders() {
         return state.userToken ? { Authorization: `Bearer ${state.userToken}` } : {};
+    }
+
+    function emptyDraft() {
+        return { title: '', description: '', items: [] };
     }
 
     function storageScope() {
@@ -64,12 +71,14 @@ const PackMaker = (() => {
         return helper.refreshServerSession();
     }
 
-    async function fetchPackMakerStream(message, history = []) {
+    async function fetchPackMakerStream(message, context = {}) {
+        const mode = context.mode === 'revision' ? 'revision' : 'new';
         const body = {
             message,
             engine: ui.engine.value,
-            history,
-            draft: stateRef.draft
+            mode,
+            history: mode === 'revision' ? (context.history || []) : [],
+            draft: mode === 'revision' ? (context.draft || emptyDraft()) : emptyDraft()
         };
         const options = {
             method: 'POST',
@@ -188,6 +197,12 @@ const PackMaker = (() => {
         return hasCreateVerb && (hasPackWord || hasTermHint || hasCount);
     }
 
+    function isDraftRevisionRequest(message) {
+        const text = escapeText(message);
+        if (!text) return false;
+        return /(수정|고쳐|바꿔|변경|삭제|제거|항목\s*추가|더\s*추가|보강|정리해|다듬|이\s*팩|현재\s*(?:draft|드래프트|팩)|방금\s*(?:draft|드래프트|팩)|위\s*(?:draft|드래프트|팩)|this\s*pack|current\s*draft|revise|edit|rename|remove|delete|append|update)/i.test(text);
+    }
+
     function isConnectionProbe(message) {
         const text = escapeText(message);
         const compact = compactPrompt(text);
@@ -238,7 +253,7 @@ const PackMaker = (() => {
                     ? '팩 생성 요청을 넣으면 이 KUGNUS 경로로 검색 근거를 모으고 초안을 생성합니다.'
                     : 'KUGNUS가 OFFLINE이면 팩 생성 요청 전에 GPT 5.4 MINI 전환 팝업이 뜹니다.',
                 '',
-                '예: 자동차 정비소에 취직하는데 한글 자동차부품 단어 50개로 카 파츠 팩 만들어줘'
+                '예: 국가이름 50개로 국가이름 팩 만들어줘. 한글로.'
             ].filter(Boolean).join('\n');
         }
 
@@ -263,12 +278,12 @@ const PackMaker = (() => {
                 '됩니다. 다만 Pack Maker는 일반 대화보다 **데이터팩 생성 요청**에 맞춰져 있습니다.',
                 '',
                 '한 문장에 아래 4가지를 넣으면 KUGNUS SERVER가 검색 근거를 보고 초안을 만듭니다.',
-                '- 도메인: 자동차 정비, EX280, 회계, 병원 행정 등',
+                '- 도메인: 국가명, EX280, 회계, 병원 행정, 자동차 정비 등',
                 '- 언어: 한글 또는 영어',
                 '- 개수: 10-120개',
-                '- 팩 이름: 카 파츠 팩처럼 저장될 이름',
+                '- 팩 이름: 국가이름 팩처럼 저장될 이름',
                 '',
-                '예: 자동차 정비소에 취직하는데 한글 자동차부품 단어 50개로 카 파츠 팩 만들어줘'
+                '예: 국가이름 50개로 국가이름 팩 만들어줘. 한글로.'
             ].join('\n');
         }
 
@@ -276,7 +291,7 @@ const PackMaker = (() => {
             'Yes. Pack Maker is for **data pack generation requests**, not open-ended chat.',
             '',
             'Include the domain, term language, item count, and pack name.',
-            'Example: Make a Korean car-parts pack with 50 common auto repair terms.'
+            'Example: Make a Korean country-name pack with 50 items.'
         ].join('\n');
     }
 
@@ -995,6 +1010,7 @@ const PackMaker = (() => {
             title: escapeText(draft.title).slice(0, 60),
             description: escapeText(draft.description).slice(0, 240),
             status: draft.status || 'draft',
+            reviewReason: escapeText(draft.reviewReason || draft.review_reason).slice(0, 240),
             items: items.map(item => {
                 const term = escapeText(item.term || item.text || item.word).slice(0, 80);
                 const desc = escapeText(item.desc || item.description || item.explain).slice(0, 180);
@@ -1033,6 +1049,39 @@ const PackMaker = (() => {
         });
         persistDraft();
         return stateRef.draft;
+    }
+
+    function packReviewStatusLabel(status) {
+        if (status === 'approved') return t('packMaker.reviewStatusApproved');
+        if (status === 'rejected') return t('packMaker.reviewStatusRejected');
+        return t('packMaker.reviewStatusPending');
+    }
+
+    function renderReviewAlerts() {
+        if (!ui.reviewAlerts) return;
+        ui.reviewAlerts.replaceChildren();
+        const packs = stateRef.mine
+            .filter(pack => ['pending', 'approved', 'rejected'].includes(pack.status))
+            .slice(0, 4);
+        ui.reviewAlerts.classList.toggle('hidden', packs.length === 0);
+        packs.forEach(pack => {
+            const card = document.createElement('div');
+            card.className = `pack-maker-review-alert ${pack.status || 'pending'}`;
+
+            const title = document.createElement('strong');
+            title.textContent = `${packReviewStatusLabel(pack.status)} · ${escapeText(pack.title) || 'Custom Pack'}`;
+            card.appendChild(title);
+
+            const detail = document.createElement('div');
+            const reason = escapeText(pack.reviewReason);
+            if (pack.status === 'rejected') {
+                detail.textContent = `${t('packMaker.reviewStatusReason')}: ${reason || t('packMaker.reviewStatusNoReason')}`;
+            } else {
+                detail.textContent = pack.description || t('packMaker.reviewNote');
+            }
+            card.appendChild(detail);
+            ui.reviewAlerts.appendChild(card);
+        });
     }
 
     function renderDraft(options = {}) {
@@ -1175,6 +1224,7 @@ const PackMaker = (() => {
             stateRef.mine = [];
             stateRef.public = [];
             renderPackOptions();
+            renderReviewAlerts();
             return;
         }
 
@@ -1193,6 +1243,7 @@ const PackMaker = (() => {
             stateRef.mine = (await mineRes.json()).packs || [];
             stateRef.public = (await publicRes.json()).packs || [];
             renderPackOptions();
+            renderReviewAlerts();
         } catch (err) {
             console.warn('Custom packs unavailable:', err.message);
         }
@@ -1273,6 +1324,7 @@ const PackMaker = (() => {
 
     async function sendChat(e) {
         e.preventDefault();
+        if (stateRef.submitting) return;
         if (stateRef.busy) {
             stopChat();
             return;
@@ -1284,40 +1336,55 @@ const PackMaker = (() => {
     }
 
     async function sendChatText(message) {
-        if (stateRef.busy) return;
+        if (stateRef.busy || stateRef.submitting) return;
         if (!isLocalPackGenerationRequest(message)) {
             await answerLocalBrief(message);
             return;
         }
 
-        if (!await ensureRemoteAuth()) {
-            return;
-        }
-
-        await offerKugnusFallbackIfNeeded();
-        ui.input.value = '';
-        collectDraftFromEditor();
-
-        const history = stateRef.chat
-            .filter(entry => entry.role === 'user' || entry.role === 'assistant')
-            .slice(-CHAT_LIMIT)
-            .map(entry => ({ role: entry.role, content: entry.content }));
-
-        stateRef.chat.push({ role: 'user', content: message });
-        stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
-        persistChatHistory();
-        appendChat('user', message);
-        const pending = appendChat('assistant', '', { question: message, streaming: true });
-        stateRef.activeMessage = pending;
-        stateRef.stopByUser = false;
-        stateRef.abort = new AbortController();
-        setBusy(true);
+        stateRef.submitting = true;
+        let pending = null;
+        let requestId = 0;
         let answer = '';
         let finalStatus = '';
         let finalStatusDanger = false;
+        let searchNoticeShown = false;
 
         try {
-            const res = await fetchPackMakerStream(message, history);
+            if (!await ensureRemoteAuth()) {
+                return;
+            }
+
+            await offerKugnusFallbackIfNeeded();
+            const mode = isDraftRevisionRequest(message) ? 'revision' : 'new';
+            const draftForRequest = mode === 'revision' ? collectDraftFromEditor() : emptyDraft();
+            const history = mode === 'revision'
+                ? stateRef.chat
+                    .filter(entry => entry.role === 'user' || entry.role === 'assistant')
+                    .slice(-CHAT_LIMIT)
+                    .map(entry => ({ role: entry.role, content: entry.content }))
+                : [];
+
+            ui.input.value = '';
+            if (mode === 'new') {
+                stateRef.draft = emptyDraft();
+                renderDraft({ updateStatus: false });
+                renderStatus('PREPARING NEW PACK');
+            }
+
+            stateRef.chat.push({ role: 'user', content: message });
+            stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
+            persistChatHistory();
+            appendChat('user', message);
+            pending = appendChat('assistant', '', { question: message, streaming: true });
+            requestId = ++stateRef.requestSeq;
+            stateRef.activeRequestId = requestId;
+            stateRef.activeMessage = pending;
+            stateRef.stopByUser = false;
+            stateRef.abort = new AbortController();
+            setBusy(true);
+
+            const res = await fetchPackMakerStream(message, { mode, history, draft: draftForRequest });
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
@@ -1325,6 +1392,7 @@ const PackMaker = (() => {
             }
 
             await readStream(res, evt => {
+                if (requestId !== stateRef.activeRequestId) return;
                 if (evt.event === 'meta') {
                     renderStatus(engineStatus('STREAMING', evt));
                     updateEngineRouteStatus(evt);
@@ -1337,7 +1405,10 @@ const PackMaker = (() => {
                     return;
                 }
                 if (evt.event === 'search') {
-                    appendChat('system', t('packMaker.searchResults', { count: evt.results?.length || 0 }));
+                    if (!searchNoticeShown) {
+                        searchNoticeShown = true;
+                        appendChat('system', t('packMaker.searchResults', { count: evt.results?.length || 0 }));
+                    }
                     return;
                 }
                 if (evt.event === 'delta') {
@@ -1354,6 +1425,7 @@ const PackMaker = (() => {
                 if (evt.event === 'error') throw new Error(evt.error || 'Pack Maker failed');
             });
 
+            if (requestId !== stateRef.activeRequestId) return;
             finishAssistantMessage(pending, answer.trim(), message);
             stateRef.chat.push({ role: 'assistant', content: answer.trim(), question: message });
             stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
@@ -1361,19 +1433,21 @@ const PackMaker = (() => {
             renderStatus(finalStatus || 'DRAFT READY', finalStatusDanger);
         } catch (err) {
             if (err.name === 'AbortError' && stateRef.stopByUser) {
-                stopAssistantMessage(pending);
+                if (pending) stopAssistantMessage(pending);
                 renderStatus(engineStatus('STOPPED'));
             } else if (err.code === 'AUTH_REQUIRED') {
-                discardAssistantMessage(pending);
+                if (pending) discardAssistantMessage(pending);
                 await showRemoteLoginRequired();
             } else {
-                failAssistantMessage(pending, err.message, message);
+                if (pending) failAssistantMessage(pending, err.message, message);
                 renderStatus(err.message.startsWith('DRAFT SHORT') ? err.message : 'GENERATION FAILED', true);
             }
         } finally {
             if (stateRef.activeMessage === pending) stateRef.activeMessage = null;
+            if (requestId && stateRef.activeRequestId === requestId) stateRef.activeRequestId = 0;
             stateRef.abort = null;
             stateRef.stopByUser = false;
+            stateRef.submitting = false;
             setBusy(false);
             ui.input.focus();
         }
@@ -1448,6 +1522,7 @@ const PackMaker = (() => {
         ui.status = $('pack-maker-status');
         ui.title = $('pack-maker-title');
         ui.description = $('pack-maker-description');
+        ui.reviewAlerts = $('pack-maker-review-alerts');
         ui.itemBody = $('pack-maker-items-body');
         ui.addItem = $('pack-maker-add-item');
         ui.save = $('pack-maker-save');
@@ -1507,6 +1582,7 @@ const PackMaker = (() => {
             if (!state.userToken && ui.screen && !ui.screen.classList.contains('hidden')) {
                 renderStatus(t('packMaker.guestPreview'));
             }
+            renderReviewAlerts();
             if (!stateRef.busy) renderChatHistory();
         });
 
@@ -1521,6 +1597,7 @@ const PackMaker = (() => {
         loadChatHistory();
         renderDraft();
         renderChatHistory();
+        renderReviewAlerts();
         refreshPacks();
     }
 

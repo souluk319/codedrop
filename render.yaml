@@ -28,6 +28,14 @@ services:
         sync: false
       - key: PACK_ADMIN_NICKNAMES
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: REVIEW_NOTIFY_EMAIL
+        value: souluk319@gmail.com
+      - key: MAIL_FROM
+        value: CodeDrop <onboarding@resend.dev>
+      - key: PUBLIC_APP_URL
+        sync: false
       - key: KUGNUS_GATEWAY_BASE_URL
         sync: false
       - key: KUGNUS_GATEWAY_API_KEY

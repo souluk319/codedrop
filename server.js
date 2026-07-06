@@ -236,6 +236,7 @@ const PACK_MAKER_BATCH_SIZE = 25;
 const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 180_000, 180_000));
 const PACK_MAKER_TEMPERATURE = Math.max(0.1, Math.min(Number(process.env.PACK_MAKER_TEMPERATURE) || 0.65, 1.2));
 const PACK_MAKER_SWEEP_TEMPERATURE = Math.max(PACK_MAKER_TEMPERATURE, Math.min(Number(process.env.PACK_MAKER_SWEEP_TEMPERATURE) || 0.85, 1.3));
+const REVIEW_EMAIL_TIMEOUT_MS = Math.max(3000, Math.min(Number(process.env.REVIEW_EMAIL_TIMEOUT_MS) || 10_000, 30_000));
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
         .split(",")
@@ -580,6 +581,131 @@ function isPackAdmin(user) {
     return Boolean(user?.nickname && PACK_ADMIN_NICKNAMES.has(String(user.nickname).toLowerCase()));
 }
 
+function escapeHtml(value) {
+    return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function publicAppBaseUrl(req) {
+    const configured = envFirst(["PUBLIC_APP_URL"]);
+    if (configured) return configured.replace(/\/+$/, "");
+
+    const proto = req.get("x-forwarded-proto") || req.protocol || "http";
+    const host = req.get("x-forwarded-host") || req.get("host") || `localhost:${PORT}`;
+    return `${proto}://${host}/games/codedrop`;
+}
+
+function reviewUrlForPack(req, pack, intent = "") {
+    const url = new URL(`${publicAppBaseUrl(req)}/admin/packs`);
+    url.searchParams.set("pack", String(pack.id));
+    if (intent) url.searchParams.set("intent", intent);
+    return url.toString();
+}
+
+function reviewEmailPreviewItems(items) {
+    return items.slice(0, 8).map((item, index) => `
+        <tr>
+            <td style="padding:10px 8px;color:#ff2f5f;font-family:monospace;font-size:13px;">${String(index + 1).padStart(2, "0")}</td>
+            <td style="padding:10px 8px;color:#ffffff;font-family:monospace;font-weight:700;">${escapeHtml(item.term)}</td>
+            <td style="padding:10px 8px;color:#cfd4dc;font-family:monospace;">${escapeHtml(item.desc)}</td>
+        </tr>
+    `).join("");
+}
+
+function renderPackReviewEmail({ pack, items, user, openUrl, approveUrl, rejectUrl }) {
+    const safeTitle = escapeHtml(pack.title);
+    const safeUser = escapeHtml(user.nickname);
+    const sourceCount = items.reduce((sum, item) => sum + (Array.isArray(item.sources) ? item.sources.length : 0), 0);
+    const missingSources = items.filter(item => !Array.isArray(item.sources) || item.sources.length === 0).length;
+
+    return `<!doctype html>
+<html>
+<body style="margin:0;background:#050507;padding:28px;font-family:Arial,sans-serif;color:#f4f7fb;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:760px;margin:0 auto;background:#090a12;border:1px solid #bc13fe;border-radius:14px;box-shadow:0 0 28px rgba(188,19,254,.45);overflow:hidden;">
+        <tr>
+            <td style="padding:28px 30px 16px;border-bottom:1px solid rgba(188,19,254,.4);background:linear-gradient(135deg,rgba(188,19,254,.22),rgba(0,243,255,.08));">
+                <div style="font-family:monospace;color:#00f3ff;letter-spacing:4px;font-size:13px;">CODEDROP ADMIN</div>
+                <h1 style="margin:10px 0 0;color:#ff2f5f;font-size:30px;letter-spacing:2px;">PUBLIC PACK REVIEW</h1>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:24px 30px;">
+                <div style="display:inline-block;padding:7px 12px;border:1px solid #ffb000;border-radius:999px;color:#ffb000;font-family:monospace;font-weight:700;letter-spacing:2px;">PENDING</div>
+                <h2 style="margin:18px 0 8px;color:#ffffff;font-size:24px;">${safeTitle}</h2>
+                <p style="margin:0 0 20px;color:#aeb5c2;font-family:monospace;line-height:1.6;">
+                    작성자: <strong style="color:#00f3ff;">${safeUser}</strong><br>
+                    항목 수: <strong>${items.length}</strong><br>
+                    Source 수: <strong>${sourceCount}</strong><br>
+                    Source 누락 항목: <strong style="color:${missingSources ? "#ffb000" : "#00ff85"};">${missingSources}</strong>
+                </p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid rgba(0,243,255,.35);background:#050507;">
+                    ${reviewEmailPreviewItems(items)}
+                </table>
+                <p style="margin:18px 0 0;color:#777f8e;font-size:12px;font-family:monospace;">메일 버튼은 관리자 로그인 후 해당 팩 검수와 승인/반려 확인창으로 이어집니다.</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:0 30px 30px;">
+                <a href="${escapeHtml(openUrl)}" style="display:inline-block;margin:0 8px 10px 0;padding:13px 18px;background:#00f3ff;color:#020307;text-decoration:none;font-family:monospace;font-weight:800;letter-spacing:1px;border-radius:6px;">OPEN REVIEW</a>
+                <a href="${escapeHtml(approveUrl)}" style="display:inline-block;margin:0 8px 10px 0;padding:13px 18px;background:#00ff85;color:#020307;text-decoration:none;font-family:monospace;font-weight:800;letter-spacing:1px;border-radius:6px;">APPROVE CHECK</a>
+                <a href="${escapeHtml(rejectUrl)}" style="display:inline-block;margin:0 0 10px 0;padding:13px 18px;background:#ff2f5f;color:#ffffff;text-decoration:none;font-family:monospace;font-weight:800;letter-spacing:1px;border-radius:6px;">REJECT CHECK</a>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+}
+
+async function sendPackReviewEmail(req, pack, items, user) {
+    const apiKey = envFirst(["RESEND_API_KEY"]);
+    const to = envFirst(["REVIEW_NOTIFY_EMAIL"]);
+    const from = envFirst(["MAIL_FROM"]) || "CodeDrop <onboarding@resend.dev>";
+    if (!apiKey || !to) return { sent: false, reason: "mail env missing" };
+
+    const openUrl = reviewUrlForPack(req, pack);
+    const approveUrl = reviewUrlForPack(req, pack, "approve");
+    const rejectUrl = reviewUrlForPack(req, pack, "reject");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REVIEW_EMAIL_TIMEOUT_MS);
+
+    try {
+        const response = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            signal: controller.signal,
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                from,
+                to: [to],
+                subject: `[CodeDrop] 공개팩 심사 요청: ${pack.title}`,
+                html: renderPackReviewEmail({ pack, items, user, openUrl, approveUrl, rejectUrl }),
+                text: [
+                    "CodeDrop 공개팩 심사 요청",
+                    `팩 제목: ${pack.title}`,
+                    `작성자: ${user.nickname}`,
+                    `항목 수: ${items.length}`,
+                    `심사 화면: ${openUrl}`
+                ].join("\n")
+            })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            return { sent: false, reason: data?.message || `resend ${response.status}` };
+        }
+        return { sent: true, id: data?.id || "" };
+    } catch (err) {
+        return { sent: false, reason: err.name === "AbortError" ? "mail timeout" : err.message };
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
 function packId(value) {
     const id = Number(value);
     if (!Number.isInteger(id) || id <= 0) {
@@ -719,6 +845,8 @@ function extractPackTitle(message) {
 
     return sanitizePackText(explicit[1]
         .replace(/\d{1,3}\s*(?:개|개만|단어|용어|terms?|items?|words?)/gi, "")
+        .replace(/\b(?:로|으로)\b\s*(?=팩)/gi, "")
+        .replace(/(?:로|으로)\s*(?=팩)/g, "")
         .replace(/^.*(?:뽑아서|뽑아|만들어|생성해서|제작해서|작성해서)\s*/i, "")
         .replace(/^(?:만|만큼|정도)\s*/i, "")
         .replace(/^(?:한글|한국어|한국말|영어|영문|english)\s*(?:로\s*된|로된|로)?\s*/i, "")
@@ -745,6 +873,9 @@ function extractPackIntent(message) {
     const topic = sanitizePackText(text
         .replace(/(?:팩\s*)?(?:초안|만들어줘|만들|생성|제작|작성|뽑아줘|뽑아서|부탁).*$/i, "")
         .replace(/\d{1,3}\s*(?:개|단어|용어|terms?|items?|words?)/gi, "")
+        .replace(/(?:한글|한국어|한국말|영어|영문|english)\s*(?:로\s*된|로된|로)?/gi, "")
+        .replace(/\b(?:로|으로)\b/gi, " ")
+        .replace(/(?:로|으로)\s*$/g, "")
         .replace(/\s+/g, " ")
         .trim(), 160) || text;
 
@@ -784,12 +915,12 @@ function packMakerBriefResponse(message) {
             "됩니다. 다만 Pack Maker는 일반 대화보다 데이터팩 생성 요청에 맞춰져 있습니다.",
             "",
             "한 문장에 아래 4가지를 넣으면 KUGNUS SERVER가 검색 근거를 보고 초안을 만듭니다.",
-            "- 도메인: 자동차 정비, EX280, 간호학, 회계 등",
+            "- 도메인: 국가명, EX280, 간호학, 회계, 자동차 정비 등",
             "- 언어: 한글 또는 영어",
             "- 개수: 10-120개",
-            "- 팩 이름: 카 파츠 팩처럼 저장될 이름",
+            "- 팩 이름: 국가이름 팩처럼 저장될 이름",
             "",
-            "예: 자동차 정비소에 취직하는데 한글 자동차부품 단어 50개로 카 파츠 팩 만들어줘"
+            "예: 국가이름 50개로 국가이름 팩 만들어줘. 한글로."
         ].join("\n");
     }
 
@@ -797,7 +928,7 @@ function packMakerBriefResponse(message) {
         "Yes. Pack Maker is for data pack generation requests, not open-ended chat.",
         "",
         "Tell Pack Maker the domain, term language, item count, and pack name.",
-        "Example: Make a Korean car-parts pack with 50 common auto repair terms."
+        "Example: Make a Korean country-name pack with 50 items."
     ].join("\n");
 }
 
@@ -808,9 +939,99 @@ function packLanguageLabel(language) {
 }
 
 function packLanguageInstruction(language) {
-    if (language === "korean") return "모든 term은 반드시 한글이 포함된 자동차 현장 용어로 작성한다. ABS 같은 약어도 단독 term으로 쓰지 말고 'ABS 센서'처럼 한글 부품명과 함께 쓴다.";
+    if (language === "korean") return "모든 term은 반드시 사용자가 요구한 도메인의 한글 표기로 작성한다. 영문 약어가 꼭 필요하면 한글 설명어를 함께 붙인다.";
     if (language === "english") return "모든 term은 영어 단어 또는 영어 약어로 작성한다. 한글 term은 넣지 않는다.";
     return "term은 사용자가 요구한 도메인에서 실제로 외울 가치가 있는 짧은 명사/약어/명령어로 작성한다.";
+}
+
+function packDomainText(intent) {
+    return `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
+}
+
+function packDomainProfile(intent) {
+    const topic = packDomainText(intent);
+    if (/(국가|국명|나라|세계\s*나라|country|countries|nation|nations|state\s*names?)/i.test(topic)) {
+        return "country_names";
+    }
+    if (/(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic)) {
+        return "car_repair";
+    }
+    return "generic";
+}
+
+function packDomainLabel(intent) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") return "country_names";
+    if (profile === "car_repair") return "car_repair";
+    return "generic";
+}
+
+function packMakerFocusGroups(intent) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") {
+        return [
+            "동아시아, 동남아시아, 남아시아 국가명",
+            "서유럽, 북유럽, 남유럽, 동유럽 국가명",
+            "북아프리카, 서아프리카, 동아프리카, 남아프리카 국가명",
+            "북아메리카, 중앙아메리카, 남아메리카, 카리브해 국가명",
+            "중동, 중앙아시아, 오세아니아, 태평양 섬 국가명",
+            "한국어 사용자가 헷갈리기 쉬운 공식 한글 국가명"
+        ];
+    }
+    if (profile === "car_repair") {
+        return [
+            "엔진 내부 부품, 흡기/배기, 윤활, 냉각 계통",
+            "브레이크, 조향, 서스펜션, 하체 연결 부품",
+            "전장, 센서, 배터리, 발전기, 조명, 배선 부품",
+            "변속기, 구동계, 차축, 클러치, 디퍼런셜 부품",
+            "외장, 차체 패널, 유리, 와이퍼, 실내 조작 부품",
+            "소모품, 필터, 호스, 벨트, 가스켓, 정비 현장 교체 부품"
+        ];
+    }
+    return [
+        "입문자가 먼저 외워야 하는 핵심 기본 용어",
+        "하위 구성요소, 세부 속성, 관련 명령/약어",
+        "현장에서 자주 보는 상태, 오류, 점검, 검증 용어",
+        "실무 작업에 쓰이는 도구, 절차, 액션 용어",
+        "고급 주제, 제품명, 주변 시스템, 연관 개념",
+        "실전에서 헷갈리기 쉬운 비슷하지만 다른 용어"
+    ];
+}
+
+function packMakerDomainHint(intent) {
+    return [
+        `domain profile: ${packDomainLabel(intent)}`,
+        `domain focus groups:\n- ${packMakerFocusGroups(intent).join("\n- ")}`,
+        "profile이 맞지 않는 다른 도메인의 예전 draft나 예전 대화 용어는 절대 섞지 않는다."
+    ].join("\n");
+}
+
+function packMakerLineExample(intent) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") return "예: 대한민국 | 동아시아에 있는 국가명입니다.";
+    if (profile === "car_repair") return "예: 브레이크 패드 | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.";
+    return "예: 핵심 용어 | 사용자가 요청한 도메인에서 자주 등장하는 한줄 설명입니다.";
+}
+
+function packMakerExpansionInstruction(intent) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") return "금지 목록이 많을수록 대륙과 지역을 넓혀 아직 쓰지 않은 공식 국가명을 추가한다.";
+    if (profile === "car_repair") return "금지 목록이 많을수록 더 구체적인 하위 부품명, 센서명, 소모품명, 외장/전장/하체 부품명으로 확장한다.";
+    return "금지 목록이 많을수록 같은 도메인 안에서 더 구체적인 하위 개념, 약어, 도구, 절차, 제품명으로 확장한다.";
+}
+
+function packMakerTermShapeInstruction(intent) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") return "term은 공식 국가명 또는 널리 쓰이는 한글 국가명만 쓴다.";
+    if (profile === "car_repair") return "term은 짧은 명사/부품명/현장 용어만 쓴다.";
+    return "term은 짧은 명사형 도메인 용어만 쓴다.";
+}
+
+function packMakerSearchQuery(intent, message) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") return "국가 이름 한글 공식 목록 country names official list";
+    if (profile === "car_repair") return "자동차 정비 부품 용어 auto repair parts glossary";
+    return `${intent.topic || message} glossary key terms official docs`;
 }
 
 function packIntentMessage(intent) {
@@ -819,6 +1040,7 @@ function packIntentMessage(intent) {
         `term 언어: ${packLanguageLabel(intent.termLanguage)}`,
         `팩 제목 후보: ${intent.title || "-"}`,
         `주제/상황: ${intent.topic || "-"}`,
+        `도메인 프로필: ${packDomainLabel(intent)}`,
         packLanguageInstruction(intent.termLanguage),
         "items 배열 길이가 목표 개수보다 적거나 많으면 실패다.",
         "JSON 밖 설명은 생략하거나 한 문장만 쓴다.",
@@ -927,54 +1149,12 @@ function buildPackMakerRepairMessages(payload, draft, reason) {
 }
 
 function packMakerBatchFocus(intent, batchNumber) {
-    const topic = `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
-    const carRepair = /(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic);
-
-    const carGroups = [
-        "엔진 내부 부품, 흡기/배기, 윤활, 냉각 계통",
-        "브레이크, 조향, 서스펜션, 하체 연결 부품",
-        "전장, 센서, 배터리, 발전기, 조명, 배선 부품",
-        "변속기, 구동계, 차축, 클러치, 디퍼런셜 부품",
-        "외장, 차체 패널, 유리, 와이퍼, 실내 조작 부품",
-        "소모품, 필터, 호스, 벨트, 가스켓, 정비 현장 교체 부품"
-    ];
-
-    const genericGroups = [
-        "입문자가 먼저 외워야 하는 핵심 기본 용어",
-        "하위 구성요소, 세부 부품, 관련 명령/속성",
-        "현장에서 자주 보는 상태, 오류, 점검, 검증 용어",
-        "운영/실무 작업에 쓰이는 도구, 절차, 액션 용어",
-        "고급 주제, 약어, 주변 시스템, 연관 개념",
-        "실전 문제에서 헷갈리기 쉬운 비슷하지만 다른 용어"
-    ];
-
-    const groups = carRepair ? carGroups : genericGroups;
+    const groups = packMakerFocusGroups(intent);
     return groups[(Math.max(1, Number(batchNumber) || 1) - 1) % groups.length];
 }
 
 function packMakerWideFocusList(intent) {
-    const topic = `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
-    if (/(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic)) {
-        return [
-            "엔진: 실린더, 피스톤, 밸브, 점화, 흡기, 배기, 윤활",
-            "냉각/공조: 라디에이터, 워터펌프, 팬, 냉매, 히터",
-            "제동/조향: 브레이크, 캘리퍼, 로터, 조향장치, 타이로드",
-            "하체/서스펜션: 쇼크업소버, 로어암, 부싱, 베어링, 링크",
-            "구동/변속: 미션, 클러치, 드라이브샤프트, 디퍼런셜, CV 조인트",
-            "전장/센서: 배터리, 발전기, 스타터, ECU, 릴레이, 센서류",
-            "외장/실내: 범퍼, 펜더, 도어, 유리, 와이퍼, 스위치",
-            "소모품/정비: 필터, 벨트, 호스, 가스켓, 오일, 패드, 플러그"
-        ];
-    }
-
-    return [
-        "입문 핵심 용어",
-        "하위 구성요소와 세부 부품",
-        "현장에서 자주 보는 상태/오류/점검 용어",
-        "실무 도구와 절차 용어",
-        "약어, 제품명, 주변 시스템",
-        "비슷해서 헷갈리는 구분 용어"
-    ];
+    return packMakerFocusGroups(intent);
 }
 
 function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
@@ -991,20 +1171,21 @@ function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
                 "너는 CodeDrop PACK MAKER의 용어 생성기다.",
                 "응답은 반드시 줄 목록만 출력한다. 설명, markdown, 코드펜스, JSON은 쓰지 않는다.",
                 "각 줄 형식은 정확히: 용어 | 한줄 설명",
-                "예: 브레이크 패드 | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.",
+                packMakerLineExample(payload.intent),
                 "raw HTML은 절대 쓰지 않는다."
             ].join("\n")
         },
         { role: "system", content: `이번 batch 계약:\n${packIntentMessage(batchIntent)}` },
         { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
         { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
+        { role: "system", content: `도메인 힌트:\n${packMakerDomainHint(payload.intent)}` },
         { role: "system", content: `이번 batch의 범주 초점: ${focus}` },
         {
             role: "system",
             content: [
                 `이미 사용한 term 목록(절대 재사용 금지): ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}`,
-                "위 금지 목록과 같은 term, 조사/띄어쓰기만 다른 term, 같은 부품의 표현만 바꾼 term은 모두 실패로 간주한다.",
-                "금지 목록이 많을수록 더 구체적인 하위 부품명, 센서명, 소모품명, 외장/전장/하체 부품명으로 확장한다."
+                "위 금지 목록과 같은 term, 조사/띄어쓰기만 다른 term, 같은 대상을 표현만 바꾼 term은 모두 실패로 간주한다.",
+                packMakerExpansionInstruction(payload.intent)
             ].join("\n")
         },
         { role: "system", content: `검색 결과:\n${payload.sourceBundle}` },
@@ -1015,7 +1196,7 @@ function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
                 `팩 title은 반드시 "${payload.intent.title || "Generated Data Pack"}" 로 둔다.`,
                 `이번 batch는 특히 다음 범주에서 뽑아라: ${focus}`,
                 packLanguageInstruction(payload.intent.termLanguage),
-                "term은 짧은 명사/부품명/현장 용어만 쓴다.",
+                packMakerTermShapeInstruction(payload.intent),
                 "중복 없이, 각 줄을 '용어 | 한줄 설명' 형식으로만 답한다."
             ].join("\n")
         }
@@ -1042,6 +1223,7 @@ function buildPackMakerFillMessages(payload, draft, count, repairNumber) {
         { role: "system", content: `이번 보강 계약:\n${packIntentMessage(fillIntent)}` },
         { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
         { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
+        { role: "system", content: `도메인 힌트:\n${packMakerDomainHint(payload.intent)}` },
         { role: "system", content: `이번 보강의 범주 초점: ${focus}` },
         {
             role: "system",
@@ -1049,7 +1231,7 @@ function buildPackMakerFillMessages(payload, draft, count, repairNumber) {
                 "아래 term은 이미 draft에 있으므로 절대 다시 쓰지 않는다.",
                 excludedTerms.length ? excludedTerms.join(", ") : "없음",
                 "반복 term이 하나라도 있으면 그 줄은 서버에서 버려진다.",
-                "자동차 정비 요청이면 엔진/제동/조향/하체/냉각/전장/외장/소모품/센서/변속기 부품을 고르게 섞는다."
+                packMakerExpansionInstruction(payload.intent)
             ].join("\n")
         },
         { role: "system", content: `검색 결과:\n${payload.sourceBundle}` },
@@ -1059,7 +1241,7 @@ function buildPackMakerFillMessages(payload, draft, count, repairNumber) {
                 `repair ${repairNumber}: 금지 목록에 없는 새 item을 정확히 ${count}개 생성해라.`,
                 `이번 repair는 특히 다음 범주에서 뽑아라: ${focus}`,
                 packLanguageInstruction(payload.intent.termLanguage),
-                "짧은 명사/부품명/현장 용어만 term으로 쓴다.",
+                packMakerTermShapeInstruction(payload.intent),
                 "각 줄은 반드시 '용어 | 한줄 설명' 형식이다."
             ].join("\n")
         }
@@ -1088,6 +1270,7 @@ function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
         { role: "system", content: `넓은 후보 생성 계약:\n${packIntentMessage(fillIntent)}` },
         { role: "system", content: `전체 목표 제목: ${payload.intent.title || "Generated Data Pack"}` },
         { role: "system", content: `전체 주제/상황: ${payload.intent.topic || payload.message}` },
+        { role: "system", content: `도메인 힌트:\n${packMakerDomainHint(payload.intent)}` },
         { role: "system", content: `후보 범주 풀:\n- ${focusList.join("\n- ")}` },
         {
             role: "system",
@@ -1095,7 +1278,7 @@ function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
                 `이미 사용한 term ${excludedTerms.length}개(절대 재사용 금지):`,
                 excludedTerms.length ? excludedTerms.join(", ") : "없음",
                 "금지 목록과 같은 term, 띄어쓰기만 다른 term, 표현만 바꾼 term은 서버에서 버려진다.",
-                "따라서 더 구체적인 하위 부품명/현장 용어/센서명/소모품명/점검 대상명으로 넓혀라."
+                packMakerExpansionInstruction(payload.intent)
             ].join("\n")
         },
         {
@@ -1104,7 +1287,7 @@ function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
                 `wide fill ${attempt}: 금지 목록에 없는 후보를 정확히 ${count}줄 생성해라.`,
                 "위 후보 범주 풀을 골고루 섞어라. 한 범주에 몰리지 마라.",
                 packLanguageInstruction(payload.intent.termLanguage),
-                "term은 2-5어절의 짧은 명사형이어야 한다.",
+                packMakerTermShapeInstruction(payload.intent),
                 "각 줄은 반드시 '용어 | 한줄 설명' 형식이다."
             ].join("\n")
         }
@@ -1153,7 +1336,7 @@ function buildPackMakerMicroSweepMessages(payload, draft, count, attempt) {
                 `${topic} 관련 ${language} 새 단어/용어 후보 ${count}개를 쉼표로만 나열해.`,
                 `이번에는 이 범주에서만 골라: ${focus}.`,
                 `이미 사용한 단어는 절대 다시 쓰지 마: ${excludedTerms.length ? excludedTerms.join(", ") : "없음"}.`,
-                "상위어를 반복하지 말고 더 구체적인 하위 부품명, 센서명, 소모품명, 점검 대상명을 써.",
+                packMakerExpansionInstruction(payload.intent),
                 "설명하지 마. markdown, JSON, 머리말도 쓰지 마.",
                 "중복 없이, 짧은 명사형만 써."
             ].join("\n")
@@ -1186,8 +1369,11 @@ function splitPackMakerCandidateLines(answer) {
 }
 
 function fallbackItemDescription(term, intent) {
-    const topic = `${intent.topic || ""} ${intent.title || ""}`.toLowerCase();
-    if (/(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic)) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") {
+        return `${term}는 국가명 학습팩에서 외울 수 있는 나라 이름입니다.`;
+    }
+    if (profile === "car_repair") {
         return `${term} 관련 점검이나 교체에서 자주 등장하는 자동차 정비 부품입니다.`;
     }
     return `${term} 관련 도메인에서 자주 등장하는 핵심 용어입니다.`;
@@ -1208,7 +1394,7 @@ function draftFromPackMakerLines(answer, intent, count, fallbackSources = []) {
         if (parts.length < 2) parts = line.split(/\s*:\s+/);
 
         const term = sanitizePackText(parts.shift(), MAX_PACK_TERM_LEN);
-        const desc = sanitizePackText(parts.join(" ").trim(), MAX_PACK_ITEM_DESC_LEN) || `${term} 관련 자동차 정비 용어입니다.`;
+        const desc = sanitizePackText(parts.join(" ").trim(), MAX_PACK_ITEM_DESC_LEN) || fallbackItemDescription(term, intent);
         if (!term || !desc) continue;
         if (intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
         if (intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
@@ -1723,7 +1909,7 @@ async function ensureCustomPackTables() {
 }
 
 function packRowVisibleToUser(row, user) {
-    return row && (row.status === "approved" || row.owner_id === user.id);
+    return row && (row.status === "approved" || row.owner_id === user.id || isPackAdmin(user));
 }
 
 function serializePackRow(row, items = undefined) {
@@ -1820,6 +2006,63 @@ function normalizeDuckDuckGoHref(href) {
     }
 }
 
+async function fetchJsonWithTimeout(url, timeoutMs = 6500, headers = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const res = await fetch(url, {
+            headers: {
+                "User-Agent": "CodeDrop Pack Maker/1.0 (https://www.kugnus.com)",
+                "Accept": "application/json",
+                ...headers
+            },
+            signal: controller.signal
+        });
+        if (!res.ok) throw new Error(`request failed (${res.status})`);
+        return await res.json();
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+function packMakerSourceLanguage(intent) {
+    return intent?.termLanguage === "english" ? "en" : "ko";
+}
+
+function packMakerWikipediaQuery(intent, message) {
+    const profile = packDomainProfile(intent);
+    if (profile === "country_names") return "국가 목록";
+    if (profile === "car_repair") return "자동차 부품";
+    return sanitizeChatText(intent?.topic || message || "용어", 80);
+}
+
+function sourceKey(source) {
+    try {
+        const url = new URL(source.url);
+        url.hash = "";
+        return url.toString().replace(/\/+$/, "").toLowerCase();
+    } catch (err) {
+        return String(source.url || "").toLowerCase();
+    }
+}
+
+function mergePackMakerSources(...sourceLists) {
+    const merged = [];
+    const seen = new Set();
+    for (const list of sourceLists) {
+        for (const item of list || []) {
+            const source = sanitizePackSource(item);
+            if (!source) continue;
+            const key = sourceKey(source);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            merged.push(source);
+            if (merged.length >= 14) return merged;
+        }
+    }
+    return merged;
+}
+
 async function duckDuckGoHtmlSearch(query) {
     const url = new URL("https://duckduckgo.com/html/");
     url.searchParams.set("q", query);
@@ -1913,6 +2156,74 @@ async function duckDuckGoSearch(query) {
     } finally {
         clearTimeout(timeout);
     }
+}
+
+async function wikipediaSearch(intent, message) {
+    const language = packMakerSourceLanguage(intent);
+    const query = packMakerWikipediaQuery(intent, message);
+    if (!query) return [];
+
+    const apiUrl = new URL(`https://${language}.wikipedia.org/w/api.php`);
+    apiUrl.searchParams.set("action", "query");
+    apiUrl.searchParams.set("list", "search");
+    apiUrl.searchParams.set("srsearch", query);
+    apiUrl.searchParams.set("srlimit", "5");
+    apiUrl.searchParams.set("format", "json");
+    apiUrl.searchParams.set("origin", "*");
+
+    try {
+        const data = await fetchJsonWithTimeout(apiUrl);
+        return (data?.query?.search || []).slice(0, 5).map(item => ({
+            title: `Wikipedia: ${sanitizePackText(item.title, 100)}`,
+            url: `https://${language}.wikipedia.org/wiki/${encodeURIComponent(String(item.title || "").replace(/\s+/g, "_"))}`,
+            snippet: stripHtml(item.snippet || item.title).slice(0, 220)
+        })).filter(item => item.title && item.url && item.snippet);
+    } catch (err) {
+        console.warn("Wikipedia search failed:", err.message);
+        return [];
+    }
+}
+
+async function wikidataSearch(intent, message) {
+    const language = packMakerSourceLanguage(intent);
+    const query = packMakerWikipediaQuery(intent, message);
+    if (!query) return [];
+
+    const apiUrl = new URL("https://www.wikidata.org/w/api.php");
+    apiUrl.searchParams.set("action", "wbsearchentities");
+    apiUrl.searchParams.set("search", query);
+    apiUrl.searchParams.set("language", language);
+    apiUrl.searchParams.set("uselang", language);
+    apiUrl.searchParams.set("limit", "7");
+    apiUrl.searchParams.set("format", "json");
+    apiUrl.searchParams.set("origin", "*");
+
+    try {
+        const data = await fetchJsonWithTimeout(apiUrl);
+        return (data?.search || []).slice(0, 7).map(item => {
+            const id = sanitizePackText(item.id, 40);
+            const label = sanitizePackText(item.label, 100);
+            const description = sanitizePackText(item.description, 220);
+            return {
+                title: `Wikidata: ${label || id}`,
+                url: id ? `https://www.wikidata.org/wiki/${id}` : "",
+                snippet: description || label || id
+            };
+        }).filter(item => item.title && item.url && item.snippet);
+    } catch (err) {
+        console.warn("Wikidata search failed:", err.message);
+        return [];
+    }
+}
+
+async function collectPackMakerSources(intent, message) {
+    const query = packMakerSearchQuery(intent, message);
+    const [duckResults, wikipediaResults, wikidataResults] = await Promise.all([
+        duckDuckGoSearch(query),
+        wikipediaSearch(intent, message),
+        wikidataSearch(intent, message)
+    ]);
+    return mergePackMakerSources(wikipediaResults, wikidataResults, duckResults);
 }
 
 function llmHeaders(target) {
@@ -2051,9 +2362,11 @@ function buildPackMakerMessages(body, searchResults, providedIntent = null) {
         throw err;
     }
 
-    const history = sanitizeChatHistory(body?.history);
+    const mode = body?.mode === "revision" ? "revision" : "new";
+    const useContext = mode === "revision";
+    const history = useContext ? sanitizeChatHistory(body?.history) : [];
     const intent = providedIntent || extractPackIntent(message);
-    const draft = normalizeDraftFromLlm(body?.draft || {}, searchResults);
+    const draft = useContext ? normalizeDraftFromLlm(body?.draft || {}, searchResults) : normalizeDraftFromLlm({}, searchResults);
     const sourceBundle = searchResults.length
         ? searchResults.map((item, index) => `${index + 1}. ${item.title}\nURL: ${item.url}\n요약: ${item.snippet}`).join("\n\n")
         : "검색 결과가 비어 있습니다. 일반 지식으로 초안을 만들되 출처가 부족하다고 표시하세요.";
@@ -2061,21 +2374,27 @@ function buildPackMakerMessages(body, searchResults, providedIntent = null) {
     const currentDraft = draft.items.length
         ? JSON.stringify(draft).slice(0, 5000)
         : "아직 저장된 draft가 없습니다.";
+    const messages = [
+        { role: "system", content: PACK_MAKER_SYSTEM_PROMPT },
+        { role: "system", content: `이번 요청 계약:\n${packIntentMessage(intent)}` },
+        { role: "system", content: `검색 결과:\n${sourceBundle}` },
+        { role: "system", content: `도메인 힌트:\n${packMakerDomainHint(intent)}` },
+        { role: "system", content: "출력 형식: 마지막 응답에는 파싱 가능한 JSON draft 객체 하나를 포함한다. batch 생성 경로에서는 줄 형식만 따른다." }
+    ];
+
+    if (useContext) {
+        messages.push({ role: "system", content: `현재 draft:\n${currentDraft}` }, ...history);
+    }
+    messages.push({ role: "user", content: message });
 
     return {
         engine,
         message,
+        mode,
         intent,
         sourceBundle,
         maxTokens: packMakerTokenBudget(intent.requestedCount),
-        messages: [
-            { role: "system", content: PACK_MAKER_SYSTEM_PROMPT },
-            { role: "system", content: `이번 요청 계약:\n${packIntentMessage(intent)}` },
-            { role: "system", content: `검색 결과:\n${sourceBundle}` },
-            { role: "system", content: `현재 draft:\n${currentDraft}` },
-            ...history,
-            { role: "user", content: message }
-        ]
+        messages
     };
 }
 
@@ -2489,7 +2808,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
             text: `TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS`
         });
 
-        const searchResults = await duckDuckGoSearch(`${intent.topic || message} glossary key terms official docs`);
+        const searchResults = await collectPackMakerSources(intent, message);
         writeNdjson(res, "search", { results: searchResults });
         const payload = buildPackMakerMessages(req.body, searchResults, intent);
 
@@ -2598,6 +2917,37 @@ app.get("/api/packs/:id", authUser, rateLimit("packs-detail", 120, 60_000, req =
     }
 });
 
+app.get("/api/admin/packs", authUser, rateLimit("admin-packs", 80, 60_000, req => req.user.id), async (req, res) => {
+    if (!isPackAdmin(req.user)) return res.status(403).json({ error: "Pack admin required" });
+
+    const status = String(req.query.status || "pending").toLowerCase();
+    if (!PACK_STATUSES.has(status)) return res.status(400).json({ error: "Invalid pack status" });
+
+    try {
+        await ensureCustomPackTables();
+        const [rows] = await db.query(`
+            SELECT p.*, u.nickname AS owner_nickname,
+                (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id) AS item_count,
+                (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id AND i.sources_json = '[]') AS missing_source_count
+            FROM custom_packs p
+            JOIN users u ON u.id = p.owner_id
+            WHERE p.status = ?
+            ORDER BY p.updated_at DESC
+            LIMIT 100
+        `, [status]);
+
+        res.json({
+            packs: rows.map(row => ({
+                ...serializePackRow(row),
+                missingSourceCount: Number(row.missing_source_count || 0)
+            }))
+        });
+    } catch (err) {
+        console.error("Admin pack list failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
 app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.user.id), async (req, res) => {
     let payload;
     try {
@@ -2642,7 +2992,14 @@ app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.
 
         const row = await fetchPackRow(id);
         const items = await fetchPackItems(id);
-        res.json({ ok: true, pack: serializePackRow(row, items) });
+        let reviewEmail = { sent: false, reason: "not submitted for review" };
+        if (payload.submitForReview) {
+            reviewEmail = await sendPackReviewEmail(req, row, items, req.user);
+            if (!reviewEmail.sent) {
+                console.warn(`Pack review email skipped/failed for pack ${id}: ${reviewEmail.reason}`);
+            }
+        }
+        res.json({ ok: true, pack: serializePackRow(row, items), reviewEmail });
     } catch (err) {
         await connection.rollback();
         console.error("Pack save failed:", err.message);

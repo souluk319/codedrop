@@ -26,7 +26,7 @@ const I18N_TEXT = {
         'auth.registerPassword': 'PASSWORD (min 4 chars)',
         'auth.confirmPassword': 'CONFIRM PASSWORD',
         'auth.guest': 'GUEST LOGIN',
-        'auth.guestNote': 'Guest can play official packs. Pack Maker, saved packs, rankings, and public review require login.',
+        'auth.guestNote': 'Guest can play official packs. Pack Maker, saved packs, rankings, and public listing requests require login.',
         'auth.welcome': 'WELCOME, ',
         'auth.logout': 'LOGOUT',
         'auth.loginAction': 'LOGIN',
@@ -91,13 +91,64 @@ const I18N_TEXT = {
         'packMaker.source': 'SOURCE',
         'packMaker.addItem': 'ADD ITEM',
         'packMaker.save': 'SAVE MY PACK',
-        'packMaker.submit': 'SUBMIT PUBLIC REVIEW',
+        'packMaker.submit': 'REQUEST PUBLIC LISTING',
+        'packMaker.reviewNote': 'SAVE MY PACK is playable immediately. REQUEST PUBLIC LISTING appears in Public Packs after operator review.',
+        'packMaker.reviewStatusTitle': 'PUBLIC REQUEST STATUS',
+        'packMaker.reviewStatusPending': 'PENDING',
+        'packMaker.reviewStatusApproved': 'APPROVED',
+        'packMaker.reviewStatusRejected': 'REJECTED',
+        'packMaker.reviewStatusReason': 'Reason',
+        'packMaker.reviewStatusNoReason': 'No reason was provided.',
         'packMaker.guestPreview': 'GUEST PREVIEW MODE',
         'packMaker.loginRequired': 'LOGIN REQUIRED',
         'packMaker.loginNotice': 'Pack Maker generation/save is available after login. Guests can preview the screen and editor flow first.',
         'packMaker.featureName': 'Pack Maker generation/save',
         'packMaker.chatIntro': 'Tell Pack Maker the domain, language, item count, and pack name. It will draft a playable CODEDROP pack.',
         'packMaker.searchResults': 'Using {count} search results as draft grounding.',
+        'admin.title': 'PACK REVIEW',
+        'admin.subtitle': 'Operator queue for packs requested for public listing',
+        'admin.home': 'HOME',
+        'admin.refresh': 'REFRESH',
+        'admin.pending': 'PENDING',
+        'admin.approved': 'APPROVED',
+        'admin.rejected': 'REJECTED',
+        'admin.pendingQueue': 'REVIEW QUEUE',
+        'admin.listAria': 'Pending public pack list',
+        'admin.detailAria': 'Selected public pack detail',
+        'admin.noPacks': 'No {status} packs.',
+        'admin.owner': 'OWNER',
+        'admin.items': '{count} ITEMS',
+        'admin.missingSource': 'MISSING SOURCE {count}',
+        'admin.sourceMissing': '-',
+        'admin.term': 'TERM',
+        'admin.description': 'DESCRIPTION',
+        'admin.source': 'SOURCE',
+        'admin.approve': 'APPROVE',
+        'admin.reject': 'REJECT',
+        'admin.loadingDetail': 'Loading pack detail...',
+        'admin.loginRequired': 'ADMIN LOGIN REQUIRED',
+        'admin.loginRequiredMessage': 'Login as the configured pack admin account first.',
+        'admin.loginTitle': 'ADMIN LOGIN',
+        'admin.loginSubtitle': 'Sign in as the pack operator to review public listing requests.',
+        'admin.loginAction': 'LOGIN',
+        'admin.loginFailed': 'Admin login failed.',
+        'admin.loadingQueue': 'LOADING REVIEW QUEUE',
+        'admin.queueCount': '{count} {status} PACKS',
+        'admin.selectPack': 'Select a submitted pack to review.',
+        'admin.adminRequired': 'PACK ADMIN REQUIRED',
+        'admin.approveTitle': 'APPROVE PUBLIC PACK',
+        'admin.rejectTitle': 'REJECT PUBLIC PACK',
+        'admin.approveMessage': 'Publish this pack in Public Packs. Continue?',
+        'admin.rejectMessage': 'Reject this pack. Enter a reason.',
+        'admin.cancel': 'CANCEL',
+        'admin.rejectReason': 'REJECT REASON',
+        'admin.approving': 'APPROVING PACK',
+        'admin.rejecting': 'REJECTING PACK',
+        'admin.approvedStatus': 'PACK APPROVED',
+        'admin.rejectedStatus': 'PACK REJECTED',
+        'admin.approveIntent': 'APPROVE CHECK REQUESTED',
+        'admin.rejectIntent': 'REJECT CHECK REQUESTED',
+        'admin.loaded': 'PACK #{id} LOADED',
         'leaderboard.noData': 'NO DATA FOUND. BE THE FIRST.',
         'leaderboard.customLogin': 'LOGIN REQUIRED FOR CUSTOM PACK RANKING',
         'leaderboard.connectionLost': 'CONNECTION LOST',
@@ -117,7 +168,7 @@ const I18N_TEXT = {
         'auth.registerPassword': '비밀번호 (최소 4자)',
         'auth.confirmPassword': '비밀번호 확인',
         'auth.guest': '비회원 로그인',
-        'auth.guestNote': '비회원은 공식 팩 플레이만 가능 · Pack Maker 생성/저장, 랭킹, 공개 심사는 로그인 필요',
+        'auth.guestNote': '비회원은 공식 팩 플레이만 가능 · Pack Maker 생성/저장, 랭킹, 공개 요청은 로그인 필요',
         'auth.welcome': '환영합니다, ',
         'auth.logout': '로그아웃',
         'auth.loginAction': '로그인',
@@ -182,13 +233,64 @@ const I18N_TEXT = {
         'packMaker.source': '출처',
         'packMaker.addItem': '항목 추가',
         'packMaker.save': '내 팩 저장',
-        'packMaker.submit': '공개 심사 제출',
+        'packMaker.submit': '공개 요청',
+        'packMaker.reviewNote': '내 팩 저장은 즉시 플레이 가능 · 공개 요청은 운영자 검수 후 Public Packs에 노출됩니다.',
+        'packMaker.reviewStatusTitle': '내 공개 요청 상태',
+        'packMaker.reviewStatusPending': '대기 중',
+        'packMaker.reviewStatusApproved': '공개됨',
+        'packMaker.reviewStatusRejected': '반려됨',
+        'packMaker.reviewStatusReason': '사유',
+        'packMaker.reviewStatusNoReason': '반려 사유가 입력되지 않았습니다.',
         'packMaker.guestPreview': '비회원 미리보기 모드',
         'packMaker.loginRequired': '로그인 필요',
         'packMaker.loginNotice': 'Pack Maker 생성/저장은 로그인 후 사용할 수 있습니다. 비회원은 화면과 편집 흐름을 먼저 둘러볼 수 있습니다.',
         'packMaker.featureName': '팩 메이커 생성/저장',
         'packMaker.chatIntro': '도메인, 언어, 개수, 팩 이름을 자연어로 말하세요. 플레이 가능한 CODEDROP 팩 초안으로 정리합니다.',
         'packMaker.searchResults': '검색 결과 {count}개를 draft 근거로 사용합니다.',
+        'admin.title': '팩 검수',
+        'admin.subtitle': '공개 요청된 CODEDROP 팩을 확인하고 노출 여부를 결정합니다',
+        'admin.home': 'HOME',
+        'admin.refresh': '새로고침',
+        'admin.pending': '대기',
+        'admin.approved': '승인됨',
+        'admin.rejected': '반려됨',
+        'admin.pendingQueue': '검수 대기열',
+        'admin.listAria': '공개 팩 심사 목록',
+        'admin.detailAria': '선택한 공개 팩 상세',
+        'admin.noPacks': '{status} 팩이 없습니다.',
+        'admin.owner': '제출자',
+        'admin.items': '{count}개 항목',
+        'admin.missingSource': '출처 없음 {count}개',
+        'admin.sourceMissing': '-',
+        'admin.term': '용어',
+        'admin.description': '설명',
+        'admin.source': '출처',
+        'admin.approve': '승인',
+        'admin.reject': '반려',
+        'admin.loadingDetail': '팩 상세 불러오는 중...',
+        'admin.loginRequired': '관리자 로그인 필요',
+        'admin.loginRequiredMessage': '설정된 팩 관리자 계정으로 먼저 로그인하세요.',
+        'admin.loginTitle': '관리자 로그인',
+        'admin.loginSubtitle': '공개 요청 팩을 검수하려면 운영자 계정으로 로그인하세요.',
+        'admin.loginAction': '로그인',
+        'admin.loginFailed': '관리자 로그인 실패',
+        'admin.loadingQueue': '심사 대기열 불러오는 중',
+        'admin.queueCount': '{status} 팩 {count}개',
+        'admin.selectPack': '심사할 제출 팩을 선택하세요.',
+        'admin.adminRequired': '팩 관리자 권한 필요',
+        'admin.approveTitle': '공개 팩 승인',
+        'admin.rejectTitle': '공개 팩 반려',
+        'admin.approveMessage': '이 팩을 Public Packs에 공개합니다. 계속할까요?',
+        'admin.rejectMessage': '이 팩을 반려합니다. 반려 사유를 입력하세요.',
+        'admin.cancel': '취소',
+        'admin.rejectReason': '반려 사유',
+        'admin.approving': '팩 승인 중',
+        'admin.rejecting': '팩 반려 중',
+        'admin.approvedStatus': '팩 승인 완료',
+        'admin.rejectedStatus': '팩 반려 완료',
+        'admin.approveIntent': '승인 확인 요청',
+        'admin.rejectIntent': '반려 확인 요청',
+        'admin.loaded': '팩 #{id} 불러옴',
         'leaderboard.noData': '기록이 없습니다. 첫 기록을 남겨보세요.',
         'leaderboard.customLogin': '커스텀 팩 랭킹은 로그인 필요',
         'leaderboard.connectionLost': '연결이 끊겼습니다',
@@ -243,6 +345,7 @@ const els = {
         score: document.getElementById('score'),
         combo: document.getElementById('combo'),
         lives: document.getElementById('lives-display'),
+        studyTimer: document.getElementById('study-timer-display'),
         progress: document.getElementById('progress'),
         diff: document.getElementById('diff-badge'),
         btnPause: document.getElementById('btn-pause'),
@@ -340,6 +443,8 @@ const overlayChromeIds = [
     'lab-screen',
     'dashboard-screen',
     'learn-screen',
+    'pack-maker-screen',
+    'admin-pack-screen',
     'keyboard-test-screen',
     'confirm-screen',
     'readme-overlay'
@@ -371,6 +476,7 @@ const APP_ROUTE_PATHS = {
     home: '/',
     play: '/play',
     packMaker: '/pack-maker',
+    adminPacks: '/admin/packs',
     keyTest: '/key-test',
     ocp: '/ocp',
     ocpPlay: '/ocp/play',
@@ -412,6 +518,7 @@ function hideAppOverlaysForRoute() {
         'result-screen',
         'confirm-screen',
         'pack-maker-screen',
+        'admin-pack-screen',
         'keyboard-test-screen',
         'scenario-screen',
         'lab-screen',
@@ -457,6 +564,8 @@ function applyAppRoute(route) {
 
         if (route === 'packMaker') {
             window.PackMaker?.open();
+        } else if (route === 'adminPacks') {
+            window.AdminPacks?.open();
         } else if (route === 'keyTest') {
             window.KeyboardTest?.open();
         } else if (route === 'ocpDashboard') {
@@ -529,6 +638,7 @@ window.CodeDropRouter = {
 
 function setGameChrome(active) {
     document.body.classList.toggle('game-active', Boolean(active));
+    document.body.classList.toggle('study-active', Boolean(active && state.playMode === 'STUDY'));
 }
 
 function isElementVisible(el) {
@@ -600,6 +710,7 @@ function showCommandDialog({
     cancelText = 'CANCEL',
     extraText = '',
     input = false,
+    inputType = 'text',
     placeholder = 'PASSWORD',
     danger = false,
     requireValue = false
@@ -627,6 +738,8 @@ function showCommandDialog({
             c.extra.onclick = extraCommandDialog;
         }
         c.input.value = '';
+        c.input.type = inputType === 'password' ? 'password' : 'text';
+        c.input.autocomplete = inputType === 'password' ? 'current-password' : 'off';
         c.input.placeholder = placeholder;
         c.input.classList.toggle('hidden', !input);
         c.error.textContent = '';
@@ -1606,6 +1719,14 @@ function formatStudyTime(ms) {
     return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+function updateStudyTimerHUD() {
+    if (!els.hud.studyTimer || !isStudyMode() || !state.startTime) return;
+    const timerMs = state.studyEndsAt
+        ? state.studyEndsAt - Date.now()
+        : Date.now() - state.startTime;
+    els.hud.studyTimer.textContent = formatStudyTime(timerMs);
+}
+
 function syncSessionModeControls(mode = els.controls.sessionMode && els.controls.sessionMode.value) {
     const normalized = normalizeSessionMode(mode);
     if (els.controls.sessionMode) els.controls.sessionMode.value = normalized;
@@ -1706,6 +1827,7 @@ async function fetchLeaderboard() {
 function updateHUD() {
     els.hud.score.textContent = state.score;
     els.hud.combo.textContent = state.combo;
+    document.body.classList.toggle('study-active', Boolean(state.isPlaying && isStudyMode()));
 
     // Fix: Handle difficulty text with brackets
     const diffKey = state.difficulty.split(' ')[0];
@@ -1717,14 +1839,14 @@ function updateHUD() {
     }
 
     if (isStudyMode()) {
-        els.hud.progress.textContent = state.studyEndsAt
-            ? formatStudyTime(state.studyEndsAt - Date.now())
-            : `∞ / ${state.spawnedCount}`;
+        els.hud.progress.textContent = `∞ / ${state.spawnedCount}`;
         els.hud.lives.textContent = '∞';
+        updateStudyTimerHUD();
         return;
     }
 
     els.hud.progress.textContent = `${state.spawnedCount}/100`;
+    if (els.hud.studyTimer) els.hud.studyTimer.textContent = '00:00';
 
     let hearts = '';
     for (let i = 0; i < state.lives; i++) hearts += '♥';
@@ -1747,9 +1869,11 @@ function gameLoop(timestamp) {
 
     if (isStudyMode() && state.studyEndsAt && Date.now() >= state.studyEndsAt) {
         state.endReason = 'study-time';
+        updateStudyTimerHUD();
         gameOver(true);
         return;
     }
+    updateStudyTimerHUD();
 
     // Spawning
     if (isStudyMode() || state.spawnedCount < 100) {
@@ -1944,25 +2068,30 @@ function handleInput(e) {
 function handleKeydown(e) {
     if (!state.isPlaying || state.isPaused) return;
 
+    if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) {
+        return;
+    }
+
     sfx.playKey(e.key);
 
     if (e.key === 'Enter') {
+        e.preventDefault();
         const inputVal = els.input.field.value;
+        if (!inputVal) {
+            return;
+        }
 
-        if (state.targetId) {
-            const targetIndex = state.activeWords.findIndex(w => w.id === state.targetId);
-            if (targetIndex !== -1) {
-                const target = state.activeWords[targetIndex];
-                if (wordEqualsInput(target.text, inputVal)) {
-                    // Success
-                    successWord(targetIndex);
-                } else {
-                    // Typo Enter
-                    failTypo();
-                }
-            }
+        let targetIndex = state.targetId
+            ? state.activeWords.findIndex(w => w.id === state.targetId)
+            : -1;
+
+        if (targetIndex === -1 || !wordEqualsInput(state.activeWords[targetIndex]?.text, inputVal)) {
+            targetIndex = state.activeWords.findIndex(w => wordEqualsInput(w.text, inputVal));
+        }
+
+        if (targetIndex !== -1) {
+            successWord(targetIndex);
         } else {
-            // Enter with no target or no match
             failTypo();
         }
 
@@ -2912,6 +3041,12 @@ function setOptionText(selector, key) {
     });
 }
 
+function setAttribute(selector, attr, key) {
+    document.querySelectorAll(selector).forEach(el => {
+        el.setAttribute(attr, t(key));
+    });
+}
+
 function updateWelcomeText() {
     const welcome = document.querySelector('.welcome-msg');
     if (welcome && welcome.firstChild) {
@@ -3000,6 +3135,17 @@ function applyAppLanguage(value) {
     setText('#pack-maker-add-item', 'packMaker.addItem');
     setText('#pack-maker-save', 'packMaker.save');
     setText('#pack-maker-submit', 'packMaker.submit');
+    setText('.pack-maker-review-note', 'packMaker.reviewNote');
+
+    setText('.admin-pack-title', 'admin.title');
+    setText('.admin-pack-subtitle', 'admin.subtitle');
+    setText('#admin-pack-close', 'admin.home');
+    setOptionText('#admin-pack-status-filter option[value="pending"]', 'admin.pending');
+    setOptionText('#admin-pack-status-filter option[value="approved"]', 'admin.approved');
+    setOptionText('#admin-pack-status-filter option[value="rejected"]', 'admin.rejected');
+    setText('#admin-pack-refresh', 'admin.refresh');
+    setAttribute('#admin-pack-screen .admin-pack-panel:nth-of-type(1)', 'aria-label', 'admin.listAria');
+    setAttribute('#admin-pack-screen .admin-pack-panel:nth-of-type(2)', 'aria-label', 'admin.detailAria');
 
     const readmeBox = document.getElementById('readme-box');
     if (readmeBox) readmeBox.dataset.manualLang = lang;
@@ -3136,12 +3282,14 @@ function init() {
             const dashboard = document.getElementById('dashboard-screen');
             const commandDialog = document.getElementById('confirm-screen');
             const packMaker = document.getElementById('pack-maker-screen');
+            const adminPacks = document.getElementById('admin-pack-screen');
             const keyboardTest = document.getElementById('keyboard-test-screen');
             if (!els.screens.start.classList.contains('hidden') &&
                 els.auth.loggedInView.classList.contains('active') &&
                 (!dashboard || dashboard.classList.contains('hidden')) &&
                 (!commandDialog || commandDialog.classList.contains('hidden')) &&
                 (!packMaker || packMaker.classList.contains('hidden')) &&
+                (!adminPacks || adminPacks.classList.contains('hidden')) &&
                 (!keyboardTest || keyboardTest.classList.contains('hidden')) &&
                 !state.isPlaying) {
                 if (isOcpEditionActive()) {
@@ -3327,7 +3475,7 @@ async function promptLoginRequired(feature = 'This feature') {
 
     if (!result.accepted) return false;
 
-    document.querySelectorAll('#pack-maker-screen, #learn-screen, #dashboard-screen')
+    document.querySelectorAll('#pack-maker-screen, #admin-pack-screen, #learn-screen, #dashboard-screen')
         .forEach(screen => screen.classList.add('hidden'));
     els.screens.start.classList.remove('hidden');
     handleLogout();
@@ -3533,6 +3681,7 @@ async function handleWithdraw() {
         okText: 'WITHDRAW',
         cancelText: 'CANCEL',
         input: true,
+        inputType: 'password',
         placeholder: 'PASSWORD',
         requireValue: true,
         danger: true

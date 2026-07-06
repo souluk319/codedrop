@@ -192,6 +192,10 @@ try {
     assert(asset.status === 200 && asset.text.includes('<svg'), 'red hat SVG should be public');
     const subpathAsset = await request('/games/codedrop/assets/red-hat-logo.svg');
     assert(subpathAsset.status === 200 && subpathAsset.text.includes('<svg'), 'red hat SVG should be public under /games/codedrop assets');
+    const favicon = await request('/assets/favicon.svg');
+    assert(favicon.status === 200 && favicon.text.includes('CodeDrop CD favicon'), 'favicon SVG should be public');
+    const subpathFavicon = await request('/games/codedrop/assets/favicon.svg');
+    assert(subpathFavicon.status === 200 && subpathFavicon.text.includes('CodeDrop CD favicon'), 'favicon SVG should be public under /games/codedrop assets');
 
     const denied = ['/server.js', '/package.json', '/scripts/verify_db.js', '/.env'];
     for (const path of denied) {
@@ -280,7 +284,7 @@ try {
     console.log(JSON.stringify({
         port: PORT,
         server: 'ok',
-        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg'],
+        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg', '/assets/favicon.svg', '/games/codedrop/assets/favicon.svg'],
         protectedPaths: denied.length,
         authSmoke: 'ok',
         learnChatSmoke: 'ok',

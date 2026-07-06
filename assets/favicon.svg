@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CodeDrop CD favicon">
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0  0 0 0 0 .95  0 0 0 0 1  0 0 0 .9 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="edge" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00f3ff"/>
+      <stop offset=".52" stop-color="#bc13fe"/>
+      <stop offset="1" stop-color="#ff2a6d"/>
+    </linearGradient>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+      <path d="M0 0h4v1H0z" fill="#fff" opacity=".11"/>
+    </pattern>
+  </defs>
+  <rect width="64" height="64" rx="10" fill="#050507"/>
+  <path d="M9 5h46l4 4v46l-4 4H9l-4-4V9z" fill="#0a0b12" stroke="url(#edge)" stroke-width="2.4"/>
+  <path d="M13 13h38M13 51h38M13 18h38M13 46h38" stroke="#00f3ff" stroke-width=".75" opacity=".18"/>
+  <rect x="8" y="8" width="48" height="48" rx="7" fill="url(#scan)" opacity=".55"/>
+  <g filter="url(#glow)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-weight="900" font-size="23" letter-spacing="-2">
+    <text x="10" y="40" fill="#ff2a6d" opacity=".9">CD</text>
+    <text x="8" y="38" fill="#eaffff">CD</text>
+    <text x="8" y="38" fill="none" stroke="#00f3ff" stroke-width=".8">CD</text>
+  </g>
+  <path d="M12 45h40" stroke="#ff2a6d" stroke-width="1.4" opacity=".85"/>
+</svg>
