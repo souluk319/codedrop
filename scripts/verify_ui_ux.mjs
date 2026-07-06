@@ -476,6 +476,14 @@ assert(server.includes('normalizeDuckDuckGoHref'), 'DuckDuckGo HTML result redir
 assert(server.includes('async function wikipediaSearch'), 'Pack Maker should enrich search grounding with Wikipedia');
 assert(server.includes('async function wikidataSearch'), 'Pack Maker should enrich search grounding with Wikidata entity search');
 assert(server.includes('async function collectPackMakerSources'), 'Pack Maker should merge multiple grounding sources before LLM generation');
+assert(server.includes('function packMakerSourceQueries'), 'Pack Maker should build domain-specific multi-query source searches');
+assert(server.includes('async function wikipediaSearchQuery'), 'Pack Maker Wikipedia grounding should fetch page extracts per query');
+assert(server.includes('apiUrl.searchParams.set("generator", "search")'), 'Wikipedia grounding should use generator search for page metadata');
+assert(server.includes('apiUrl.searchParams.set("prop", "extracts|info")'), 'Wikipedia grounding should include intro extracts, not only search snippets');
+assert(server.includes('apiUrl.searchParams.set("explaintext", "1")'), 'Wikipedia extracts should be plain text before entering prompts');
+assert(server.includes('const queries = packMakerSourceQueries(intent, message);'), 'Pack Maker source collection should use multi-query intent grounding');
+assert(server.includes('function filterPackMakerSourcesByProfile'), 'Pack Maker should filter grounding sources by detected domain profile');
+assert(server.includes('국가대표|축구|대통령'), 'country-name packs should reject common Korean country/anthem/team ambiguities');
 assert(server.includes('mergePackMakerSources(wikipediaResults, wikidataResults, duckResults)'), 'Pack Maker source merge should prioritize Wikipedia/Wikidata before broad DuckDuckGo results');
 assert(server.includes('function isLyricsExtractionRequest'), 'Pack Maker should detect lyrics-based extraction requests explicitly');
 assert(server.includes('function hasUserProvidedLyricsText'), 'Pack Maker should require pasted lyric text before lyrics extraction');

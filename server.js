@@ -896,7 +896,7 @@ function sanitizePackSource(source) {
     return {
         title: sanitizePackText(source?.title, 120) || url,
         url,
-        snippet: sanitizePackText(source?.snippet, 220)
+        snippet: sanitizePackText(source?.snippet, 360)
     };
 }
 
@@ -1291,6 +1291,64 @@ function packMakerSearchQuery(intent, message) {
     if (profile === "country_names") return "국가 이름 한글 공식 목록 country names official list";
     if (profile === "car_repair") return "자동차 정비 부품 용어 auto repair parts glossary";
     return `${intent.topic || message} glossary key terms official docs`;
+}
+
+function uniquePackQueries(queries, limit = 4) {
+    const seen = new Set();
+    const clean = [];
+    for (const query of queries) {
+        const value = sanitizeChatText(query, 160);
+        if (!value) continue;
+        const key = value.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        clean.push(value);
+        if (clean.length >= limit) break;
+    }
+    return clean;
+}
+
+function packMakerSourceQueries(intent, message) {
+    const profile = packDomainProfile(intent);
+    const topic = sanitizeChatText(packTopicSignal(intent) || intent.topic || message || "용어", 120);
+    const wantsEnglishTerms = intent.termLanguage === "english";
+
+    if (profile === "country_names") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "list of sovereign states country names",
+                "ISO 3166-1 country names official list",
+                "countries of the world list"
+            ]
+            : [
+                "세계 나라 목록 한글 국가명",
+                "유엔 회원국 목록 한글 국가명",
+                "ISO 3166-1 국가 코드 나라 이름",
+                "세계의 나라와 수도 목록"
+            ]);
+    }
+
+    if (profile === "car_repair") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "auto repair parts glossary",
+                "automotive parts terminology",
+                "car engine brake suspension parts"
+            ]
+            : [
+                "자동차 부품 용어",
+                "자동차 정비 부품 명칭",
+                "자동차 엔진 브레이크 서스펜션 부품",
+                "차량 정비 용어"
+            ]);
+    }
+
+    return uniquePackQueries([
+        topic,
+        `${topic} 용어 목록`,
+        `${topic} glossary key terms`,
+        `${topic} terminology official documentation`
+    ]);
 }
 
 function packIntentMessage(intent) {
@@ -2471,6 +2529,37 @@ function mergePackMakerSources(...sourceLists) {
     return merged;
 }
 
+function isPackMakerSourceRelevant(intent, source) {
+    const profile = packDomainProfile(intent);
+    const text = `${source?.title || ""} ${source?.snippet || ""}`.toLowerCase();
+    if (!text.trim()) return false;
+
+    if (profile === "country_names") {
+        if (/(국가대표|축구|대통령|총리|천황|왕실|국가\s*\(國歌\)|찬가|anthem|football team|president|prime minister|emperor)/i.test(text)) {
+            return false;
+        }
+        const title = String(source?.title || "");
+        const titleLooksLikeList = /(나라\s*목록|국가명|국가\s*코드|국가\s*목록|유엔\s*회원국\s*목록|회원국\s*목록|세계.{0,16}(나라|국가).{0,16}목록|country names|countries of the world|list of countries|sovereign states|iso 3166|un member states)/i.test(title);
+        return titleLooksLikeList || /(country names|countries of the world|list of countries|sovereign states|iso 3166|un member states)/i.test(text);
+    }
+
+    if (profile === "car_repair") {
+        if (/(country|countries|국가명|유엔|회원국|wikipedia:\s*국가|sovereign state)/i.test(text)) {
+            return false;
+        }
+        return /(자동차|차량|정비|부품|엔진|브레이크|서스펜션|센서|automotive|vehicle|car|repair|parts|engine|brake|suspension)/i.test(text);
+    }
+
+    return true;
+}
+
+function filterPackMakerSourcesByProfile(intent, sources) {
+    const profile = packDomainProfile(intent);
+    const filtered = (sources || []).filter(source => isPackMakerSourceRelevant(intent, source));
+    if (profile !== "generic" && filtered.length > 0) return filtered;
+    return filtered.length >= 3 ? filtered : sources;
+}
+
 async function duckDuckGoHtmlSearch(query) {
     const url = new URL("https://duckduckgo.com/html/");
     url.searchParams.set("q", query);
@@ -2566,35 +2655,50 @@ async function duckDuckGoSearch(query) {
     }
 }
 
-async function wikipediaSearch(intent, message) {
-    const language = packMakerSourceLanguage(intent);
-    const query = packMakerWikipediaQuery(intent, message);
+async function wikipediaSearchQuery(language, query) {
     if (!query) return [];
 
     const apiUrl = new URL(`https://${language}.wikipedia.org/w/api.php`);
     apiUrl.searchParams.set("action", "query");
-    apiUrl.searchParams.set("list", "search");
-    apiUrl.searchParams.set("srsearch", query);
-    apiUrl.searchParams.set("srlimit", "5");
+    apiUrl.searchParams.set("generator", "search");
+    apiUrl.searchParams.set("gsrsearch", query);
+    apiUrl.searchParams.set("gsrlimit", "5");
+    apiUrl.searchParams.set("prop", "extracts|info");
+    apiUrl.searchParams.set("exintro", "1");
+    apiUrl.searchParams.set("explaintext", "1");
+    apiUrl.searchParams.set("exchars", "600");
+    apiUrl.searchParams.set("inprop", "url");
+    apiUrl.searchParams.set("redirects", "1");
     apiUrl.searchParams.set("format", "json");
     apiUrl.searchParams.set("origin", "*");
 
     try {
-        const data = await fetchJsonWithTimeout(apiUrl);
-        return (data?.query?.search || []).slice(0, 5).map(item => ({
-            title: `Wikipedia: ${sanitizePackText(item.title, 100)}`,
-            url: `https://${language}.wikipedia.org/wiki/${encodeURIComponent(String(item.title || "").replace(/\s+/g, "_"))}`,
-            snippet: stripHtml(item.snippet || item.title).slice(0, 220)
-        })).filter(item => item.title && item.url && item.snippet);
+        const data = await fetchJsonWithTimeout(apiUrl, 7500);
+        const pages = Object.values(data?.query?.pages || {})
+            .sort((a, b) => Number(a.index || 0) - Number(b.index || 0));
+        return pages.slice(0, 5).map(page => {
+            const title = sanitizePackText(page.title, 100);
+            const fallbackUrl = `https://${language}.wikipedia.org/wiki/${encodeURIComponent(String(page.title || "").replace(/\s+/g, "_"))}`;
+            return {
+                title: `Wikipedia: ${title}`,
+                url: sanitizeSourceUrl(page.fullurl || fallbackUrl),
+                snippet: sanitizePackText(page.extract || page.title, 360)
+            };
+        }).filter(item => item.title && item.url && item.snippet);
     } catch (err) {
         console.warn("Wikipedia search failed:", err.message);
         return [];
     }
 }
 
-async function wikidataSearch(intent, message) {
+async function wikipediaSearch(intent, message) {
     const language = packMakerSourceLanguage(intent);
-    const query = packMakerWikipediaQuery(intent, message);
+    const queries = packMakerSourceQueries(intent, message).slice(0, 3);
+    const results = await Promise.all(queries.map(query => wikipediaSearchQuery(language, query)));
+    return mergePackMakerSources(...results).slice(0, 7);
+}
+
+async function wikidataSearchQuery(language, query) {
     if (!query) return [];
 
     const apiUrl = new URL("https://www.wikidata.org/w/api.php");
@@ -2624,14 +2728,23 @@ async function wikidataSearch(intent, message) {
     }
 }
 
+async function wikidataSearch(intent, message) {
+    const language = packMakerSourceLanguage(intent);
+    const queries = packMakerSourceQueries(intent, message).slice(0, 3);
+    const results = await Promise.all(queries.map(query => wikidataSearchQuery(language, query)));
+    return mergePackMakerSources(...results).slice(0, 7);
+}
+
 async function collectPackMakerSources(intent, message) {
-    const query = packMakerSearchQuery(intent, message);
-    const [duckResults, wikipediaResults, wikidataResults] = await Promise.all([
-        duckDuckGoSearch(query),
+    const queries = packMakerSourceQueries(intent, message);
+    const [duckResultLists, wikipediaResults, wikidataResults] = await Promise.all([
+        Promise.all(queries.slice(0, 3).map(query => duckDuckGoSearch(query))),
         wikipediaSearch(intent, message),
         wikidataSearch(intent, message)
     ]);
-    return mergePackMakerSources(wikipediaResults, wikidataResults, duckResults);
+    const duckResults = mergePackMakerSources(...duckResultLists);
+    const mergedSources = mergePackMakerSources(wikipediaResults, wikidataResults, duckResults);
+    return filterPackMakerSourcesByProfile(intent, mergedSources);
 }
 
 function llmHeaders(target) {
