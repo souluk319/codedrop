@@ -313,7 +313,9 @@ assert(startScreen.includes('justify-content: center;'), 'start screen should ce
 
 const baseCard = cssBlock('#start-screen .card', block => block.includes('width: 560px'));
 assert(pxValue(baseCard, 'width') === 560, 'standard card should be large enough for balanced controls');
-assert(pxValue(baseCard, 'height') === 600, 'standard card should give the menu and footer enough vertical room');
+assert(pxValue(baseCard, 'height') === 700, 'standard card should grow with the Study/Pack Maker menu stack');
+assert(pxValue(baseCard, 'min-height') === 700, 'standard card min-height must protect against clipping the expanded menu');
+assert(baseCard.includes('max-height: calc(100dvh - 120px);'), 'standard card should stay inside MacBook/desktop viewports');
 
 const ocpCard = cssBlock('body.ocp-edition #start-screen .card');
 assert(pxValue(ocpCard, 'width') === 840, 'OCP card must widen to fit the larger mode menu');
@@ -338,7 +340,8 @@ assert(!index.includes('font-size: 5rem; text-shadow: 0 0 20px var(--primary-neo
 
 const standardLeaderboard = cssBlock('#leaderboard-preview');
 assert(pxValue(standardLeaderboard, 'width') === 440, 'standard leaderboard should balance the larger menu card width');
-assert(pxValue(standardLeaderboard, 'height') === 600, 'standard leaderboard should align with the larger menu card height');
+assert(pxValue(standardLeaderboard, 'height') === 700, 'standard leaderboard should align with the enlarged standard menu card');
+assert(standardLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'standard leaderboard should stay aligned without overflowing desktop viewports');
 
 const modeGrid = cssBlock('body.ocp-edition .mode-grid');
 assert(modeGrid.includes('repeat(2, minmax(0, 1fr))'), 'OCP mode grid should remain a balanced 2x2 grid');
@@ -997,8 +1000,8 @@ assert(firebaseMigration.includes('/api/pack-maker/chat/stream'), 'Firebase migr
 
 console.log(JSON.stringify({
     ui: 'ok',
-    standardCard: { width: 560, height: 600 },
-    standardLeaderboard: { width: 440, height: 600 },
+    standardCard: { width: 560, height: 700 },
+    standardLeaderboard: { width: 440, height: 700 },
     ocpCard: { width: 840, height: 720 },
     ocpLeaderboard: { width: 340, height: 520 },
     scriptCount: expectedOrder.length
