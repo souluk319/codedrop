@@ -34,6 +34,13 @@ This kind of nerdy fun is exactly the point.
 
 ![CodeDrop main menu and leaderboard](assets/readme/main-menu.jpg)
 
+### SELECT PACK Cartridge Picker
+
+![CodeDrop SELECT PACK cartridge picker](assets/readme/pack-selector.jpg)
+
+Pack Maker outputs become playable cartridges in the same SELECT PACK flow as
+the official packs, so a generated domain pack can move straight into DROP play.
+
 ### Original CODEDROP
 
 ![CodeDrop falling-word gameplay](assets/readme/codedrop-play.png)
@@ -54,7 +61,8 @@ This kind of nerdy fun is exactly the point.
 - **OCP Edition**: EX280-focused Learn Mode, CLI DROP, Scenario, Mock Lab, Exam,
   Study Dashboard, and an OCP chat assistant.
 - **Pack Maker**: search-grounded data-pack drafting, editable term/description
-  table, private pack save, and operator-reviewed public listing.
+  table, private pack save, operator-reviewed public listing, and generated packs
+  that appear in the SELECT PACK cartridge picker.
 - **LLM choices**: KUGNUS SERVER by default, Gemini Flash for fast free fallback,
   and GPT mini as the paid backup path.
 - **Guest-first UX**: official packs and screens are explorable without account
