@@ -32,6 +32,11 @@ const I18N_TEXT = {
         'auth.loginAction': 'LOGIN',
         'auth.withdraw': 'WITHDRAW',
         'menu.systemDifficulty': 'System Difficulty',
+        'menu.sessionMode': 'SESSION MODE',
+        'menu.missionMode': 'MISSION',
+        'menu.studyMode': 'STUDY',
+        'menu.studyTime': 'STUDY TIME',
+        'menu.studyTimePlaceholder': 'MINUTES (blank = infinite)',
         'menu.selectPack': 'SELECT PACK',
         'menu.selectCartridge': 'SELECT CARTRIDGE',
         'menu.close': 'CLOSE',
@@ -100,7 +105,8 @@ const I18N_TEXT = {
         'score.uploading': 'UPLOADING DATA...',
         'score.uploadComplete': 'UPLOAD COMPLETE. CHECK RANKING.',
         'score.uploadFailed': 'UPLOAD FAILED.',
-        'score.serverError': 'SERVER ERROR. DATA NOT SAVED.'
+        'score.serverError': 'SERVER ERROR. DATA NOT SAVED.',
+        'score.studyMode': 'STUDY MODE. RANKING DATA NOT SAVED.'
     },
     ko: {
         'auth.login': '로그인',
@@ -117,6 +123,11 @@ const I18N_TEXT = {
         'auth.loginAction': '로그인',
         'auth.withdraw': '회원탈퇴',
         'menu.systemDifficulty': '시스템 난이도',
+        'menu.sessionMode': '세션 모드',
+        'menu.missionMode': 'MISSION',
+        'menu.studyMode': 'STUDY',
+        'menu.studyTime': '학습 시간',
+        'menu.studyTimePlaceholder': '분 단위 · 비우면 무한',
         'menu.selectPack': '팩 선택',
         'menu.selectCartridge': '카트리지 선택',
         'menu.close': '닫기',
@@ -185,7 +196,8 @@ const I18N_TEXT = {
         'score.uploading': '기록 업로드 중...',
         'score.uploadComplete': '업로드 완료. 랭킹을 확인하세요.',
         'score.uploadFailed': '업로드 실패.',
-        'score.serverError': '서버 오류. 기록이 저장되지 않았습니다.'
+        'score.serverError': '서버 오류. 기록이 저장되지 않았습니다.',
+        'score.studyMode': 'STUDY MODE. 랭킹에는 저장되지 않습니다.'
     }
 };
 
@@ -208,6 +220,11 @@ const state = {
     isPaused: false,
     difficulty: 'NORMAL',
     pack: 'PYTHON',
+    playMode: 'MISSION',
+    studyDurationMs: 0,
+    studyEndsAt: 0,
+    endReason: '',
+    pauseStartedAt: 0,
     startTime: 0,
     totalCharsTyped: 0,
     correctCharsTyped: 0,
@@ -263,6 +280,11 @@ const els = {
         packConsoleDock: document.getElementById('pack-console-dock'),
         packDockLabel: document.getElementById('pack-dock-label'),
         packConsoleStatusArt: document.getElementById('pack-console-status-art'),
+        sessionMode: document.getElementById('session-mode'),
+        sessionMissionBtn: document.getElementById('session-mission-btn'),
+        sessionStudyBtn: document.getElementById('session-study-btn'),
+        studyTimeRow: document.getElementById('study-time-row'),
+        studyTimeInput: document.getElementById('study-time-input'),
         startBtn: document.getElementById('start-btn'),
         restartBtn: document.getElementById('restart-btn'),
         leaderboard: document.getElementById('leaderboard-list')
@@ -404,6 +426,10 @@ function hideAppOverlaysForRoute() {
 function restoreStartShellForRoute() {
     state.isPlaying = false;
     state.isPaused = false;
+    state.studyDurationMs = 0;
+    state.studyEndsAt = 0;
+    state.endReason = '';
+    state.pauseStartedAt = 0;
     setGameChrome(false);
     setBottomWidgetsTranslucent(false);
     els.screens.start.classList.remove('hidden');
@@ -1555,6 +1581,75 @@ function initDifficultyPickers() {
     }
 }
 
+function normalizeSessionMode(value) {
+    return value === 'STUDY' ? 'STUDY' : 'MISSION';
+}
+
+function isStudyMode() {
+    return state.playMode === 'STUDY';
+}
+
+function parseStudyDurationMs() {
+    const input = els.controls.studyTimeInput;
+    const minutes = Number(input && input.value ? input.value : 0);
+    if (!Number.isFinite(minutes) || minutes <= 0) return 0;
+    return Math.min(minutes, 240) * 60_000;
+}
+
+function formatStudyTime(ms) {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    const mm = String(minutes).padStart(2, '0');
+    const ss = String(seconds).padStart(2, '0');
+    return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+function syncSessionModeControls(mode = els.controls.sessionMode && els.controls.sessionMode.value) {
+    const normalized = normalizeSessionMode(mode);
+    if (els.controls.sessionMode) els.controls.sessionMode.value = normalized;
+    if (els.controls.sessionMissionBtn) {
+        els.controls.sessionMissionBtn.classList.toggle('active', normalized === 'MISSION');
+        els.controls.sessionMissionBtn.setAttribute('aria-pressed', normalized === 'MISSION' ? 'true' : 'false');
+    }
+    if (els.controls.sessionStudyBtn) {
+        els.controls.sessionStudyBtn.classList.toggle('active', normalized === 'STUDY');
+        els.controls.sessionStudyBtn.setAttribute('aria-pressed', normalized === 'STUDY' ? 'true' : 'false');
+    }
+    if (els.controls.studyTimeRow) {
+        els.controls.studyTimeRow.classList.toggle('hidden', normalized !== 'STUDY');
+    }
+}
+
+function setSessionMode(mode) {
+    syncSessionModeControls(mode);
+    sfx.playKey(mode === 'STUDY' ? 'S' : 'M');
+    if (normalizeSessionMode(mode) === 'STUDY' && els.controls.studyTimeInput) {
+        els.controls.studyTimeInput.focus();
+    }
+}
+
+function initSessionModeControls() {
+    if (els.controls.sessionMissionBtn) {
+        els.controls.sessionMissionBtn.removeEventListener('click', handleMissionModeClick);
+        els.controls.sessionMissionBtn.addEventListener('click', handleMissionModeClick);
+    }
+    if (els.controls.sessionStudyBtn) {
+        els.controls.sessionStudyBtn.removeEventListener('click', handleStudyModeClick);
+        els.controls.sessionStudyBtn.addEventListener('click', handleStudyModeClick);
+    }
+    syncSessionModeControls();
+}
+
+function handleMissionModeClick() {
+    setSessionMode('MISSION');
+}
+
+function handleStudyModeClick() {
+    setSessionMode('STUDY');
+}
+
 window.CodeDropPackSelector = {
     refresh: syncPackSelector,
     render: renderPackCards,
@@ -1611,20 +1706,29 @@ async function fetchLeaderboard() {
 function updateHUD() {
     els.hud.score.textContent = state.score;
     els.hud.combo.textContent = state.combo;
-    els.hud.progress.textContent = `${state.spawnedCount}/100`;
 
     // Fix: Handle difficulty text with brackets
     const diffKey = state.difficulty.split(' ')[0];
-    els.hud.diff.textContent = diffKey;
-
-    let hearts = '';
-    for (let i = 0; i < state.lives; i++) hearts += '♥';
-    els.hud.lives.textContent = hearts;
+    els.hud.diff.textContent = isStudyMode() ? `${diffKey} STUDY` : diffKey;
 
     // Update Pause Button Text
     if (els.hud.btnPause) {
         els.hud.btnPause.textContent = state.isPaused ? "RESUME" : "PAUSE";
     }
+
+    if (isStudyMode()) {
+        els.hud.progress.textContent = state.studyEndsAt
+            ? formatStudyTime(state.studyEndsAt - Date.now())
+            : `∞ / ${state.spawnedCount}`;
+        els.hud.lives.textContent = '∞';
+        return;
+    }
+
+    els.hud.progress.textContent = `${state.spawnedCount}/100`;
+
+    let hearts = '';
+    for (let i = 0; i < state.lives; i++) hearts += '♥';
+    els.hud.lives.textContent = hearts;
 }
 
 function gameLoop(timestamp) {
@@ -1641,8 +1745,14 @@ function gameLoop(timestamp) {
     const diffConfig = DIFFICULTY[diffKey];
     const playfieldHeight = els.gameArea.clientHeight;
 
+    if (isStudyMode() && state.studyEndsAt && Date.now() >= state.studyEndsAt) {
+        state.endReason = 'study-time';
+        gameOver(true);
+        return;
+    }
+
     // Spawning
-    if (state.spawnedCount < 100) {
+    if (isStudyMode() || state.spawnedCount < 100) {
         if (timestamp - state.lastSpawnTime > diffConfig.spawnRate) {
             spawnWord();
             state.lastSpawnTime = timestamp;
@@ -1960,6 +2070,14 @@ function handleDrop(index) {
     }
 
     // Logic
+    if (isStudyMode()) {
+        state.combo = 0;
+        updateHUD();
+        els.hud.lives.style.opacity = 0.5;
+        setTimeout(() => els.hud.lives.style.opacity = 1, 200);
+        return;
+    }
+
     state.lives--;
     state.combo = 0;
     updateHUD();
@@ -1996,11 +2114,16 @@ async function gameOver(victory = false) {
     const wpm = durationMin > 0 ? Math.round((state.correctCharsTyped / 5) / durationMin) : 0;
     const rawAccuracy = state.totalCharsTyped > 0 ? Math.round((state.correctCharsTyped / state.totalCharsTyped) * 100) : 0;
     const accuracy = Math.max(0, Math.min(100, rawAccuracy));
+    const wasStudyMode = isStudyMode();
+    const studyTimedOut = state.endReason === 'study-time';
 
     // Update Result Screen
-    els.result.title.textContent = victory ? "MISSION COMPLETE" : "SYSTEM FAILURE";
-    els.result.title.style.color = victory ? "var(--success-color)" : "var(--danger-color)";
-    els.result.title.style.textShadow = victory ? "0 0 20px var(--success-color)" : "0 0 20px var(--danger-color)";
+    const resultSuccess = wasStudyMode || victory;
+    els.result.title.textContent = wasStudyMode
+        ? (studyTimedOut ? "STUDY COMPLETE" : "STUDY SESSION")
+        : (victory ? "MISSION COMPLETE" : "SYSTEM FAILURE");
+    els.result.title.style.color = resultSuccess ? "var(--success-color)" : "var(--danger-color)";
+    els.result.title.style.textShadow = resultSuccess ? "0 0 20px var(--success-color)" : "0 0 20px var(--danger-color)";
 
     els.result.score.textContent = state.score;
     els.result.combo.textContent = state.maxCombo;
@@ -2009,6 +2132,11 @@ async function gameOver(victory = false) {
 
     els.screens.result.classList.remove('hidden');
     syncOverlayChrome();
+
+    if (wasStudyMode) {
+        els.result.status.textContent = t('score.studyMode');
+        return;
+    }
 
     // Submit Score
     if (state.userToken) {
@@ -2346,11 +2474,19 @@ async function startGame() {
     // Validate
     const diff = els.controls.diffSelect.value;
     const pack = els.controls.packSelect.value;
+    const playMode = isOcpEditionActive()
+        ? 'MISSION'
+        : normalizeSessionMode(els.controls.sessionMode && els.controls.sessionMode.value);
     if (!await ensureSelectedPackReady(pack)) return;
     navigateAppRoute(isOcpEditionActive() ? 'ocpPlay' : 'play');
 
     state.difficulty = diff;
     state.pack = pack;
+    state.playMode = playMode;
+    state.studyDurationMs = playMode === 'STUDY' ? parseStudyDurationMs() : 0;
+    state.studyEndsAt = state.studyDurationMs > 0 ? Date.now() + state.studyDurationMs : 0;
+    state.endReason = '';
+    state.pauseStartedAt = 0;
     setBottomWidgetsTranslucent(false);
 
     // UI Reset
@@ -2397,10 +2533,15 @@ function togglePause() {
     state.isPaused = !state.isPaused;
 
     if (state.isPaused) {
+        state.pauseStartedAt = Date.now();
         els.hud.btnPause.textContent = "PLAY";
         els.screens.pause.classList.remove('hidden');
         els.input.field.disabled = true;
     } else {
+        if (isStudyMode() && state.studyEndsAt && state.pauseStartedAt) {
+            state.studyEndsAt += Date.now() - state.pauseStartedAt;
+        }
+        state.pauseStartedAt = 0;
         els.hud.btnPause.textContent = "PAUSE";
         els.screens.pause.classList.add('hidden');
         els.input.field.disabled = false;
@@ -2433,6 +2574,10 @@ async function goHome() {
     updateTargetDisplay('');
     state.targetId = null;
     state.lastInputLength = 0;
+    state.studyDurationMs = 0;
+    state.studyEndsAt = 0;
+    state.endReason = '';
+    state.pauseStartedAt = 0;
 
     // Clear game area
     els.gameArea.innerHTML = '';
@@ -2457,6 +2602,10 @@ function handleRestart() {
     updateTargetDisplay('');
     state.targetId = null;
     state.lastInputLength = 0;
+    state.studyDurationMs = 0;
+    state.studyEndsAt = 0;
+    state.endReason = '';
+    state.pauseStartedAt = 0;
     fetchLeaderboard();
     navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home', { replace: true });
     syncOverlayChrome();
@@ -2792,6 +2941,11 @@ function applyAppLanguage(value) {
     updateWelcomeText();
 
     setText('#drop-diff-group label', 'menu.systemDifficulty');
+    setText('#session-mode-group > label', 'menu.sessionMode');
+    setText('#session-mission-btn', 'menu.missionMode');
+    setText('#session-study-btn', 'menu.studyMode');
+    setText('#study-time-row label', 'menu.studyTime');
+    setPlaceholder('#study-time-input', 'menu.studyTimePlaceholder');
     setText('#drop-pack-group > label', 'menu.selectPack');
     setText('.pack-trigger-kicker', 'menu.selectPack');
     setText('.pack-popover-head > span', 'menu.selectCartridge');
@@ -2913,6 +3067,7 @@ function initGameControls() {
     els.hud.btnHome.addEventListener('click', goHome);
     els.screens.pause.addEventListener('click', togglePause);
     els.controls.restartBtn.addEventListener('click', handleRestart);
+    initSessionModeControls();
 
     // Music Widget Logic
     if (els.musicWidget) {
