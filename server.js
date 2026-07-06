@@ -244,6 +244,7 @@ const PACK_ADMIN_NICKNAMES = new Set(
         .filter(Boolean)
 );
 let customPackTablesReady = null;
+let databaseSchemaReady = null;
 
 function envFirst(names) {
     for (const name of names) {
@@ -1854,6 +1855,81 @@ function extractDraftJson(answer) {
     return best;
 }
 
+function sqlIdentifier(name) {
+    if (!/^[A-Za-z0-9_]+$/.test(String(name || ""))) {
+        throw new Error(`Invalid SQL identifier: ${name}`);
+    }
+    return `\`${name}\``;
+}
+
+async function tableColumnExists(tableName, columnName) {
+    const [rows] = await db.query(`
+        SELECT COUNT(*) AS count
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+    `, [tableName, columnName]);
+    return Number(rows?.[0]?.count || 0) > 0;
+}
+
+async function ensureTableColumn(tableName, columnName, columnDefinition) {
+    if (await tableColumnExists(tableName, columnName)) return;
+    await db.query(`ALTER TABLE ${sqlIdentifier(tableName)} ADD COLUMN ${columnDefinition}`);
+}
+
+async function ensureDatabaseSchema() {
+    if (!databaseSchemaReady) {
+        databaseSchemaReady = (async () => {
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    nickname VARCHAR(16) NOT NULL UNIQUE,
+                    password VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+
+            await db.query(`
+                CREATE TABLE IF NOT EXISTS leaderboard (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    user_id BIGINT NOT NULL,
+                    score INT NOT NULL,
+                    wpm INT NOT NULL DEFAULT 0,
+                    accuracy INT NOT NULL DEFAULT 0,
+                    difficulty VARCHAR(16) NOT NULL,
+                    pack VARCHAR(32) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_leaderboard_scope (difficulty, pack, score),
+                    INDEX idx_leaderboard_user (user_id, created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            `);
+
+            await ensureTableColumn("leaderboard", "wpm", "`wpm` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("leaderboard", "accuracy", "`accuracy` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("leaderboard", "pack", "`pack` VARCHAR(32) NOT NULL DEFAULT 'python'");
+            await ensureCustomPackTables();
+            await ensureTableColumn("custom_packs", "description", "`description` VARCHAR(240) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "status", "`status` VARCHAR(16) NOT NULL DEFAULT 'draft'");
+            await ensureTableColumn("custom_packs", "review_reason", "`review_reason` VARCHAR(240) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            await ensureTableColumn("custom_packs", "updated_at", "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            await ensureTableColumn("custom_pack_items", "sources_json", "`sources_json` TEXT NULL");
+            await ensureTableColumn("custom_pack_items", "sort_order", "`sort_order` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("custom_pack_items", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            await ensureTableColumn("custom_pack_scores", "wpm", "`wpm` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("custom_pack_scores", "accuracy", "`accuracy` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("custom_pack_scores", "difficulty", "`difficulty` VARCHAR(16) NOT NULL DEFAULT 'normal'");
+            await ensureTableColumn("custom_pack_scores", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        })().catch(err => {
+            databaseSchemaReady = null;
+            throw err;
+        });
+    }
+
+    return databaseSchemaReady;
+}
+
 async function ensureCustomPackTables() {
     if (!customPackTablesReady) {
         customPackTablesReady = (async () => {
@@ -2568,12 +2644,12 @@ app.get("/health", (req, res) => {
 app.get("/ready", async (req, res) => {
     try {
         await Promise.race([
-            db.query("SELECT 1"),
-            new Promise((_, reject) => setTimeout(() => reject(new Error("DB readiness timeout")), 1000))
+            ensureDatabaseSchema(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("DB readiness timeout")), 5000))
         ]);
         res.json({ server: "ok", db: "ok" });
     } catch (err) {
-        res.status(503).json({ server: "ok", db: "unavailable" });
+        res.status(503).json({ server: "ok", db: "unavailable", reason: err.message });
     }
 });
 
@@ -3305,4 +3381,7 @@ async function getCustomPackLeaderboard(packIdValue, difficulty) {
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`CodeDrop server running on port ${PORT}`);
+    ensureDatabaseSchema().catch(err => {
+        console.error("CodeDrop DB schema check failed:", err.message);
+    });
 });

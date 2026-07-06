@@ -645,6 +645,9 @@ assert(server.includes('sendPackReviewEmail(req, row, items, req.user)'), 'publi
 assert(server.includes('https://api.resend.com/emails'), 'review email should use the configured server-side email API');
 assert(server.includes('renderPackReviewEmail'), 'review email should render an HTML review template');
 assert(server.includes('custom_pack_scores'), 'custom pack scores should be stored separately from official leaderboard');
+assert(server.includes('async function ensureDatabaseSchema()'), 'server should run a DB schema guard before release traffic');
+assert(server.includes('INFORMATION_SCHEMA.COLUMNS'), 'server schema guard should inspect existing columns before ALTER');
+assert(server.includes('ALTER TABLE ${sqlIdentifier(tableName)} ADD COLUMN'), 'server schema guard should add missing columns for upgraded DBs');
 assert(server.includes('function dbSslConfig()'), 'server should allow local Docker DB SSL configuration');
 assert(server.includes('process.env.DB_SSL'), 'server DB SSL should be configurable for local Docker MySQL');
 assert(dockerCompose.includes('image: mysql:8.4'), 'local Docker DB should use a pinned MySQL image');
