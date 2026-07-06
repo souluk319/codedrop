@@ -66,8 +66,11 @@ function validateProductionConfig() {
         if (!String(process.env[name] || "").trim()) errors.push(`${name} is required in production`);
     }
 
-    for (const name of ["KUGNUS_GATEWAY_BASE_URL", "KUGNUS_GATEWAY_API_KEY", "KUGNUS_GATEWAY_MODEL"]) {
+    for (const name of ["KUGNUS_GATEWAY_BASE_URL", "KUGNUS_GATEWAY_API_KEY"]) {
         if (!String(process.env[name] || "").trim()) errors.push(`${name} is required in production`);
+    }
+    if (!["KUGNUS_GATEWAY_MODEL", "KUGNUS_CHAT_MODEL"].some(name => String(process.env[name] || "").trim())) {
+        errors.push("KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL is required in production");
     }
 
     const gatewayBase = String(process.env.KUGNUS_GATEWAY_BASE_URL || "").trim();
@@ -279,7 +282,8 @@ const KUGNUS_KEY_ENV_NAMES = [
 ];
 
 const KUGNUS_MODEL_ENV_NAMES = [
-    "KUGNUS_GATEWAY_MODEL"
+    "KUGNUS_GATEWAY_MODEL",
+    "KUGNUS_CHAT_MODEL"
 ];
 
 function normalizeOpenAiMiniModel(value) {

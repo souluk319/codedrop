@@ -110,7 +110,7 @@ PACK_ADMIN_NICKNAMES=test
 DEFAULT_CHAT_ENGINE=kugnus
 ```
 
-KUGNUS SERVER uses the public OpenAI-compatible gateway. CodeDrop reads only the
+KUGNUS SERVER uses the public OpenAI-compatible gateway. CodeDrop prefers the
 canonical `KUGNUS_GATEWAY_*` variables for this path:
 
 ```env
@@ -119,7 +119,9 @@ KUGNUS_GATEWAY_API_KEY=<KUGNUS_GATEWAY_API_KEY>
 KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat
 ```
 
-The exact KUGNUS gateway handoff template is `.env.kugnus-gateway.example`.
+`KUGNUS_CHAT_MODEL` is accepted as an alias for `KUGNUS_GATEWAY_MODEL` when
+copying values from the public gateway project. The exact KUGNUS gateway handoff
+template is `.env.kugnus-gateway.example`.
 
 GPT fallback is separate and mini-only:
 
@@ -136,14 +138,17 @@ EMBEDDING_MODEL=embeddinggemma:latest
 EMBEDDING_DIMENSIONS=768
 ```
 
+`KUGNUS_EMBED_MODEL` is accepted as an alias for future embedding/RAG wiring.
+
 The server rejects non-mini OpenAI models for chat fallback. Keep high-end models out of this app path.
 
 ## KUGNUS Routing
 
 The server resolves KUGNUS from exactly one contract:
 `KUGNUS_GATEWAY_BASE_URL`, `KUGNUS_GATEWAY_API_KEY`, and
-`KUGNUS_GATEWAY_MODEL`. `OPENAI_*` is GPT fallback only. Direct Ollama/private
-environment names are intentionally not part of the app contract anymore.
+`KUGNUS_GATEWAY_MODEL` or its public-gateway alias `KUGNUS_CHAT_MODEL`.
+`OPENAI_*` is GPT fallback only. Direct Ollama/private environment names are
+intentionally not part of the app contract anymore.
 
 `npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which
 starts a fake OpenAI-compatible KUGNUS gateway and proves the explicit

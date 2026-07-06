@@ -25,7 +25,7 @@ for (let i = 2; i < process.argv.length; i++) {
 const envFile = args.get('env-file') || process.env.KUGNUS_GATEWAY_ENV_FILE || '.env';
 const envPath = path.resolve(root, envFile);
 if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath, override: Boolean(args.get('env-file') || process.env.KUGNUS_GATEWAY_ENV_FILE), quiet: true });
+    dotenv.config({ path: envPath, override: false, quiet: true });
 }
 const allowPrivate = args.get('allow-private') === '1' || process.env.KUGNUS_GATEWAY_ALLOW_PRIVATE === '1';
 
@@ -68,9 +68,23 @@ function extractAnswer(data) {
     return String(choice?.message?.content || choice?.text || '').trim();
 }
 
+function fetchErrorDetail(err) {
+    const cause = err?.cause || {};
+    const code = cause.code || err?.code || '';
+    return {
+        errorName: err?.name || 'Error',
+        errorCode: code || undefined,
+        errorMessage: err?.message || String(err),
+        errorCause: cause.message || undefined,
+        dnsHint: code === 'ENOTFOUND'
+            ? 'DNS lookup failed. Create the server.kugnus.com DNS/custom-domain record or use the live platform URL.'
+            : undefined
+    };
+}
+
 const baseUrl = value('KUGNUS_GATEWAY_BASE_URL');
 const apiKey = value('KUGNUS_GATEWAY_API_KEY');
-const model = value('KUGNUS_GATEWAY_MODEL');
+const model = value('KUGNUS_GATEWAY_MODEL') || value('KUGNUS_CHAT_MODEL');
 const timeoutMs = Math.max(3000, Math.min(Number(args.get('timeout-ms') || process.env.KUGNUS_GATEWAY_LIVE_TIMEOUT_MS || 20_000), 60_000));
 const envStyle = 'kugnus-gateway';
 const expectedRuntimeRoute = 'gateway';
@@ -85,13 +99,14 @@ function observedOpenAiEnv() {
 }
 
 if (!baseUrl || !apiKey || !model) {
-    fail('Missing KUGNUS gateway env. Set KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL.', {
+    fail('Missing KUGNUS gateway env. Set KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL.', {
         envFile: fs.existsSync(envPath) ? path.relative(root, envPath) || envFile : '(process env only)',
         hasBaseUrl: Boolean(baseUrl),
         hasApiKey: Boolean(apiKey),
         hasModel: Boolean(model),
         acceptedEnv: [
-            'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL'
+            'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL',
+            'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_CHAT_MODEL'
         ],
         currentOpenAiEnv: observedOpenAiEnv()
     });
@@ -165,7 +180,8 @@ try {
     fail(err.name === 'AbortError' ? 'KUGNUS gateway live check timed out' : err.message, {
         gatewayHost: gatewayHost(baseUrl),
         model,
-        timeoutMs
+        timeoutMs,
+        ...fetchErrorDetail(err)
     });
 } finally {
     clearTimeout(timeout);

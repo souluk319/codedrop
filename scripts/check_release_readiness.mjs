@@ -264,7 +264,8 @@ const KUGNUS_GATEWAY_KEY_NAMES = [
 ];
 
 const KUGNUS_GATEWAY_MODEL_NAMES = [
-    'KUGNUS_GATEWAY_MODEL'
+    'KUGNUS_GATEWAY_MODEL',
+    'KUGNUS_CHAT_MODEL'
 ];
 
 function allowedMiniModel(model) {
@@ -281,8 +282,8 @@ function checkCommon() {
         && hasAny(KUGNUS_GATEWAY_KEY_NAMES)
         && hasAny(KUGNUS_GATEWAY_MODEL_NAMES);
     if (!hasExplicitGateway) {
-        errors.push('KUGNUS release requires KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL');
-        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat in the deployment environment.');
+        errors.push('KUGNUS release requires KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL');
+        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat or KUGNUS_CHAT_MODEL=gemma4:12b-it-qat in the deployment environment.');
         addAction('After setting gateway env, run npm run verify:kugnus-live -- --env-file=<release-env-file> and require route=gateway.');
     }
 

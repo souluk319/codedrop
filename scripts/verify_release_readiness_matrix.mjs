@@ -40,6 +40,7 @@ const CLEAN_ENV_NAMES = [
     'KUGNUS_GATEWAY_BASE_URL',
     'KUGNUS_GATEWAY_API_KEY',
     'KUGNUS_GATEWAY_MODEL',
+    'KUGNUS_CHAT_MODEL',
     'OPENAI_API_KEY',
     'OPENAI_MODEL',
     'DB_HOST',
@@ -87,6 +88,15 @@ const cases = [
             KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
             KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
             KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat'
+        },
+        expectOk: true
+    },
+    {
+        name: 'KUGNUS chat model alias passes',
+        env: {
+            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
+            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
+            KUGNUS_CHAT_MODEL: 'gemma4:12b-it-qat'
         },
         expectOk: true
     },

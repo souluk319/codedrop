@@ -142,7 +142,7 @@ try {
     console.log(JSON.stringify({
         releaseRuntimeContract: 'ok',
         model: KUGNUS_MODEL,
-        envContract: 'KUGNUS_GATEWAY_* only',
+        envContract: 'KUGNUS_GATEWAY_* with KUGNUS_CHAT_MODEL alias',
         results,
         requests: gateway.requests.length
     }, null, 2));

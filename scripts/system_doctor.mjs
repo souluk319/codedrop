@@ -59,7 +59,8 @@ const KUGNUS_GATEWAY_KEY_NAMES = [
 ];
 
 const KUGNUS_GATEWAY_MODEL_NAMES = [
-    'KUGNUS_GATEWAY_MODEL'
+    'KUGNUS_GATEWAY_MODEL',
+    'KUGNUS_CHAT_MODEL'
 ];
 
 function addCheck(name, status, detail = {}) {
@@ -289,7 +290,7 @@ let runtimeHealthOk = false;
 addCheck('env.kugnus-gateway', env.gatewayReady ? 'PASS' : 'BLOCKED', {
     detail: env.gatewayReady ? `${env.gatewayMode} present` : (env.gatewayIssue || 'KUGNUS gateway env missing'),
     acceptedEnv: [
-        'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL'
+        'KUGNUS_GATEWAY_BASE_URL + KUGNUS_GATEWAY_API_KEY + KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL'
     ],
     currentOpenAiEnv: {
         apiKey: env.openAiKeyConfigured ? 'present' : 'missing',

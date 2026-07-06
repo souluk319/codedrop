@@ -425,6 +425,7 @@ assert(!/innerHTML\s*=\s*(markdown|answer|text|data\.answer)/.test(learn), 'mark
 assert(server.includes('KUGNUS_GATEWAY_BASE_URL'), 'KUGNUS SERVER should prefer the public gateway base URL');
 assert(server.includes('KUGNUS_GATEWAY_API_KEY'), 'KUGNUS SERVER should read the public gateway API key');
 assert(server.includes('KUGNUS_GATEWAY_MODEL'), 'KUGNUS SERVER should read the gateway model id');
+assert(server.includes('KUGNUS_CHAT_MODEL'), 'KUGNUS SERVER should accept the public gateway chat model alias');
 assert(server.includes('LLM_TARGET_DIAGNOSTICS'), 'KUGNUS health target host diagnostics should be gated in production');
 assert(!server.includes('shouldUseOpenAiEnvForKugnus'), 'KUGNUS routing must not treat OPENAI_* as a KUGNUS alias');
 assert(!server.includes('function openAiEnvKugnusAliasReady'), 'obsolete OPENAI_* KUGNUS alias helper should not exist');
@@ -661,7 +662,9 @@ assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=kugnus'), 'local env exampl
 assert(localEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), 'local env example should document the KUGNUS gateway base URL');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), 'local env example should document the KUGNUS gateway API key');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS gateway chat model');
+assert(localEnvExample.includes('KUGNUS_CHAT_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS chat model alias');
 assert(localEnvExample.includes('EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the embedding model as a future optional path');
+assert(localEnvExample.includes('KUGNUS_EMBED_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model alias');
 assert(fs.existsSync(path.join(root, 'scripts/verify_kugnus_gateway_live.mjs')), 'live KUGNUS gateway verifier script is missing');
 assert(packageJson.scripts?.['verify:kugnus-gateway'] === 'node scripts/verify_kugnus_gateway_contract.mjs', 'package should expose the KUGNUS gateway contract verifier command');
 assert(packageJson.scripts?.['verify:kugnus-live'] === 'node scripts/verify_kugnus_gateway_live.mjs', 'package should expose the live KUGNUS gateway verifier command');
@@ -683,6 +686,7 @@ assert(liveGatewayVerifier.includes("const envStyle = 'kugnus-gateway';"), 'live
 assert(liveGatewayVerifier.includes("const expectedRuntimeRoute = 'gateway';"), 'live gateway verifier should print the canonical gateway route');
 assert(liveGatewayVerifier.includes('function observedOpenAiEnv'), 'live gateway verifier should show OPENAI_* as GPT fallback context');
 assert(liveGatewayVerifier.includes('GPT fallback only'), 'live gateway verifier should distinguish GPT fallback env from KUGNUS gateway env');
+assert(liveGatewayVerifier.includes('DNS lookup failed'), 'live gateway verifier should surface DNS failures clearly');
 assert(!releaseReadinessMatrix.includes('OPENAI_* KUGNUS alias'), 'release readiness matrix should not endorse OPENAI_* as KUGNUS');
 assert(!releaseReadinessMatrix.includes('direct KUGNUS route is blocked for release'), 'release readiness matrix should not model legacy direct KUGNUS routing');
 assert(releaseReadinessMatrix.includes('generic OpenAI fallback must remain mini'), 'release readiness matrix should cover generic GPT mini guard');
@@ -694,7 +698,7 @@ assert(releaseRuntimeVerifier.includes('Release runtime is using the wrong KUGNU
 assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_TEST_MODE'), 'release runtime contract should use explicit test mode');
 assert(releaseRuntimeContract.includes('RELEASE_RUNTIME_SKIP_READY_DB'), 'release runtime contract should skip DB only in explicit test mode');
 assert(releaseRuntimeContract.includes("mode: 'gateway'"), 'release runtime contract should verify canonical KUGNUS gateway routing');
-assert(releaseRuntimeContract.includes("envContract: 'KUGNUS_GATEWAY_* only'"), 'release runtime contract should state the canonical KUGNUS env contract');
+assert(releaseRuntimeContract.includes("envContract: 'KUGNUS_GATEWAY_* with KUGNUS_CHAT_MODEL alias'"), 'release runtime contract should state the KUGNUS gateway env contract and alias');
 assert(dockerImageVerifier.includes("docker', ['build'"), 'Docker verifier should build the production image');
 assert(dockerImageVerifier.includes('/health'), 'Docker verifier should probe the container health endpoint');
 assert(dockerImageVerifier.includes('.env.production'), 'Docker verifier should reject private production env files in the image');
@@ -726,7 +730,7 @@ assert(releaseCheck.includes('override: Boolean(explicitEnvFile)'), 'release che
 assert(systemDoctor.includes("['.env.local', '.env']"), 'system doctor should load the same default env stack as the server');
 assert(systemDoctor.includes('override: Boolean(explicitEnvFile)'), 'system doctor should let explicit env files override stale shell env');
 assert(systemDoctor.includes("'http://127.0.0.1:3001'"), 'system doctor default should use 127.0.0.1 to avoid localhost resolver drift');
-assert(liveGatewayVerifier.includes("override: Boolean(args.get('env-file') || process.env.KUGNUS_GATEWAY_ENV_FILE)"), 'live KUGNUS verifier should let explicit env files override stale shell env');
+assert(liveGatewayVerifier.includes('override: false'), 'live KUGNUS verifier should let process env override env-file values');
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
 assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https origins'), 'release check should reject localhost/private release origins');
 assert(releaseCheck.includes('hasGenericOpenAiFallback'), 'release check should accept generic OPENAI_* as GPT fallback when it is not KUGNUS');
@@ -1067,6 +1071,7 @@ assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.producti
 assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
 assert(kugnusGatewayEnvExample.includes('KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1'), 'KUGNUS gateway env handoff template should use the canonical KUGNUS gateway URL');
 assert(kugnusGatewayEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway env handoff template should pin Gemma 4 12B');
+assert(kugnusGatewayEnvExample.includes('KUGNUS_CHAT_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway env handoff template should document the chat model alias');
 assert(kugnusGatewayEnvExample.includes('OPENAI_MODEL=gpt-5.4-mini'), 'KUGNUS gateway env handoff template should keep GPT fallback mini-only');
 const firebaseMigration = read('FIREBASE_MIGRATION.md');
 assert(firebaseMigration.includes('Firebase Hosting rewrite from `/api/**` to Cloud Run or Functions'), 'Firebase migration doc should require API rewrites');
