@@ -1127,6 +1127,55 @@ function packMakerBriefResponse(message) {
     ].join("\n");
 }
 
+function packMakerEngineLabel(engine) {
+    if (engine === "openai") return "GPT 5.4 mini";
+    if (engine === "gemini") return geminiDisplayLabel(envFirst(GEMINI_MODEL_ENV_NAMES) || "gemini-2.5-flash");
+    return "KUGNUS SERVER";
+}
+
+function isLyricsExtractionRequest(message) {
+    const text = String(message || "");
+    const lower = text.toLowerCase();
+    return (
+        /(?:가사|lyrics?|lyric)[^.\n]{0,80}(?:에서|기반|뽑|추출|단어|용어|팩|만들|word|term|extract|make|pack)/i.test(text) ||
+        /(?:from|based on|extract)[^.\n]{0,80}(?:lyrics?|lyric)/i.test(lower)
+    );
+}
+
+function hasUserProvidedLyricsText(message) {
+    const text = String(message || "");
+    const markerMatch = text.match(/(?:가사|lyrics?)\s*[:：]\s*([\s\S]+)/i);
+    const candidate = markerMatch ? markerMatch[1] : "";
+    if (!candidate) return false;
+
+    const tokens = candidate.match(/[A-Za-z가-힣0-9']+/g) || [];
+    const lineCount = candidate.split(/\n+/).filter(line => line.trim()).length;
+    return tokens.length >= 60 || (lineCount >= 6 && tokens.length >= 30);
+}
+
+function packMakerLyricsRequiredResponse(message) {
+    const korean = /[가-힣]/.test(message || "");
+    if (korean) {
+        return [
+            "가사 전문은 검색 결과만으로 가져오지 않습니다.",
+            "",
+            "DuckDuckGo 검색은 연결되어 있고 REDRED 가사 페이지도 찾을 수 있지만, 현재 Pack Maker가 받은 것은 제목/스니펫/URL이지 실제 가사 본문이 아닙니다. 이 상태에서 '가사에서 단어 50개'를 만들면 모델이 없는 본문을 상상하게 됩니다.",
+            "",
+            "정확하게 만들려면 둘 중 하나로 요청해 주세요.",
+            "- 가사를 직접 붙여넣고: `가사: ...` 뒤에 본문을 넣은 다음 단어팩을 요청",
+            "- 또는 `REDRED 노래 해석/분위기 기반으로 단어 50개 팩 만들어줘`처럼 가사 전문 추출이 아닌 테마팩으로 요청"
+        ].join("\n");
+    }
+
+    return [
+        "Pack Maker cannot extract words from lyrics unless the lyric text is provided in the prompt.",
+        "",
+        "Search is connected and can find lyric pages, but Pack Maker only receives titles, snippets, and URLs, not the full lyric body. Generating a lyric-derived pack from that would hallucinate the source text.",
+        "",
+        "Paste the lyrics after `lyrics:` or ask for a theme/interpretation-based pack instead."
+    ].join("\n");
+}
+
 function packLanguageLabel(language) {
     if (language === "korean") return "KOREAN";
     if (language === "english") return "ENGLISH";
@@ -3249,13 +3298,31 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
 
     try {
         const intent = extractPackIntent(message);
+        if (isLyricsExtractionRequest(message) && !hasUserProvidedLyricsText(message)) {
+            const answer = packMakerLyricsRequiredResponse(message);
+            finished = true;
+            writeNdjson(res, "meta", {
+                engine,
+                route: "lyrics-text-required",
+                label: packMakerEngineLabel(engine)
+            });
+            writeNdjson(res, "status", {
+                text: "LYRICS TEXT REQUIRED",
+                danger: true
+            });
+            writeNdjson(res, "delta", { text: answer });
+            writeNdjson(res, "done", { answer });
+            if (!res.writableEnded && !res.destroyed) res.end();
+            return;
+        }
+
         if (!isPackGenerationRequest(message, intent)) {
             const answer = packMakerBriefResponse(message);
             finished = true;
             writeNdjson(res, "meta", {
                 engine,
                 route: "not-needed",
-                label: target.label || (engine === "openai" ? "GPT 5.4 mini" : (engine === "gemini" ? geminiDisplayLabel(target.model) : "KUGNUS SERVER"))
+                label: packMakerEngineLabel(engine)
             });
             writeNdjson(res, "status", { text: "PACK BRIEF REQUIRED" });
             writeNdjson(res, "delta", { text: answer });

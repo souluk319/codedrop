@@ -477,6 +477,12 @@ assert(server.includes('async function wikipediaSearch'), 'Pack Maker should enr
 assert(server.includes('async function wikidataSearch'), 'Pack Maker should enrich search grounding with Wikidata entity search');
 assert(server.includes('async function collectPackMakerSources'), 'Pack Maker should merge multiple grounding sources before LLM generation');
 assert(server.includes('mergePackMakerSources(wikipediaResults, wikidataResults, duckResults)'), 'Pack Maker source merge should prioritize Wikipedia/Wikidata before broad DuckDuckGo results');
+assert(server.includes('function isLyricsExtractionRequest'), 'Pack Maker should detect lyrics-based extraction requests explicitly');
+assert(server.includes('function hasUserProvidedLyricsText'), 'Pack Maker should require pasted lyric text before lyrics extraction');
+assert(server.includes('LYRICS TEXT REQUIRED'), 'Pack Maker should not hallucinate packs from missing lyric bodies');
+assert(server.includes('가사 전문은 검색 결과만으로 가져오지 않습니다'), 'lyrics guard should explain that search snippets are not the lyric body');
+assert(server.includes('route: "lyrics-text-required"'), 'lyrics guard should return a non-generation route before LLM draft generation');
+assert(server.includes('label: packMakerEngineLabel(engine)'), 'Pack Maker brief/guard routes should not reference an unbuilt LLM target');
 
 const dashboardCard = cssBlock('.dashboard-card');
 assert(dashboardCard.includes('max-height: calc(100dvh - 80px);'), 'dashboard card should be scrollable inside the viewport');
