@@ -861,6 +861,7 @@ async function maybeSwitchFromOfflineKugnus(scope = 'chat') {
     const result = await showCommandDialog({
         title: 'KUGNUS SERVER OFFLINE',
         message: 'KUGNUS SERVER 응답이 없습니다. GPT 5.4 MINI로 전환합니다.',
+        extraText: status.reason ? `Reason: ${status.reason}` : '',
         okText: 'SWITCH',
         cancelText: 'STAY',
         danger: true

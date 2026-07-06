@@ -416,6 +416,11 @@ assert(server.includes('writeNdjson(res, "done"'), 'streaming learn chat should 
 assert(server.includes('writeNdjson(res, "error"'), 'streaming learn chat should emit error events');
 assert(server.includes('llmPayload(target, messages, true'), 'LLM stream requests must set stream:true');
 assert(learn.includes('new AbortController()'), 'learn chat should use AbortController for STOP');
+assert(learn.includes('chatSubmitting: false'), 'learn chat should keep a submit lock separate from visual busy state');
+assert(learn.includes('chatActiveRequestId'), 'learn chat should track the active request id to ignore stale stream events');
+assert(learn.includes('if (session.chatBusy || session.chatSubmitting) return;'), 'learn chat should lock duplicate sends at the top of sendChatText');
+assert(learn.includes('if (requestId !== session.chatActiveRequestId) return;'), 'learn chat should ignore stale stream events from obsolete requests');
+assert(!learn.includes('offerKugnusFallbackIfNeeded().catch'), 'learn chat should not show KUGNUS fallback prompts just by opening the panel');
 assert(learn.includes("ui.chatSend.textContent = busy ? 'STOP' : 'ASK'"), 'ASK button should turn into STOP while streaming');
 assert(index.includes('learn-chat-bottom'), 'learn chat should include a scroll-to-latest button');
 assert(learn.includes('renderMarkdownInto'), 'learn chat should render markdown through a safe DOM renderer');
@@ -446,6 +451,8 @@ assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "kugnus"'), 
 assert(server.includes('app.get("/api/llm/kugnus/health"'), 'KUGNUS health endpoint is missing');
 assert(game.includes('startKugnusHealthCheck()'), 'app should start a background KUGNUS health check');
 assert(game.includes('maybeSwitchFromOfflineKugnus'), 'app should expose KUGNUS fallback confirmation helper');
+assert(game.includes('llmStatus.fallbackScopes.delete(scope)') && game.includes('llmStatus.promptedScopes.delete(scope)'), 'KUGNUS online health should clear stale fallback prompts/scopes');
+assert(game.includes('extraText: status.reason'), 'KUGNUS fallback prompt should show the current health failure reason');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'learn chat must refuse non-mini OpenAI models');
 assert(server.includes('DUCKDUCKGO_API_KEY'), 'future web search should support DUCKDUCKGO_API_KEY');
 assert(server.includes('duckDuckGoConfig()'), 'DuckDuckGo config helper is missing');

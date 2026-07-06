@@ -199,6 +199,9 @@ const LearnMode = (() => {
         navReturn: null,
         chat: [],
         chatBusy: false,
+        chatSubmitting: false,
+        chatRequestSeq: 0,
+        chatActiveRequestId: 0,
         chatAbort: null,
         chatActiveMessage: null,
         chatStoppedByUser: false,
@@ -1130,6 +1133,7 @@ const LearnMode = (() => {
             stopChat();
             return;
         }
+        if (session.chatSubmitting) return;
 
         const message = ui.chatInput.value.trim();
         if (!message) return;
@@ -1137,28 +1141,33 @@ const LearnMode = (() => {
     }
 
     async function sendChatText(message) {
-        if (session.chatBusy) return;
-        await offerKugnusFallbackIfNeeded();
-        const history = session.chat
-            .filter(entry => entry.role === 'user' || entry.role === 'assistant')
-            .slice(-8)
-            .map(entry => ({ role: entry.role, content: entry.content }));
-
-        session.chat.push({ role: 'user', content: message });
-        appendChat('user', message);
-        persistChatHistory();
-        ui.chatInput.value = '';
-
-        const pending = appendChat('assistant', '', { question: message, streaming: true });
-        session.chatActiveMessage = pending;
-        session.chatStoppedByUser = false;
-        session.chatAbort = new AbortController();
-        setChatBusy(true);
-        let answer = '';
-        let gotDone = false;
+        if (session.chatBusy || session.chatSubmitting) return;
+        session.chatSubmitting = true;
+        const requestId = ++session.chatRequestSeq;
+        session.chatActiveRequestId = requestId;
+        let pending = null;
         let finalStatus = '';
 
         try {
+            await offerKugnusFallbackIfNeeded();
+            if (requestId !== session.chatActiveRequestId) return;
+
+            const history = session.chat
+                .filter(entry => entry.role === 'user' || entry.role === 'assistant')
+                .slice(-8)
+                .map(entry => ({ role: entry.role, content: entry.content }));
+
+            appendChat('user', message);
+            ui.chatInput.value = '';
+
+            pending = appendChat('assistant', '', { question: message, streaming: true });
+            session.chatActiveMessage = pending;
+            session.chatStoppedByUser = false;
+            session.chatAbort = new AbortController();
+            setChatBusy(true);
+            let answer = '';
+            let gotDone = false;
+
             const res = await fetch(`${LEARN_API_BASE}/api/learn-chat/stream`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1177,6 +1186,7 @@ const LearnMode = (() => {
             }
 
             await readChatStream(res, evt => {
+                if (requestId !== session.chatActiveRequestId) return;
                 if (evt.event === 'meta') {
                     ui.chatStatus.textContent = chatEngineStatus('STREAMING', evt);
                     updateChatRouteStatus(evt);
@@ -1196,25 +1206,30 @@ const LearnMode = (() => {
                 }
             });
 
+            if (requestId !== session.chatActiveRequestId) return;
             if (!gotDone && !answer.trim()) throw new Error('Empty LLM response');
             finishAssistantMessage(pending, answer.trim(), message);
+            session.chat.push({ role: 'user', content: message });
             session.chat.push({ role: 'assistant', content: answer.trim(), question: message });
             session.chat = session.chat.slice(-CHAT_HISTORY_LIMIT);
             persistChatHistory();
         } catch (err) {
             if (err.name === 'AbortError' && session.chatStoppedByUser) {
-                stopAssistantMessage(pending);
+                if (pending) stopAssistantMessage(pending);
                 finalStatus = chatEngineStatus('STOPPED');
             } else {
-                failAssistantMessage(pending, err.message, message);
+                if (pending) failAssistantMessage(pending, err.message, message);
                 finalStatus = chatEngineStatus('OFFLINE');
             }
         } finally {
-            if (session.chatActiveMessage === pending) session.chatActiveMessage = null;
-            session.chatAbort = null;
-            session.chatStoppedByUser = false;
-            setChatBusy(false);
-            if (finalStatus) ui.chatStatus.textContent = finalStatus;
+            if (session.chatActiveRequestId === requestId) {
+                if (session.chatActiveMessage === pending) session.chatActiveMessage = null;
+                session.chatAbort = null;
+                session.chatStoppedByUser = false;
+                session.chatSubmitting = false;
+                setChatBusy(false);
+                if (finalStatus) ui.chatStatus.textContent = finalStatus;
+            }
             ui.chatInput.focus();
         }
     }
@@ -1227,9 +1242,6 @@ const LearnMode = (() => {
         updateChatContext();
         loadChatHistory();
         renderChatHistory();
-        offerKugnusFallbackIfNeeded().catch(err => {
-            console.warn('KUGNUS fallback check failed:', err.message);
-        });
     }
 
     function hideChatPanel() {
