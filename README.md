@@ -1,14 +1,58 @@
 # CodeDrop
 
-Cyberpunk typing game and EX280 study suite.
+**Cyberpunk typing drills, EX280 practice, and AI-made custom word packs.**
 
-CodeDrop started as a falling-code typing game. It now has three product layers:
+CodeDrop began as a falling-code typing game. It is now a compact study system:
+official typing packs for muscle memory, an OCP Edition for EX280 hands-on
+practice, and a Pack Maker that turns natural-language topics into playable
+data packs through KUGNUS SERVER, Gemini, or GPT fallback.
 
-- **CODEDROP**: short-form falling word typing with official packs and custom packs.
-- **OCP Edition**: EX280/OpenShift study modes, including learn mode, scenario practice, mock labs, and exam mode.
-- **Pack Maker**: search-grounded custom data pack generation through KUGNUS SERVER or GPT mini fallback.
+The production app is a Node/Express service with MySQL-compatible storage.
+The frontend stays guest-first: players can open the app and play official DROP
+packs immediately, while server-backed features such as Pack Maker generation,
+saved packs, public pack listing, and score upload ask for login only when needed.
 
-Live production currently runs on the Node/Express backend with MySQL-compatible storage. A Firebase migration can move Hosting/Auth/Firestore later, but LLM/search features still need a server-side function because API keys must not be exposed in browser code.
+## Why It Exists
+
+CodeDrop is for the awkward but very real moment where learning development also
+means getting comfortable with a keyboard. A lot of people are more fluent on
+phones than PCs now, so the original DROP mode turns programming words, shell
+commands, and domain terms into a game that trains finger placement before code
+starts feeling intimidating.
+
+OCP Edition is also personal: site owner **Kim Sungwook** built it because he
+wanted OpenShift / EX280 study to feel less like punishment and more like a game.
+This kind of nerdy fun is exactly the point.
+
+## Product Screens
+
+### Original CODEDROP
+
+![CodeDrop falling-word gameplay](assets/readme/codedrop-play.png)
+
+### OCP Edition
+
+![CodeDrop OCP Edition menu](assets/readme/ocp-edition.jpg)
+
+### Pack Maker
+
+![CodeDrop Pack Maker](assets/readme/pack-maker.jpg)
+
+## Highlights
+
+- **DROP typing game**: neon falling-word gameplay with official packs,
+  custom packs, study/invincible difficulty, score, combo, WPM, and pack-specific
+  leaderboards.
+- **OCP Edition**: EX280-focused Learn Mode, CLI DROP, Scenario, Mock Lab, Exam,
+  Study Dashboard, and an OCP chat assistant.
+- **Pack Maker**: search-grounded data-pack drafting, editable term/description
+  table, private pack save, and operator-reviewed public listing.
+- **LLM choices**: KUGNUS SERVER by default, Gemini Flash for fast free fallback,
+  and GPT mini as the paid backup path.
+- **Guest-first UX**: official packs and screens are explorable without account
+  creation; protected actions show contextual login prompts.
+- **Retro control surface**: README manual, MUSIC island player, keyboard tester,
+  first-run tutorial, and EN/KOR product language support.
 
 ## Current Verified Flow
 
@@ -29,28 +73,6 @@ Expected:
 - `doctor:full` runs static checks, server/DB readiness, release diagnostics, and the real KUGNUS Pack Maker E2E. It may still report `BLOCKED` for release if public gateway/session/origin env is not configured.
 - Browser E2E proves Pack Maker generation, save, SELECT PACK selection, DROP play, OCP Learn chat, README, MUSIC, and console errors.
 - Use `npm run doctor:release -- --base-url=<deployed-or-local-url> --env-file=<release-env-file>` as the fail-fast release gate. It exits non-zero on `FAIL` or `BLOCKED`.
-
-## Features
-
-- **Guest-first start**: users can inspect and play official packs without signing in.
-- **Login-gated server features**: Pack Maker generation/save, custom pack ranking, public review submission, official score upload, and account deletion require login.
-- **Official DROP packs**: Python, JavaScript, HTTP/Network, Terminal, Linux, OpenShift, Vocabulary, and Mix.
-- **Custom packs**: saved packs are loaded into the normal DROP flow and use separate pack-specific leaderboards.
-- **OCP Edition**:
-  - Learn Mode with chat assistant.
-  - CLI DROP fixed to OpenShift CLI terms.
-  - Scenario practice.
-  - Mock Lab.
-  - Exam mode.
-  - Study dashboard and review flow.
-- **KUGNUS SERVER default**:
-  - Learn chat and Pack Maker default to KUGNUS.
-  - GPT mini fallback is allowed only after an explicit fallback decision.
-- **README manual**:
-  - EN/KOR toggle.
-  - Contact links for GitHub, www.kugnus.com, blog, and email.
-- **MUSIC island UI**:
-  - Bottom-right compact/expanded player with SoundCloud fallback view.
 
 ## Local Setup
 
