@@ -130,12 +130,22 @@ const PackMaker = (() => {
         return key;
     }
 
+    const ENGINE_LABELS = {
+        kugnus: 'KUGNUS SERVER',
+        openai: 'GPT 5.4 MINI',
+        gemini: 'GEMINI FLASH'
+    };
+
+    function normalizeEngineValue(value) {
+        return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'kugnus';
+    }
+
     function preferredEngine() {
-        return stateRef.engine === 'openai' || stateRef.engine === 'kugnus' ? stateRef.engine : 'kugnus';
+        return normalizeEngineValue(stateRef.engine);
     }
 
     function engineLabel() {
-        return ui.engine && ui.engine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
+        return ENGINE_LABELS[normalizeEngineValue(ui.engine && ui.engine.value)] || ENGINE_LABELS.kugnus;
     }
 
     function routeDisplayLabel(route) {
@@ -298,9 +308,14 @@ const PackMaker = (() => {
     function updateEngineRouteStatus(meta = null) {
         if (!ui.route) return;
         ui.route.classList.remove('warn', 'danger');
-        if (!ui.engine || ui.engine.value === 'openai') {
+        const engine = normalizeEngineValue(ui.engine && ui.engine.value);
+        if (engine === 'openai') {
             ui.route.textContent = 'FALLBACK ROUTE: GPT 5.4 MINI';
             ui.route.classList.add('warn');
+            return;
+        }
+        if (engine === 'gemini') {
+            ui.route.textContent = 'GOOGLE ROUTE: GEMINI API';
             return;
         }
 
@@ -327,7 +342,7 @@ const PackMaker = (() => {
 
     function setEngine(engine) {
         if (!ui.engine) return;
-        ui.engine.value = engine === 'openai' ? 'openai' : 'kugnus';
+        ui.engine.value = normalizeEngineValue(engine);
         stateRef.engine = ui.engine.value;
         syncEnginePicker();
         updateEngineRouteStatus();
@@ -335,8 +350,9 @@ const PackMaker = (() => {
 
     function syncEnginePicker() {
         if (!ui.engine) return;
-        const engine = ui.engine.value === 'openai' ? 'openai' : 'kugnus';
-        const label = engine === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
+        const engine = normalizeEngineValue(ui.engine.value);
+        ui.engine.value = engine;
+        const label = ENGINE_LABELS[engine] || ENGINE_LABELS.kugnus;
         if (ui.engineLabel) ui.engineLabel.textContent = label;
         if (ui.engineMenu) {
             ui.engineMenu.querySelectorAll('[data-engine]').forEach(option => {
@@ -366,7 +382,7 @@ const PackMaker = (() => {
     }
 
     function chooseEngine(engine) {
-        if (engine !== 'openai' && engine !== 'kugnus') return;
+        if (engine !== 'openai' && engine !== 'kugnus' && engine !== 'gemini') return;
         ui.engine.value = engine;
         ui.engine.dispatchEvent(new Event('change'));
         closeEngineMenu();

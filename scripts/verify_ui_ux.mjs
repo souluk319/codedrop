@@ -394,6 +394,7 @@ assert(learn.includes("ui.peekBtn.textContent = session.peeked ? '정답 닫기'
 assert(index.includes('ASK TO KUGNUS SERVER'), 'learn chat should default the assistant title to KUGNUS SERVER');
 assert(index.includes('data-engine="kugnus"') && index.includes('KUGNUS SERVER'), 'learn chat should expose KUGNUS SERVER as the local engine choice');
 assert(index.includes('data-engine="openai"') && index.includes('GPT 5.4 MINI'), 'learn chat should expose GPT 5.4 MINI as an engine choice');
+assert(index.includes('data-engine="gemini"') && index.includes('GEMINI FLASH'), 'learn chat and Pack Maker should expose Gemini Flash as an engine choice');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'learn chat hidden select should default to KUGNUS SERVER');
 assert(learn.includes('LEARN_API_BASE') && learn.includes('`${LEARN_API_BASE}/api/learn-chat/stream`'), 'learn chat should call the base-prefixed streaming server-side LLM proxy');
 assert(learn.includes("engine: ui.chatEngine.value"), 'learn chat should send the selected LLM engine');
@@ -426,6 +427,8 @@ assert(server.includes('KUGNUS_GATEWAY_BASE_URL'), 'KUGNUS SERVER should prefer 
 assert(server.includes('KUGNUS_GATEWAY_API_KEY'), 'KUGNUS SERVER should read the public gateway API key');
 assert(server.includes('KUGNUS_GATEWAY_MODEL'), 'KUGNUS SERVER should read the gateway model id');
 assert(server.includes('KUGNUS_CHAT_MODEL'), 'KUGNUS SERVER should accept the public gateway chat model alias');
+assert(server.includes('GEMINI_API_KEY'), 'server should support Gemini as an optional comparison engine');
+assert(server.includes('streamGenerateContent?alt=sse'), 'server should stream Gemini through the official SSE endpoint');
 assert(server.includes('LLM_TARGET_DIAGNOSTICS'), 'KUGNUS health target host diagnostics should be gated in production');
 assert(!server.includes('shouldUseOpenAiEnvForKugnus'), 'KUGNUS routing must not treat OPENAI_* as a KUGNUS alias');
 assert(!server.includes('function openAiEnvKugnusAliasReady'), 'obsolete OPENAI_* KUGNUS alias helper should not exist');
@@ -611,12 +614,15 @@ assert(game.includes("els.musicWidget.classList.add('island-open')"), 'music wid
 
 assert(server.includes('app.post("/api/pack-maker/chat/stream", authUser'), 'pack maker stream endpoint should require auth');
 assert(server.includes('function extractPackIntent'), 'pack maker should parse realistic natural-language pack requests');
+assert(server.includes('function cleanPackTitleCandidate'), 'pack maker should clean extracted pack titles through a dedicated helper');
 assert(server.includes('function isPackGenerationRequest'), 'pack maker should gate vague chat before starting search/generation');
 assert(server.includes('PACK BRIEF REQUIRED'), 'pack maker should answer vague prompts with a brief request instead of generating');
 assert(server.includes('됩니다. 다만 Pack Maker는 일반 대화보다 데이터팩 생성 요청에 맞춰져 있습니다.'), 'server-side Pack Maker brief answer should explain capability instead of sounding like a hard failure');
 assert(server.includes('requestedCount'), 'pack maker should track the requested item count');
 assert(server.includes('packMakerTokenBudget'), 'pack maker should scale LLM token budget from target item count');
 assert(server.includes('normalizePackDescriptionForItems'), 'pack save should normalize stale/wrong item-count descriptions');
+assert(server.includes('\\\\d{1,3}\\\\s*개(?:만)?\\\\s*(?:로|으로)\\\\s*${titlePhrase}'), 'pack title parser should capture titles after count connectors like 50개로');
+assert(server.includes('뽑아서|뽑아\\\\s*서|추려서|골라서|정리해서'), 'pack title parser should capture titles after natural Korean extraction verbs');
 assert(server.includes('(?:한글|한국어|한국말|영어|영문|english)\\s*(?:로\\s*된|로된|로)?'), 'pack title parser should strip Korean language particles such as 영어로/한글로');
 assert(server.includes('PACK_MAKER_BATCH_TIMEOUT_MS'), 'pack maker should bound each LLM batch so requests do not hang indefinitely');
 assert(server.includes('600_000'), 'pack maker should allow realistic KUGNUS 50-item drafts to run long enough');
@@ -803,6 +809,8 @@ assert(server.includes('PACK_MAKER_SWEEP_TEMPERATURE'), 'Pack Maker term sweep s
 assert(server.includes('function splitPackMakerCandidateLines'), 'Pack Maker should parse comma-separated KUGNUS term-only outputs');
 assert(server.includes('function fallbackItemDescription'), 'Pack Maker term sweep should provide descriptions for term-only candidates');
 assert(localEnvExample.includes('OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
+assert(localEnvExample.includes('GEMINI_API_KEY='), 'local env example should document the optional Gemini API key');
+assert(localEnvExample.includes('GEMINI_MODEL=gemini-2.5-flash'), 'local env example should document the Gemini Flash model');
 assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'OpenAI mini model guard should remain active');
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
 assert(index.includes('<script src="js/admin_packs.js"></script>'), 'admin pack review script tag is missing');
@@ -1069,6 +1077,8 @@ assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://www.kugnus.com'), 
 assert(productionEnvExample.includes('DB_SSL=true'), '.env.production.example should default production DB SSL on');
 assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.production.example should require the public KUGNUS gateway URL');
 assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
+assert(productionEnvExample.includes('GEMINI_API_KEY='), '.env.production.example should document the optional Gemini API key');
+assert(renderYaml.includes('GEMINI_API_KEY') && renderYaml.includes('GEMINI_MODEL'), 'render.yaml should expose optional Gemini deployment env vars');
 assert(kugnusGatewayEnvExample.includes('KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1'), 'KUGNUS gateway env handoff template should use the canonical KUGNUS gateway URL');
 assert(kugnusGatewayEnvExample.includes('KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway env handoff template should pin Gemma 4 12B');
 assert(kugnusGatewayEnvExample.includes('KUGNUS_CHAT_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway env handoff template should document the chat model alias');

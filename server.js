@@ -221,7 +221,7 @@ const MAX_CHAT_HISTORY = 8;
 const LLM_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.LLM_TIMEOUT_MS) || 30_000, 120_000));
 const PACK_MAKER_TIMEOUT_MS = Math.max(LLM_TIMEOUT_MS, Math.min(Number(process.env.PACK_MAKER_TIMEOUT_MS) || 600_000, 600_000));
 const KUGNUS_HEALTH_TIMEOUT_MS = Math.max(1000, Math.min(Number(process.env.KUGNUS_HEALTH_TIMEOUT_MS) || 12_000, 30_000));
-const CHAT_ENGINES = new Set(["kugnus", "openai"]);
+const CHAT_ENGINES = new Set(["kugnus", "openai", "gemini"]);
 const PACK_STATUSES = new Set(["draft", "pending", "approved", "rejected"]);
 const MAX_PACK_TITLE_LEN = 60;
 const MAX_PACK_DESC_LEN = 240;
@@ -284,6 +284,16 @@ const KUGNUS_KEY_ENV_NAMES = [
 const KUGNUS_MODEL_ENV_NAMES = [
     "KUGNUS_GATEWAY_MODEL",
     "KUGNUS_CHAT_MODEL"
+];
+
+const GEMINI_KEY_ENV_NAMES = [
+    "GEMINI_API_KEY",
+    "GOOGLE_GEMINI_API_KEY"
+];
+
+const GEMINI_MODEL_ENV_NAMES = [
+    "GEMINI_MODEL",
+    "GEMINI_CHAT_MODEL"
 ];
 
 function normalizeOpenAiMiniModel(value) {
@@ -472,6 +482,7 @@ function normalizeChatEngine(value) {
     const engine = String(value || process.env.DEFAULT_CHAT_ENGINE || "kugnus").toLowerCase().replace(/[\s_]+/g, "-");
     if (engine === "openai" || engine === "gpt-5-4-mini" || engine === "gpt54-mini") return "openai";
     if (engine === "kugnus" || engine === "kugnus-ai" || engine === "local") return "kugnus";
+    if (engine === "gemini" || engine === "google" || engine === "gemini-flash") return "gemini";
     return CHAT_ENGINES.has(engine) ? engine : null;
 }
 
@@ -500,6 +511,19 @@ function chatCompletionsUrl(baseUrl, provider) {
 
     const openAiBase = /\/v1$/i.test(baseUrl) ? baseUrl : `${baseUrl}/v1`;
     return `${openAiBase}/chat/completions`;
+}
+
+function geminiApiBaseUrl() {
+    return String(process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com/v1beta")
+        .trim()
+        .replace(/\/+$/, "")
+        .replace(/\/models\/[^/]+:(streamGenerateContent|generateContent)(\?.*)?$/i, "");
+}
+
+function geminiContentUrl(model, stream = false) {
+    const baseUrl = geminiApiBaseUrl();
+    const method = stream ? "streamGenerateContent?alt=sse" : "generateContent";
+    return `${baseUrl}/models/${encodeURIComponent(model)}:${method}`;
 }
 
 function safeLlmTargetUrlParts(url) {
@@ -540,6 +564,28 @@ function buildLlmTarget(engine = "kugnus") {
             label: "GPT 5.4 mini",
             provider: "openai",
             url: /\/chat\/completions$/i.test(baseUrl) ? baseUrl : `${openAiBase}/chat/completions`,
+            model,
+            apiKey
+        };
+    }
+
+    if (engine === "gemini") {
+        const model = String(envFirst(GEMINI_MODEL_ENV_NAMES) || "gemini-2.5-flash").trim();
+        const apiKey = envFirst(GEMINI_KEY_ENV_NAMES);
+
+        if (!apiKey) {
+            const err = new Error("Gemini API key is not configured");
+            err.status = 503;
+            throw err;
+        }
+
+        return {
+            engine: "gemini",
+            label: "GEMINI FLASH",
+            provider: "gemini",
+            route: "google",
+            url: geminiContentUrl(model, false),
+            streamUrl: geminiContentUrl(model, true),
             model,
             apiKey
         };
@@ -841,23 +887,38 @@ function clampPackTargetCount(value) {
     return Math.max(MIN_PACK_ITEMS, Math.min(Math.round(count), MAX_PACK_ITEMS));
 }
 
-function extractPackTitle(message) {
-    const text = sanitizePackText(message, MAX_CHAT_MESSAGE_LEN);
-    const explicitTitle = text.match(/(?:이름은|제목은|타이틀은)\s*([가-힣A-Za-z0-9 _-]{2,30}?팩)/i);
-    const candidates = [...text.matchAll(/([가-힣A-Za-z0-9_-]+(?:\s+[가-힣A-Za-z0-9_-]+){0,3}\s*팩)/g)];
-    const explicit = explicitTitle || candidates.at(-1);
-    if (!explicit) return "";
-
-    return sanitizePackText(explicit[1]
-        .replace(/\d{1,3}\s*(?:개|개만|단어|용어|terms?|items?|words?)/gi, "")
-        .replace(/\b(?:로|으로)\b\s*(?=팩)/gi, "")
-        .replace(/(?:로|으로)\s*(?=팩)/g, "")
+function cleanPackTitleCandidate(value) {
+    return sanitizePackText(String(value || "")
+        .replace(/\d{1,3}\s*(?:개(?:만)?|단어|용어|terms?|items?|words?)\s*(?:로|으로)?/gi, " ")
+        .replace(/(?:^|\s)(?:로|으로)(?=\s|팩|$)/g, " ")
+        .replace(/(?:로|으로)\s*(?=팩)/g, " ")
         .replace(/^.*(?:뽑아서|뽑아|만들어|생성해서|제작해서|작성해서)\s*/i, "")
         .replace(/^(?:만|만큼|정도)\s*/i, "")
         .replace(/^(?:한글|한국어|한국말|영어|영문|english)\s*(?:로\s*된|로된|로)?\s*/i, "")
         .replace(/^(?:단어|용어)\s*/i, "")
         .replace(/\s{2,}/g, " ")
         .trim(), MAX_PACK_TITLE_LEN);
+}
+
+function extractPackTitle(message) {
+    const text = sanitizePackText(message, MAX_CHAT_MESSAGE_LEN);
+    const titlePhrase = "([가-힣A-Za-z0-9][가-힣A-Za-z0-9 _-]{1,38}?팩)";
+    const explicitPatterns = [
+        new RegExp(`(?:이름은|제목은|타이틀은)\\s*${titlePhrase}`, "i"),
+        new RegExp(`\\d{1,3}\\s*개(?:만)?\\s*(?:로|으로)\\s*${titlePhrase}`, "i"),
+        new RegExp(`(?:뽑아서|뽑아\\s*서|추려서|골라서|정리해서)\\s*${titlePhrase}`, "i"),
+        new RegExp(`(?:로|으로)\\s*${titlePhrase}\\s*(?:초안|만들|생성|제작|작성|부탁|해줘|$)`, "i")
+    ];
+
+    for (const pattern of explicitPatterns) {
+        const match = text.match(pattern);
+        const cleaned = match ? cleanPackTitleCandidate(match[1]) : "";
+        if (cleaned) return cleaned;
+    }
+
+    const candidates = [...text.matchAll(/([가-힣A-Za-z0-9_-]+(?:\s+[가-힣A-Za-z0-9_-]+){0,3}\s*팩)/g)];
+    const fallback = candidates.at(-1);
+    return fallback ? cleanPackTitleCandidate(fallback[1]) : "";
 }
 
 function inferPackTermLanguage(message) {
@@ -2308,8 +2369,45 @@ async function collectPackMakerSources(intent, message) {
 
 function llmHeaders(target) {
     const headers = { "Content-Type": "application/json" };
+    if (target.provider === "gemini" && target.apiKey) {
+        headers["x-goog-api-key"] = target.apiKey;
+        return headers;
+    }
     if (target.provider !== "ollama" && target.apiKey) headers.Authorization = `Bearer ${target.apiKey}`;
     return headers;
+}
+
+function geminiPayload(messages, options = {}) {
+    const maxTokens = Number(options.maxTokens) || 700;
+    const temperature = Number.isFinite(Number(options.temperature)) ? Number(options.temperature) : 0.2;
+    const systemParts = [];
+    const contents = [];
+
+    for (const message of messages) {
+        const text = String(message?.content || "").trim();
+        if (!text) continue;
+        if (message.role === "system") {
+            systemParts.push(text);
+            continue;
+        }
+        contents.push({
+            role: message.role === "assistant" ? "model" : "user",
+            parts: [{ text }]
+        });
+    }
+
+    return {
+        ...(systemParts.length ? {
+            systemInstruction: {
+                parts: [{ text: systemParts.join("\n\n") }]
+            }
+        } : {}),
+        contents,
+        generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens
+        }
+    };
 }
 
 function llmPayload(target, messages, stream = false, options = {}) {
@@ -2337,6 +2435,10 @@ function llmPayload(target, messages, stream = false, options = {}) {
         };
     }
 
+    if (target.provider === "gemini") {
+        return geminiPayload(messages, options);
+    }
+
     return {
         model: target.model,
         messages,
@@ -2361,6 +2463,11 @@ function ollamaBaseUrl(target) {
 function extractLlmAnswer(provider, data) {
     if (provider === "ollama") {
         return data?.message?.content || data?.response || "";
+    }
+    if (provider === "gemini") {
+        return (data?.candidates?.[0]?.content?.parts || [])
+            .map(part => part?.text || "")
+            .join("");
     }
     return data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || "";
 }
@@ -2483,12 +2590,18 @@ function parseStreamDelta(provider, data) {
         return data?.message?.content || data?.response || "";
     }
 
+    if (provider === "gemini") {
+        return (data?.candidates?.[0]?.content?.parts || [])
+            .map(part => part?.text || "")
+            .join("");
+    }
+
     const choice = data?.choices?.[0] || {};
     return choice.delta?.content || choice.message?.content || choice.text || "";
 }
 
 async function readLearnLlmStream(target, messages, signal, onDelta, options = {}) {
-    const response = await fetch(target.url, {
+    const response = await fetch(target.streamUrl || target.url, {
         method: "POST",
         headers: llmHeaders(target),
         body: JSON.stringify(llmPayload(target, messages, true, options)),
@@ -2866,7 +2979,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
             writeNdjson(res, "meta", {
                 engine,
                 route: "not-needed",
-                label: engine === "openai" ? "GPT 5.4 mini" : "KUGNUS SERVER"
+                label: engine === "openai" ? "GPT 5.4 mini" : (engine === "gemini" ? "GEMINI FLASH" : "KUGNUS SERVER")
             });
             writeNdjson(res, "status", { text: "PACK BRIEF REQUIRED" });
             writeNdjson(res, "delta", { text: answer });

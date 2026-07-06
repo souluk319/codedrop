@@ -307,7 +307,7 @@ const LearnMode = (() => {
 
         ui.chatForm.addEventListener('submit', sendChat);
         ui.chatEngine.addEventListener('change', () => {
-            chatEngineOverride = ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus';
+            chatEngineOverride = normalizeChatEngineValue(ui.chatEngine.value);
             syncChatEngineUi();
             ui.chatStatus.textContent = chatEngineStatus('READY');
         });
@@ -367,17 +367,26 @@ const LearnMode = (() => {
 
     const CHAT_HISTORY_LIMIT = 16;
     let chatEngineOverride = null;
+    const CHAT_ENGINE_LABELS = {
+        kugnus: 'KUGNUS SERVER',
+        openai: 'GPT 5.4 MINI',
+        gemini: 'GEMINI FLASH'
+    };
+
+    function normalizeChatEngineValue(value) {
+        return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'kugnus';
+    }
 
     function preferredChatEngine() {
-        return chatEngineOverride === 'openai' || chatEngineOverride === 'kugnus' ? chatEngineOverride : 'kugnus';
+        return normalizeChatEngineValue(chatEngineOverride);
     }
 
     function chatEngineLabel() {
-        return ui.chatEngine && ui.chatEngine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
+        return CHAT_ENGINE_LABELS[normalizeChatEngineValue(ui.chatEngine && ui.chatEngine.value)] || CHAT_ENGINE_LABELS.kugnus;
     }
 
     function chatTitleLabel() {
-        return ui.chatEngine && ui.chatEngine.value === 'openai' ? 'GPT 5.4 MINI' : 'KUGNUS SERVER';
+        return chatEngineLabel();
     }
 
     function routeDisplayLabel(route) {
@@ -403,9 +412,14 @@ const LearnMode = (() => {
     function updateChatRouteStatus(meta = null) {
         if (!ui.chatRoute) return;
         ui.chatRoute.classList.remove('warn', 'danger');
-        if (!ui.chatEngine || ui.chatEngine.value === 'openai') {
+        const engine = normalizeChatEngineValue(ui.chatEngine && ui.chatEngine.value);
+        if (engine === 'openai') {
             ui.chatRoute.textContent = 'FALLBACK ROUTE: GPT 5.4 MINI';
             ui.chatRoute.classList.add('warn');
+            return;
+        }
+        if (engine === 'gemini') {
+            ui.chatRoute.textContent = 'GOOGLE ROUTE: GEMINI API';
             return;
         }
 
@@ -432,7 +446,7 @@ const LearnMode = (() => {
 
     function syncChatEngineUi() {
         if (!ui.chatEngine) return;
-        const engine = ui.chatEngine.value === 'openai' ? 'openai' : 'kugnus';
+        const engine = normalizeChatEngineValue(ui.chatEngine.value);
         ui.chatEngine.value = engine;
         if (ui.chatTitle) ui.chatTitle.textContent = `ASK TO ${chatTitleLabel()}`;
         if (ui.chatEngineLabel) ui.chatEngineLabel.textContent = chatEngineLabel();
@@ -467,7 +481,7 @@ const LearnMode = (() => {
     }
 
     function setChatEngine(engine) {
-        if (engine !== 'openai' && engine !== 'kugnus') return;
+        if (engine !== 'openai' && engine !== 'kugnus' && engine !== 'gemini') return;
         ui.chatEngine.value = engine;
         ui.chatEngine.dispatchEvent(new Event('change'));
         closeChatEngineMenu();

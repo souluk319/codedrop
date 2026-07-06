@@ -130,6 +130,13 @@ OPENAI_API_KEY=<OPENAI_API_KEY>
 OPENAI_MODEL=gpt-5.4-mini
 ```
 
+Gemini can be enabled as a third comparison engine in Learn Chat and Pack Maker:
+
+```env
+GEMINI_API_KEY=<GEMINI_API_KEY>
+GEMINI_MODEL=gemini-2.5-flash
+```
+
 Pack Maker search and future embedding/RAG settings:
 
 ```env
