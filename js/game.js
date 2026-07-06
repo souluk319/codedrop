@@ -1753,6 +1753,23 @@ function spawnWord() {
     state.activeWords.push(word);
 }
 
+function isCaseInsensitivePackActive() {
+    return Boolean(customPackIdFromValue(state.pack));
+}
+
+function normalizeWordMatchValue(value) {
+    const text = String(value || '');
+    return isCaseInsensitivePackActive() ? text.toLocaleLowerCase('en-US') : text;
+}
+
+function wordStartsWithInput(wordText, inputText) {
+    return normalizeWordMatchValue(wordText).startsWith(normalizeWordMatchValue(inputText));
+}
+
+function wordEqualsInput(wordText, inputText) {
+    return normalizeWordMatchValue(wordText) === normalizeWordMatchValue(inputText);
+}
+
 function handleInput(e) {
     if (!state.isPlaying || state.isPaused) return;
 
@@ -1771,7 +1788,7 @@ function handleInput(e) {
     // 1. Find Target if none
     if (!state.targetId) {
         // Find matching words (prefix match)
-        const matches = state.activeWords.filter(w => w.text.startsWith(inputVal));
+        const matches = state.activeWords.filter(w => wordStartsWithInput(w.text, inputVal));
 
         if (matches.length > 0) {
             // Pick lowest (largest y)
@@ -1790,12 +1807,12 @@ function handleInput(e) {
         const target = state.activeWords.find(w => w.id === state.targetId);
 
         // If target disappeared (dropped) or input no longer matches prefix
-        if (!target || !target.text.startsWith(inputVal)) {
+        if (!target || !wordStartsWithInput(target.text, inputVal)) {
             // Reset target
             state.targetId = null;
             state.activeWords.forEach(w => w.el.classList.remove('target'));
 
-            const matches = state.activeWords.filter(w => w.text.startsWith(inputVal));
+            const matches = state.activeWords.filter(w => wordStartsWithInput(w.text, inputVal));
             if (matches.length > 0) {
                 matches.sort((a, b) => b.y - a.y);
                 const nextTarget = matches[0];
@@ -1826,7 +1843,7 @@ function handleKeydown(e) {
             const targetIndex = state.activeWords.findIndex(w => w.id === state.targetId);
             if (targetIndex !== -1) {
                 const target = state.activeWords[targetIndex];
-                if (target.text === inputVal) {
+                if (wordEqualsInput(target.text, inputVal)) {
                     // Success
                     successWord(targetIndex);
                 } else {

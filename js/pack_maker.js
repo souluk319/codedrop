@@ -149,6 +149,26 @@ const PackMaker = (() => {
         return `${engineLabel()}${engineRouteLabel(meta)} ${status}`;
     }
 
+    function showSaveSuccessNotice(pack, submitForReview) {
+        const title = escapeText(pack && pack.title) || 'Custom Pack';
+        const count = Array.isArray(pack && pack.items) ? pack.items.length : 0;
+        const status = submitForReview ? 'PENDING PUBLIC REVIEW' : 'SAVED TO MY PACKS';
+        const message = submitForReview
+            ? `${title} · ${count} items\n공개 검토 대기 상태로 저장됐습니다.`
+            : `${title} · ${count} items\n내 팩으로 저장됐고 SELECT PACK에서 바로 플레이할 수 있습니다.`;
+
+        appendChat('system', `${status}: ${title} (${count} items)`);
+
+        if (typeof showCommandDialog === 'function') {
+            showCommandDialog({
+                title: submitForReview ? 'PACK SUBMITTED' : 'PACK SAVED',
+                message,
+                okText: 'OK',
+                cancelText: ''
+            });
+        }
+    }
+
     function compactPrompt(message) {
         return String(message || '').replace(/\s+/g, '').trim();
     }
@@ -1403,6 +1423,7 @@ const PackMaker = (() => {
             }
             renderDraft();
             renderStatus(submitForReview ? 'PENDING PUBLIC REVIEW' : 'SAVED TO MY PACKS');
+            showSaveSuccessNotice(stateRef.draft, submitForReview);
         } catch (err) {
             renderStatus(err.message, true);
         }

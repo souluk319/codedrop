@@ -647,9 +647,9 @@ function sanitizePackItems(items, { strict = true, requireSources = false, fallb
 
 function sanitizePackPayload(body, { strict = true } = {}) {
     const title = sanitizePackText(body?.title, MAX_PACK_TITLE_LEN);
-    const description = sanitizePackText(body?.description, MAX_PACK_DESC_LEN);
     const submitForReview = body?.submitForReview === true;
     const items = sanitizePackItems(body?.items, { strict, requireSources: submitForReview });
+    const description = normalizePackDescriptionForItems(body?.description, title, items);
 
     if (strict) {
         if (title.length < 3) {
@@ -671,6 +671,29 @@ function sanitizePackPayload(body, { strict = true } = {}) {
         items,
         submitForReview
     };
+}
+
+function normalizePackDescriptionForItems(description, title, items) {
+    const clean = sanitizePackText(description, MAX_PACK_DESC_LEN);
+    const safeTitle = sanitizePackText(title, MAX_PACK_TITLE_LEN) || "Custom Pack";
+    const count = Array.isArray(items) ? items.length : 0;
+    const terms = Array.isArray(items) ? items.map(item => item.term || "").join(" ") : "";
+    const koreanTerms = Array.isArray(items)
+        ? items.filter(item => /[가-힣]/.test(item.term || "")).length
+        : 0;
+    const languageText = koreanTerms > count / 2 ? `${count}개 한글 도메인 용어` : `${count} English domain terms`;
+    const fallback = `${safeTitle} - ${languageText}`;
+    const counts = [
+        ...clean.matchAll(/(\d{1,3})\s*(?:개|terms?|items?|words?)/gi),
+        ...clean.matchAll(/(\d{1,3})(?=[^0-9]{0,40}\b(?:terms?|items?|words?)\b)/gi)
+    ]
+        .map(match => Number(match[1]))
+        .filter(Number.isFinite);
+
+    if (!clean) return fallback;
+    if (count > 0 && counts.some(value => value !== count)) return fallback;
+    if (!/[가-힣A-Za-z]/.test(clean) && terms) return fallback;
+    return clean;
 }
 
 function normalizeDraftFromLlm(value, fallbackSources = []) {
@@ -698,7 +721,7 @@ function extractPackTitle(message) {
         .replace(/\d{1,3}\s*(?:개|개만|단어|용어|terms?|items?|words?)/gi, "")
         .replace(/^.*(?:뽑아서|뽑아|만들어|생성해서|제작해서|작성해서)\s*/i, "")
         .replace(/^(?:만|만큼|정도)\s*/i, "")
-        .replace(/^(?:한글|한국어|영어|영문|english)\s*/i, "")
+        .replace(/^(?:한글|한국어|한국말|영어|영문|english)\s*(?:로\s*된|로된|로)?\s*/i, "")
         .replace(/^(?:단어|용어)\s*/i, "")
         .replace(/\s{2,}/g, " ")
         .trim(), MAX_PACK_TITLE_LEN);

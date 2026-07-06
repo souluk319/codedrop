@@ -498,10 +498,14 @@ assert(game.includes('select.value = previousValue;'), 'custom pack selection sh
 assert(game.includes('!Array.isArray(WORD_PACKS[value]) || WORD_PACKS[value].length === 0'), 'custom pack selection should verify playable WORD_PACKS data before committing');
 assert(game.includes('async function ensureSelectedPackReady(pack)'), 'DROP start should guard custom packs before game launch');
 assert(game.includes('if (!await ensureSelectedPackReady(pack)) return;'), 'DROP start should not launch with an unloaded custom pack');
+assert(game.includes('function isCaseInsensitivePackActive()'), 'custom packs should opt into case-insensitive word matching');
+assert(game.includes('function wordEqualsInput(wordText, inputText)'), 'custom pack Enter matching should normalize user input and falling terms');
 assert(game.includes('event.dataTransfer.setData'), 'pack selector should support drag-to-console');
 assert(game.includes('window.CodeDropPackSelector'), 'custom packs should be able to refresh the visual pack selector');
 assert(packMaker.includes("throw new Error('Pack detail is empty')"), 'pack maker detail loading should fail loudly when a saved pack has no playable items');
 assert(packMaker.includes('select.dispatchEvent(new Event(\'change\', { bubbles: true }))'), 'saved custom packs should dispatch native select change after being selected');
+assert(packMaker.includes('function showSaveSuccessNotice'), 'pack maker save should show an explicit success notice');
+assert(packMaker.includes('PACK SAVED'), 'pack maker save notice should use a clear saved title');
 assert(index.includes('#music-widget.widget-overlap'), 'music widget should only fade when it overlaps falling words');
 assert(index.includes('#readme-widget.widget-overlap'), 'readme widget should only fade when it overlaps falling words');
 assert(index.includes('--corner-widget-size: 60px;'), 'bottom corner widgets should share one size token');
@@ -569,6 +573,8 @@ assert(server.includes('PACK BRIEF REQUIRED'), 'pack maker should answer vague p
 assert(server.includes('됩니다. 다만 Pack Maker는 일반 대화보다 데이터팩 생성 요청에 맞춰져 있습니다.'), 'server-side Pack Maker brief answer should explain capability instead of sounding like a hard failure');
 assert(server.includes('requestedCount'), 'pack maker should track the requested item count');
 assert(server.includes('packMakerTokenBudget'), 'pack maker should scale LLM token budget from target item count');
+assert(server.includes('normalizePackDescriptionForItems'), 'pack save should normalize stale/wrong item-count descriptions');
+assert(server.includes('(?:한글|한국어|한국말|영어|영문|english)\\s*(?:로\\s*된|로된|로)?'), 'pack title parser should strip Korean language particles such as 영어로/한글로');
 assert(server.includes('PACK_MAKER_BATCH_TIMEOUT_MS'), 'pack maker should bound each LLM batch so requests do not hang indefinitely');
 assert(server.includes('600_000'), 'pack maker should allow realistic KUGNUS 50-item drafts to run long enough');
 assert(server.includes('180_000'), 'pack maker batch timeout should allow Gemma-class batches enough time');
