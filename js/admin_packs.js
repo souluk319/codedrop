@@ -108,8 +108,8 @@ const AdminPacks = (() => {
         if (typeof showCommandDialog === 'function') {
             return showCommandDialog(options);
         }
-        const accepted = window.confirm(`${options.title}\n\n${options.message}`);
-        return { accepted, value: '' };
+        setErrorStatus(`${options.title}: ${options.message}`);
+        return { accepted: false, value: '' };
     }
 
     async function requestJson(path, options = {}) {
