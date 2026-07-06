@@ -32,9 +32,6 @@ const I18N_TEXT = {
         'auth.loginAction': 'LOGIN',
         'auth.withdraw': 'WITHDRAW',
         'menu.systemDifficulty': 'System Difficulty',
-        'menu.sessionMode': 'SESSION MODE',
-        'menu.missionMode': 'MISSION',
-        'menu.studyMode': 'STUDY',
         'menu.studyTime': 'STUDY TIME',
         'menu.studyTimePlaceholder': 'MINUTES (blank = infinite)',
         'menu.selectPack': 'SELECT PACK',
@@ -48,6 +45,7 @@ const I18N_TEXT = {
         'difficulty.easy': 'EASY [SAFE_MODE]',
         'difficulty.normal': 'NORMAL [STANDARD]',
         'difficulty.developer': 'DEVELOPER [OVERCLOCK]',
+        'difficulty.study': 'INVINCIBLE [STUDY]',
         'ocp.title': 'OCP EDITION',
         'ocp.subtitle': 'EX280 hands-on study deck',
         'ocp.learn': 'LEARN MODE',
@@ -174,9 +172,6 @@ const I18N_TEXT = {
         'auth.loginAction': '로그인',
         'auth.withdraw': '회원탈퇴',
         'menu.systemDifficulty': '시스템 난이도',
-        'menu.sessionMode': '세션 모드',
-        'menu.missionMode': 'MISSION',
-        'menu.studyMode': 'STUDY',
         'menu.studyTime': '학습 시간',
         'menu.studyTimePlaceholder': '분 단위 · 비우면 무한',
         'menu.selectPack': '팩 선택',
@@ -190,6 +185,7 @@ const I18N_TEXT = {
         'difficulty.easy': '쉬움 [안전 모드]',
         'difficulty.normal': '보통 [표준]',
         'difficulty.developer': '개발자 [오버클럭]',
+        'difficulty.study': '무적 [STUDY]',
         'ocp.title': 'OCP EDITION',
         'ocp.subtitle': 'EX280 실전 학습 덱',
         'ocp.learn': '학습 모드',
@@ -306,8 +302,23 @@ const I18N_TEXT = {
 const DIFFICULTY = {
     EASY: { spawnRate: 2500, speedMin: 0.5, speedMax: 1.0, eventChance: 0 },
     NORMAL: { spawnRate: 2000, speedMin: 0.7, speedMax: 1.3, eventChance: 0 },
-    DEVELOPER: { spawnRate: 1500, speedMin: 2, speedMax: 3.5, eventChance: 0 }
+    DEVELOPER: { spawnRate: 1500, speedMin: 2, speedMax: 3.5, eventChance: 0 },
+    STUDY: { spawnRate: 2000, speedMin: 0.7, speedMax: 1.3, eventChance: 0, study: true, base: 'NORMAL' }
 };
+
+function difficultyKey(value) {
+    return String(value || 'NORMAL').split(' ')[0].trim().toUpperCase() || 'NORMAL';
+}
+
+function isStudyDifficulty(value) {
+    return difficultyKey(value) === 'STUDY';
+}
+
+function effectiveDifficultyKey(value) {
+    const key = difficultyKey(value);
+    const config = DIFFICULTY[key];
+    return config && config.base ? config.base : key;
+}
 
 // --- Game State ---
 
@@ -383,11 +394,10 @@ const els = {
         packConsoleDock: document.getElementById('pack-console-dock'),
         packDockLabel: document.getElementById('pack-dock-label'),
         packConsoleStatusArt: document.getElementById('pack-console-status-art'),
-        sessionMode: document.getElementById('session-mode'),
-        sessionMissionBtn: document.getElementById('session-mission-btn'),
-        sessionStudyBtn: document.getElementById('session-study-btn'),
         studyTimeRow: document.getElementById('study-time-row'),
         studyTimeInput: document.getElementById('study-time-input'),
+        ocpStudyTimeRow: document.getElementById('ocp-study-time-row'),
+        ocpStudyTimeInput: document.getElementById('ocp-study-time-input'),
         startBtn: document.getElementById('start-btn'),
         restartBtn: document.getElementById('restart-btn'),
         leaderboard: document.getElementById('leaderboard-list')
@@ -940,6 +950,10 @@ function initCommandDialog() {
     });
 }
 
+function soundAssetPath(file) {
+    return `${CODEDROP_BASE_PATH}/sound/${file}`;
+}
+
 // --- Sound FX (Web Audio API & WAVs) ---
 const sfx = {
     ctx: null,
@@ -947,28 +961,41 @@ const sfx = {
     bgm: null,
     loaded: false,
     init: function () {
-        window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!this.ctx) {
-            this.ctx = new AudioContext();
-        } else if (this.ctx.state === 'suspended') {
-            this.ctx.resume();
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+            try {
+                if (!this.ctx) {
+                    this.ctx = new AudioContextClass();
+                } else if (this.ctx.state === 'suspended') {
+                    this.ctx.resume().catch(() => { });
+                }
+            } catch (error) {
+                this.ctx = null;
+            }
         }
 
         if (!this.loaded) {
             // Load WAVs
-            this.sounds.enter = new Audio('sound/enter.wav');
-            this.sounds.backspace = new Audio('sound/backspace2.wav');
-            this.sounds.space = new Audio('sound/spacebar.wav');
+            this.sounds.enter = new Audio(soundAssetPath('enter.wav'));
+            this.sounds.backspace = new Audio(soundAssetPath('backspace2.wav'));
+            this.sounds.space = new Audio(soundAssetPath('spacebar.wav'));
             this.sounds.space.volume = 0.5;
-            this.sounds.key = new Audio('sound/key.wav');
-            this.sounds.correct = new Audio('sound/correct_sound.wav');
+            this.sounds.key = new Audio(soundAssetPath('key.wav'));
+            this.sounds.correct = new Audio(soundAssetPath('correct_sound.wav'));
 
-            this.bgm = new Audio('sound/mainpage_bgm.wav');
+            this.bgm = new Audio(soundAssetPath('mainpage_bgm.wav'));
             this.bgm.loop = false;
             this.bgm.volume = 0.5;
 
             this.loaded = true;
         }
+    },
+    ensureReady: function () {
+        this.init();
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume().catch(() => { });
+        }
+        return this.ctx;
     },
     playBGM: function () {
         if (this.bgm) {
@@ -990,6 +1017,7 @@ const sfx = {
         }
     },
     playKey: function (key) {
+        this.init();
         let sound;
         if (key === 'Enter') sound = this.sounds.enter;
         else if (key === 'Backspace') sound = this.sounds.backspace;
@@ -1002,23 +1030,42 @@ const sfx = {
         }
     },
     playTone: function (freq, type, duration, vol = 0.1) {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
+        const ctx = this.ensureReady();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
 
         osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
 
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        gain.connect(ctx.destination);
 
         osc.start();
-        osc.stop(this.ctx.currentTime + duration);
+        osc.stop(ctx.currentTime + duration);
+    },
+    playSweep: function (startFreq, endFreq, type, duration, vol = 0.08, delay = 0) {
+        const ctx = this.ensureReady();
+        if (!ctx) return;
+        const now = ctx.currentTime + delay;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(vol, now + 0.006);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
     },
     playSuccess: function () {
+        this.init();
         if (this.sounds.correct) {
             this.sounds.correct.currentTime = 0;
             this.sounds.correct.play().catch(() => { });
@@ -1031,6 +1078,21 @@ const sfx = {
         // Keep existing synth
         this.playTone(150, 'sawtooth', 0.3, 0.1);
         this.playTone(100, 'square', 0.3, 0.1);
+    },
+    playPackLatch: function () {
+        this.playSweep(920, 260, 'triangle', 0.045, 0.075, 0);
+        this.playSweep(190, 68, 'square', 0.16, 0.11, 0.048);
+        this.playSweep(62, 42, 'sine', 0.21, 0.13, 0.078);
+    },
+    playEditionBurst: function () {
+        this.playSweep(220, 1280, 'sawtooth', 0.12, 0.065, 0);
+        this.playSweep(1040, 180, 'square', 0.18, 0.08, 0.035);
+        this.playTone(54, 'sine', 0.16, 0.09);
+    },
+    playBoot: function () {
+        this.playSweep(160, 420, 'square', 0.09, 0.055, 0);
+        this.playSweep(420, 760, 'triangle', 0.1, 0.06, 0.08);
+        this.playSweep(760, 1180, 'sine', 0.12, 0.055, 0.17);
     }
 };
 window.sfx = sfx;
@@ -1171,45 +1233,7 @@ function packReadyText(meta) {
 }
 
 function playPackLatchSound() {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-
-    try {
-        const ctx = new AudioContextClass();
-        const gain = ctx.createGain();
-        gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.08, ctx.currentTime + 0.006);
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
-
-        const tick = ctx.createOscillator();
-        tick.type = 'triangle';
-        tick.frequency.setValueAtTime(980, ctx.currentTime);
-        tick.frequency.exponentialRampToValueAtTime(360, ctx.currentTime + 0.035);
-        tick.connect(gain);
-        tick.start(ctx.currentTime);
-        tick.stop(ctx.currentTime + 0.045);
-
-        const latch = ctx.createOscillator();
-        latch.type = 'square';
-        latch.frequency.setValueAtTime(150, ctx.currentTime + 0.052);
-        latch.frequency.exponentialRampToValueAtTime(72, ctx.currentTime + 0.17);
-        latch.connect(gain);
-        latch.start(ctx.currentTime + 0.052);
-        latch.stop(ctx.currentTime + 0.18);
-
-        const body = ctx.createOscillator();
-        body.type = 'sine';
-        body.frequency.setValueAtTime(58, ctx.currentTime + 0.09);
-        body.frequency.exponentialRampToValueAtTime(42, ctx.currentTime + 0.2);
-        body.connect(gain);
-        body.start(ctx.currentTime + 0.09);
-        body.stop(ctx.currentTime + 0.21);
-
-        window.setTimeout(() => ctx.close(), 320);
-    } catch (error) {
-        // Audio is cosmetic; ignore blocked contexts or unsupported browsers.
-    }
+    sfx.playPackLatch();
 }
 
 function createPackCard(meta) {
@@ -1703,8 +1727,15 @@ function isStudyMode() {
     return state.playMode === 'STUDY';
 }
 
+function activeStudyTimeInput() {
+    if (isOcpEditionActive() && els.controls.ocpStudyTimeInput) {
+        return els.controls.ocpStudyTimeInput;
+    }
+    return els.controls.studyTimeInput;
+}
+
 function parseStudyDurationMs() {
-    const input = els.controls.studyTimeInput;
+    const input = activeStudyTimeInput();
     const minutes = Number(input && input.value ? input.value : 0);
     if (!Number.isFinite(minutes) || minutes <= 0) return 0;
     return Math.min(minutes, 240) * 60_000;
@@ -1728,48 +1759,24 @@ function updateStudyTimerHUD() {
     els.hud.studyTimer.textContent = formatStudyTime(timerMs);
 }
 
-function syncSessionModeControls(mode = els.controls.sessionMode && els.controls.sessionMode.value) {
-    const normalized = normalizeSessionMode(mode);
-    if (els.controls.sessionMode) els.controls.sessionMode.value = normalized;
-    if (els.controls.sessionMissionBtn) {
-        els.controls.sessionMissionBtn.classList.toggle('active', normalized === 'MISSION');
-        els.controls.sessionMissionBtn.setAttribute('aria-pressed', normalized === 'MISSION' ? 'true' : 'false');
-    }
-    if (els.controls.sessionStudyBtn) {
-        els.controls.sessionStudyBtn.classList.toggle('active', normalized === 'STUDY');
-        els.controls.sessionStudyBtn.setAttribute('aria-pressed', normalized === 'STUDY' ? 'true' : 'false');
-    }
+function syncStudyDifficultyControls() {
     if (els.controls.studyTimeRow) {
-        els.controls.studyTimeRow.classList.toggle('hidden', normalized !== 'STUDY');
+        els.controls.studyTimeRow.classList.toggle('hidden', !isStudyDifficulty(els.controls.diffSelect && els.controls.diffSelect.value));
+    }
+    if (els.controls.ocpStudyTimeRow) {
+        const ocpDiff = document.getElementById('ocp-difficulty-select');
+        els.controls.ocpStudyTimeRow.classList.toggle('hidden', !isStudyDifficulty(ocpDiff && ocpDiff.value));
     }
 }
 
 function setSessionMode(mode) {
-    syncSessionModeControls(mode);
-    sfx.playKey(mode === 'STUDY' ? 'S' : 'M');
-    if (normalizeSessionMode(mode) === 'STUDY' && els.controls.studyTimeInput) {
-        els.controls.studyTimeInput.focus();
-    }
+    const nextMode = normalizeSessionMode(mode);
+    if (els.controls.diffSelect) els.controls.diffSelect.value = nextMode === 'STUDY' ? 'STUDY' : 'NORMAL';
+    syncStudyDifficultyControls();
 }
 
 function initSessionModeControls() {
-    if (els.controls.sessionMissionBtn) {
-        els.controls.sessionMissionBtn.removeEventListener('click', handleMissionModeClick);
-        els.controls.sessionMissionBtn.addEventListener('click', handleMissionModeClick);
-    }
-    if (els.controls.sessionStudyBtn) {
-        els.controls.sessionStudyBtn.removeEventListener('click', handleStudyModeClick);
-        els.controls.sessionStudyBtn.addEventListener('click', handleStudyModeClick);
-    }
-    syncSessionModeControls();
-}
-
-function handleMissionModeClick() {
-    setSessionMode('MISSION');
-}
-
-function handleStudyModeClick() {
-    setSessionMode('STUDY');
+    syncStudyDifficultyControls();
 }
 
 window.CodeDropPackSelector = {
@@ -1782,7 +1789,7 @@ function leaderboardSelection() {
     if (isOcpEditionActive()) {
         const ocpDiff = document.getElementById('ocp-difficulty-select');
         return {
-            diff: ((ocpDiff && ocpDiff.value) || 'NORMAL').toLowerCase(),
+            diff: effectiveDifficultyKey((ocpDiff && ocpDiff.value) || 'NORMAL').toLowerCase(),
             pack: 'oc_core',
             customPackId: null
         };
@@ -1790,7 +1797,7 @@ function leaderboardSelection() {
 
     const packValue = els.controls.packSelect.value;
     return {
-        diff: els.controls.diffSelect.value.split(' ')[0].toLowerCase(),
+        diff: effectiveDifficultyKey(els.controls.diffSelect.value).toLowerCase(),
         pack: packValue.toLowerCase(),
         customPackId: customPackIdFromValue(packValue)
     };
@@ -1830,9 +1837,8 @@ function updateHUD() {
     els.hud.combo.textContent = state.combo;
     document.body.classList.toggle('study-active', Boolean(state.isPlaying && isStudyMode()));
 
-    // Fix: Handle difficulty text with brackets
-    const diffKey = state.difficulty.split(' ')[0];
-    els.hud.diff.textContent = isStudyMode() ? `${diffKey} STUDY` : diffKey;
+    const diffKey = effectiveDifficultyKey(state.difficulty);
+    els.hud.diff.textContent = isStudyMode() ? 'STUDY' : diffKey;
 
     // Update Pause Button Text
     if (els.hud.btnPause) {
@@ -1863,8 +1869,7 @@ function gameLoop(timestamp) {
         return;
     }
 
-    // Parse difficulty from select value (e.g. "EASY [SAFE_MODE]")
-    const diffKey = state.difficulty.split(' ')[0];
+    const diffKey = effectiveDifficultyKey(state.difficulty);
     const diffConfig = DIFFICULTY[diffKey];
     const playfieldHeight = els.gameArea.clientHeight;
 
@@ -1958,7 +1963,7 @@ function spawnWord() {
     }
 
     const text = pool[Math.floor(Math.random() * pool.length)];
-    const diffKey = state.difficulty.split(' ')[0];
+    const diffKey = effectiveDifficultyKey(state.difficulty);
     const diffConfig = DIFFICULTY[diffKey];
 
     // Calculate Speed (Increase by 20% after 50 spawns)
@@ -2281,13 +2286,13 @@ async function gameOver(victory = false) {
                     score: state.score,
                     wpm: wpm,
                     accuracy: accuracy,
-                    difficulty: state.difficulty.toLowerCase()
+                    difficulty: effectiveDifficultyKey(state.difficulty).toLowerCase()
                 }
                 : {
                     score: state.score,
                     wpm: wpm,
                     accuracy: accuracy,
-                    difficulty: state.difficulty.toLowerCase(),
+                    difficulty: effectiveDifficultyKey(state.difficulty).toLowerCase(),
                     pack: state.pack.toLowerCase()
                 };
 
@@ -2500,6 +2505,7 @@ function initModeControls() {
         if (mode === 'DROP' && isOcpEditionActive()) {
             forceOcpDropPackSync();
         }
+        syncStudyDifficultyControls();
     }
 
     function openOcpEdition() {
@@ -2510,6 +2516,7 @@ function initModeControls() {
             return;
         }
         document.body.classList.add('ocp-edition');
+        sfx.playEditionBurst();
         triggerEditionBurst();
         if (standardMenu) standardMenu.classList.add('hidden');
         if (ocpMenu) ocpMenu.classList.remove('hidden');
@@ -2522,6 +2529,7 @@ function initModeControls() {
     function closeOcpEdition() {
         navigateAppRoute('home');
         if (!isOcpEditionActive()) return;
+        sfx.playEditionBurst();
         triggerEditionBurst();
         document.body.classList.remove('ocp-edition');
         if (ocpMenu) ocpMenu.classList.add('hidden');
@@ -2563,13 +2571,19 @@ function initModeControls() {
     }
 
     if (els.controls.diffSelect) {
-        els.controls.diffSelect.addEventListener('change', fetchLeaderboard);
+        els.controls.diffSelect.addEventListener('change', () => {
+            syncStudyDifficultyControls();
+            fetchLeaderboard();
+        });
     }
     if (els.controls.packSelect) {
         els.controls.packSelect.addEventListener('change', fetchLeaderboard);
     }
     if (ocpDiffSelect) {
-        ocpDiffSelect.addEventListener('change', fetchLeaderboard);
+        ocpDiffSelect.addEventListener('change', () => {
+            syncStudyDifficultyControls();
+            fetchLeaderboard();
+        });
     }
 
     setMode(gameMode);
@@ -2604,11 +2618,10 @@ async function startGame() {
     // Validate
     const diff = els.controls.diffSelect.value;
     const pack = els.controls.packSelect.value;
-    const playMode = isOcpEditionActive()
-        ? 'MISSION'
-        : normalizeSessionMode(els.controls.sessionMode && els.controls.sessionMode.value);
+    const playMode = isStudyDifficulty(diff) ? 'STUDY' : 'MISSION';
     if (!await ensureSelectedPackReady(pack)) return;
     navigateAppRoute(isOcpEditionActive() ? 'ocpPlay' : 'play');
+    sfx.playBoot();
 
     state.difficulty = diff;
     state.pack = pack;
@@ -2653,8 +2666,6 @@ async function startGame() {
     // Start Loop
     requestAnimationFrame(gameLoop);
 
-    // Play BGM
-    // // sfx.playBGM();
 }
 
 function togglePause() {
@@ -3077,11 +3088,10 @@ function applyAppLanguage(value) {
     updateWelcomeText();
 
     setText('#drop-diff-group label', 'menu.systemDifficulty');
-    setText('#session-mode-group > label', 'menu.sessionMode');
-    setText('#session-mission-btn', 'menu.missionMode');
-    setText('#session-study-btn', 'menu.studyMode');
     setText('#study-time-row label', 'menu.studyTime');
+    setText('#ocp-study-time-row label', 'menu.studyTime');
     setPlaceholder('#study-time-input', 'menu.studyTimePlaceholder');
+    setPlaceholder('#ocp-study-time-input', 'menu.studyTimePlaceholder');
     setText('#drop-pack-group > label', 'menu.selectPack');
     setText('.pack-trigger-kicker', 'menu.selectPack');
     setText('.pack-popover-head > span', 'menu.selectCartridge');
@@ -3093,7 +3103,9 @@ function applyAppLanguage(value) {
     setOptionText('#difficulty-select option[value="EASY"], #ocp-difficulty-select option[value="EASY"]', 'difficulty.easy');
     setOptionText('#difficulty-select option[value="NORMAL"], #ocp-difficulty-select option[value="NORMAL"]', 'difficulty.normal');
     setOptionText('#difficulty-select option[value="DEVELOPER"], #ocp-difficulty-select option[value="DEVELOPER"]', 'difficulty.developer');
+    setOptionText('#difficulty-select option[value="STUDY"], #ocp-difficulty-select option[value="STUDY"]', 'difficulty.study');
     refreshDifficultyPickers();
+    syncStudyDifficultyControls();
 
     setText('.ocp-title', 'ocp.title');
     setText('.ocp-subtitle', 'ocp.subtitle');

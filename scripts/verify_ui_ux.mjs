@@ -252,12 +252,10 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'pack-popover',
     'pack-popover-close',
     'pack-card-groups',
-    'session-mode-group',
-    'session-mode',
-    'session-mission-btn',
-    'session-study-btn',
     'study-time-row',
     'study-time-input',
+    'ocp-study-time-row',
+    'ocp-study-time-input',
     'pack-maker-btn',
     'pack-maker-screen',
     'pack-maker-close',
@@ -300,15 +298,18 @@ assert(game.includes("select.dispatchEvent(new Event('change', { bubbles: true }
 
 assert(game.includes('LearnMode.openPicker()'), 'LEARN mode route is missing');
 assert(index.includes('mode-choice-wide'), 'learn tile should span the mode grid');
-assert(index.includes('id="session-mode" value="MISSION"'), 'DROP should default to mission mode');
-assert(index.includes('id="study-time-input"') && index.includes('MINUTES (blank = infinite)'), 'study mode should expose optional duration input');
+assert(index.includes('<option value="STUDY">INVINCIBLE [STUDY]</option>'), 'standard difficulty should include invincible study mode');
+assert((index.match(/<option value="STUDY">INVINCIBLE \[STUDY\]<\/option>/g) || []).length >= 2, 'standard and OCP difficulty should both include invincible study mode');
+assert(index.includes('id="study-time-input"') && index.includes('id="ocp-study-time-input"') && index.includes('MINUTES (blank = infinite)'), 'study mode should expose optional duration input in standard and OCP menus');
 assert(index.includes('id="study-timer-display"') && index.includes('body.study-active .study-timer-item'), 'study mode should expose a dedicated HUD timer beside lives');
-assert(index.includes('.session-toggle-btn.active'), 'study mode toggle should have an active visual state');
 assert(game.includes('function isStudyMode()'), 'study mode state helper is missing');
+assert(game.includes("isStudyDifficulty(diff) ? 'STUDY' : 'MISSION'"), 'study mode should be driven by the difficulty selection');
 assert(game.includes('function updateStudyTimerHUD()') && game.includes('state.studyEndsAt - Date.now()') && game.includes('Date.now() - state.startTime'), 'study mode HUD should show countdown or elapsed timer');
 assert(game.includes('isStudyMode() || state.spawnedCount < 100'), 'study mode should bypass the 100-word mission cap');
 assert(game.includes('if (isStudyMode())') && game.includes("els.hud.lives.textContent = '∞'"), 'study mode should not spend the three life hearts');
 assert(game.includes('t(\'score.studyMode\')'), 'study mode results should not upload leaderboard scores');
+assert(game.includes('soundAssetPath('), 'sound effects should use app-base sound asset URLs');
+assert(game.includes('playPackLatch') && game.includes('playEditionBurst') && game.includes('playBoot'), 'pack latch, edition switch, and game start SFX should be wired');
 
 assert(index.includes('assets/red-hat-logo.svg'), 'OCP hat asset is not referenced');
 assert(fs.existsSync(path.join(root, 'assets/red-hat-logo.svg')), 'OCP hat asset file is missing');

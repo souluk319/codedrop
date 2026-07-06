@@ -3315,46 +3315,6 @@
             letter-spacing: 1px;
         }
 
-        .session-mode-group {
-            display: grid;
-            gap: 8px;
-        }
-
-        .session-toggle {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            padding: 5px;
-            border: 1px solid rgba(0, 243, 255, 0.36);
-            border-radius: 7px;
-            background:
-                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 5px),
-                rgba(0, 0, 0, 0.5);
-        }
-
-        .session-toggle-btn {
-            min-height: 34px;
-            border: 1px solid rgba(0, 243, 255, 0.2);
-            border-radius: 5px;
-            background: rgba(0, 0, 0, 0.62);
-            color: rgba(255, 255, 255, 0.72);
-            font-family: var(--font-display);
-            font-size: 0.72rem;
-            letter-spacing: 0;
-            cursor: pointer;
-            transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
-        }
-
-        .session-toggle-btn:hover,
-        .session-toggle-btn:focus-visible,
-        .session-toggle-btn.active {
-            color: #001014;
-            border-color: var(--primary-neon);
-            background: linear-gradient(90deg, rgba(0, 243, 255, 0.95), rgba(0, 243, 255, 0.66));
-            box-shadow: 0 0 16px rgba(0, 243, 255, 0.28);
-            outline: none;
-        }
-
         .study-time-row {
             display: grid;
             grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
@@ -5918,6 +5878,7 @@
                                 <option value="EASY">EASY [SAFE_MODE]</option>
                                 <option value="NORMAL" selected>NORMAL [STANDARD]</option>
                                 <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
+                                <option value="STUDY">INVINCIBLE [STUDY]</option>
                             </select>
                             <div class="difficulty-picker" data-difficulty-for="difficulty-select">
                                 <button class="difficulty-trigger" type="button" aria-haspopup="listbox"
@@ -5926,16 +5887,6 @@
                                     <span class="difficulty-trigger-chip">NORMAL</span>
                                 </button>
                                 <div class="difficulty-menu hidden" role="listbox"></div>
-                            </div>
-                        </div>
-                        <div class="select-group session-mode-group" id="session-mode-group">
-                            <label id="session-mode-label">SESSION MODE</label>
-                            <input type="hidden" id="session-mode" value="MISSION">
-                            <div class="session-toggle" role="group" aria-labelledby="session-mode-label">
-                                <button class="session-toggle-btn active" id="session-mission-btn" type="button"
-                                    data-session-mode="MISSION">MISSION</button>
-                                <button class="session-toggle-btn" id="session-study-btn" type="button"
-                                    data-session-mode="STUDY">STUDY</button>
                             </div>
                             <div class="study-time-row hidden" id="study-time-row">
                                 <label for="study-time-input">STUDY TIME</label>
@@ -6038,6 +5989,7 @@
                                 <option value="EASY">EASY [SAFE_MODE]</option>
                                 <option value="NORMAL" selected>NORMAL [STANDARD]</option>
                                 <option value="DEVELOPER">DEVELOPER [OVERCLOCK]</option>
+                                <option value="STUDY">INVINCIBLE [STUDY]</option>
                             </select>
                             <div class="difficulty-picker" data-difficulty-for="ocp-difficulty-select">
                                 <button class="difficulty-trigger" type="button" aria-haspopup="listbox"
@@ -6046,6 +5998,11 @@
                                     <span class="difficulty-trigger-chip">NORMAL</span>
                                 </button>
                                 <div class="difficulty-menu hidden" role="listbox"></div>
+                            </div>
+                            <div class="study-time-row hidden" id="ocp-study-time-row">
+                                <label for="ocp-study-time-input">STUDY TIME</label>
+                                <input type="number" id="ocp-study-time-input" min="0.1" max="240" step="0.5"
+                                    placeholder="MINUTES (blank = infinite)" inputmode="decimal">
                             </div>
                             <div class="mode-info">OpenShift CLI (EX280) 팩으로 고정됩니다.</div>
                         </div>
