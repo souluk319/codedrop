@@ -2093,6 +2093,7 @@ async function ensureDatabaseSchema() {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
             `);
+            await ensureTableColumn("users", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
 
             await db.query(`
                 CREATE TABLE IF NOT EXISTS leaderboard (
