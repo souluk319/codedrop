@@ -22,6 +22,7 @@ const PackMaker = (() => {
         activeMessage: null,
         activeRequestId: 0,
         requestSeq: 0,
+        saving: false,
         stopByUser: false,
         autoStick: true,
         internalScroll: false,
@@ -1205,13 +1206,14 @@ const PackMaker = (() => {
         return data.pack;
     }
 
-    function appendPackOptions(group, packs, labelSuffix = '') {
+    function appendPackOptions(group, packs, labelSuffix = '', options = {}) {
         packs.forEach(pack => {
             const opt = document.createElement('option');
             opt.value = customPackValue(pack.id);
             const status = pack.status && pack.status !== 'approved' ? ` · ${pack.status.toUpperCase()}` : '';
             opt.textContent = `${pack.title}${status}${labelSuffix}`;
             opt.dataset.customPack = 'true';
+            opt.dataset.deletablePack = options.deletable ? 'true' : 'false';
             group.appendChild(opt);
         });
     }
@@ -1225,7 +1227,7 @@ const PackMaker = (() => {
             const mine = document.createElement('optgroup');
             mine.label = 'My Packs';
             mine.dataset.customPackGroup = 'true';
-            appendPackOptions(mine, stateRef.mine);
+            appendPackOptions(mine, stateRef.mine, '', { deletable: true });
             select.appendChild(mine);
         }
 
@@ -1234,7 +1236,7 @@ const PackMaker = (() => {
             const pub = document.createElement('optgroup');
             pub.label = 'Public Packs';
             pub.dataset.customPackGroup = 'true';
-            appendPackOptions(pub, publicOnly, ' · PUBLIC');
+            appendPackOptions(pub, publicOnly, ' · PUBLIC', { deletable: false });
             select.appendChild(pub);
         }
 
@@ -1286,6 +1288,28 @@ const PackMaker = (() => {
         } catch (err) {
             renderLeaderboardMessage('CUSTOM PACK LOAD FAILED', 'var(--danger-color)');
         }
+    }
+
+    async function deletePack(id) {
+        if (!await ensureRemoteAuth()) {
+            return null;
+        }
+
+        const packKey = customPackValue(id);
+        const res = await fetch(apiPath(`/api/packs/${id}`), {
+            method: 'DELETE',
+            headers: authHeaders()
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Pack delete failed');
+
+        delete WORD_PACKS[packKey];
+        stateRef.mine = stateRef.mine.filter(pack => String(pack.id) !== String(id));
+        stateRef.public = stateRef.public.filter(pack => String(pack.id) !== String(id));
+        renderPackOptions();
+        renderReviewAlerts();
+        renderStatus(`PACK DELETED: ${data.title || id}`);
+        return data;
     }
 
     function open() {
@@ -1477,7 +1501,20 @@ const PackMaker = (() => {
         }
     }
 
+    function setSaveBusy(active, submitForReview = false) {
+        stateRef.saving = active;
+        if (ui.save) {
+            ui.save.disabled = active;
+            ui.save.textContent = active && !submitForReview ? t('packMaker.saving') : t('packMaker.save');
+        }
+        if (ui.submit) {
+            ui.submit.disabled = active;
+            ui.submit.textContent = active && submitForReview ? t('packMaker.requesting') : t('packMaker.submit');
+        }
+    }
+
     async function savePack(submitForReview = false) {
+        if (stateRef.saving) return;
         if (!await ensureRemoteAuth()) {
             return;
         }
@@ -1489,6 +1526,7 @@ const PackMaker = (() => {
         }
 
         renderStatus(submitForReview ? 'SUBMITTING REVIEW' : 'SAVING');
+        setSaveBusy(true, submitForReview);
         try {
             const res = await fetch(apiPath('/api/packs'), {
                 method: 'POST',
@@ -1524,6 +1562,17 @@ const PackMaker = (() => {
             showSaveSuccessNotice(stateRef.draft, submitForReview);
         } catch (err) {
             renderStatus(err.message, true);
+            if (typeof showCommandDialog === 'function') {
+                showCommandDialog({
+                    title: 'PACK SAVE FAILED',
+                    message: err.message,
+                    okText: 'OK',
+                    cancelText: '',
+                    danger: true
+                });
+            }
+        } finally {
+            setSaveBusy(false, submitForReview);
         }
     }
 
@@ -1635,6 +1684,7 @@ const PackMaker = (() => {
         open,
         refreshPacks,
         loadPackDetail,
+        deletePack,
         injectPack,
         isBusy() {
             return stateRef.busy;

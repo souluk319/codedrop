@@ -38,6 +38,7 @@ const I18N_TEXT = {
         'menu.selectPack': 'SELECT PACK',
         'menu.selectCartridge': 'SELECT CARTRIDGE',
         'menu.close': 'CLOSE',
+        'menu.deletePackHint': 'DROP MY PACK TO DELETE',
         'menu.startCodedrop': 'START CODEDROP',
         'menu.packMaker': 'PACK MAKER',
         'menu.keyTest': 'KEY TEST',
@@ -90,7 +91,9 @@ const I18N_TEXT = {
         'packMaker.source': 'SOURCE',
         'packMaker.addItem': 'ADD ITEM',
         'packMaker.save': 'SAVE MY PACK',
+        'packMaker.saving': 'SAVING...',
         'packMaker.submit': 'REQUEST PUBLIC LISTING',
+        'packMaker.requesting': 'REQUESTING...',
         'packMaker.reviewNote': 'SAVE MY PACK is playable immediately. REQUEST PUBLIC LISTING appears in Public Packs after operator review.',
         'packMaker.reviewStatusTitle': 'PUBLIC REQUEST STATUS',
         'packMaker.reviewStatusPending': 'PENDING',
@@ -178,6 +181,7 @@ const I18N_TEXT = {
         'menu.selectPack': '팩 선택',
         'menu.selectCartridge': '카트리지 선택',
         'menu.close': '닫기',
+        'menu.deletePackHint': '내 팩을 끌어와 삭제',
         'menu.startCodedrop': 'START CODEDROP',
         'menu.packMaker': 'PACK MAKER',
         'menu.keyTest': 'KEY TEST',
@@ -230,7 +234,9 @@ const I18N_TEXT = {
         'packMaker.source': '출처',
         'packMaker.addItem': '항목 추가',
         'packMaker.save': '내 팩 저장',
+        'packMaker.saving': '저장 중...',
         'packMaker.submit': '공개 요청',
+        'packMaker.requesting': '요청 중...',
         'packMaker.reviewNote': '내 팩 저장은 즉시 플레이 가능 · 공개 요청은 운영자 검수 후 Public Packs에 노출됩니다.',
         'packMaker.reviewStatusTitle': '내 공개 요청 상태',
         'packMaker.reviewStatusPending': '대기 중',
@@ -395,6 +401,7 @@ const els = {
         packConsoleDock: document.getElementById('pack-console-dock'),
         packDockLabel: document.getElementById('pack-dock-label'),
         packConsoleStatusArt: document.getElementById('pack-console-status-art'),
+        packTrashZone: document.getElementById('pack-trash-zone'),
         studyTimeRow: document.getElementById('study-time-row'),
         studyTimeInput: document.getElementById('study-time-input'),
         ocpStudyTimeRow: document.getElementById('ocp-study-time-row'),
@@ -1124,6 +1131,7 @@ const PACK_META = {
     VOCAB: { title: 'Vocabulary', chip: 'WORDS', style: 'vocab' },
     MIX: { title: 'Mix', chip: 'MIX', style: 'mix' }
 };
+let activePackDragMeta = null;
 
 function selectedPackOption() {
     const select = els.controls.packSelect;
@@ -1145,7 +1153,9 @@ function packMetaFromOption(option) {
         title: option.textContent.replace(/\s+·\s+(PUBLIC|DRAFT|PENDING|APPROVED|REJECTED).*$/i, '').trim() || 'Custom Pack',
         chip: isPublic ? 'PUBLIC' : 'CUSTOM',
         style: 'custom',
-        group
+        group,
+        customPackId: customPackIdFromValue(value),
+        deletable: option.dataset.deletablePack === 'true'
     };
 }
 
@@ -1237,12 +1247,69 @@ function playPackLatchSound() {
     sfx.playPackLatch();
 }
 
+function isPointInsideElement(event, element) {
+    if (!event || !element) return false;
+    const rect = element.getBoundingClientRect();
+    return event.clientX >= rect.left
+        && event.clientX <= rect.right
+        && event.clientY >= rect.top
+        && event.clientY <= rect.bottom;
+}
+
+function setPackTrashReady(active, hot = false) {
+    const trash = els.controls.packTrashZone;
+    if (!trash) return;
+    trash.classList.toggle('drag-ready', Boolean(active));
+    trash.classList.toggle('drop-hot', Boolean(hot));
+}
+
+async function deletePackFromUi(meta) {
+    if (!meta || !meta.deletable || !meta.customPackId) return false;
+    const title = meta.title || 'Custom Pack';
+    const result = await showCommandDialog({
+        title: 'DELETE MY PACK',
+        message: `${title} 팩을 삭제합니다. 삭제하면 SELECT PACK 목록과 전용 랭킹에서 사라집니다.`,
+        okText: 'DELETE',
+        cancelText: 'CANCEL',
+        danger: true
+    });
+    if (!result.accepted) return false;
+
+    try {
+        if (!window.PackMaker || typeof window.PackMaker.deletePack !== 'function') {
+            throw new Error('Pack Maker delete API unavailable');
+        }
+        await window.PackMaker.deletePack(meta.customPackId);
+        const select = els.controls.packSelect;
+        if (select && select.value === meta.value) {
+            select.value = 'PYTHON';
+            syncPackSelector();
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            syncPackSelector();
+            fetchLeaderboard();
+        }
+        renderLeaderboardMessage('PACK DELETED', 'var(--primary-neon)');
+        return true;
+    } catch (err) {
+        await showCommandDialog({
+            title: 'DELETE FAILED',
+            message: err.message || 'Pack delete failed',
+            okText: 'OK',
+            cancelText: '',
+            danger: true
+        });
+        return false;
+    }
+}
+
 function createPackCard(meta) {
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `pack-cartridge pack-style-${meta.style}`;
     card.dataset.packValue = meta.value;
     card.dataset.packCard = 'true';
+    card.dataset.deletablePack = meta.deletable ? 'true' : 'false';
     card.draggable = true;
     card.setAttribute('aria-label', `${meta.title} pack`);
     let pointerDrag = null;
@@ -1252,6 +1319,7 @@ function createPackCard(meta) {
     const finishManualDrag = (event, dragState) => {
         card.classList.remove('dragging');
         if (els.controls.packConsole) els.controls.packConsole.classList.remove('drag-ready');
+        setPackTrashReady(false);
         if (!dragState || !dragState.moved) return false;
 
         suppressNextClick = true;
@@ -1259,14 +1327,16 @@ function createPackCard(meta) {
             suppressNextClick = false;
         }, 250);
 
+        if (meta.deletable && isPointInsideElement(event, els.controls.packTrashZone)) {
+            event.preventDefault();
+            event.stopPropagation();
+            deletePackFromUi(meta);
+            return true;
+        }
+
         const dock = els.controls.packConsoleDock;
         if (!dock) return false;
-        const rect = dock.getBoundingClientRect();
-        const insideDock = event.clientX >= rect.left
-            && event.clientX <= rect.right
-            && event.clientY >= rect.top
-            && event.clientY <= rect.bottom;
-        if (!insideDock) return false;
+        if (!isPointInsideElement(event, dock)) return false;
 
         event.preventDefault();
         event.stopPropagation();
@@ -1287,6 +1357,7 @@ function createPackCard(meta) {
             mouseDrag.moved = true;
             card.classList.add('dragging');
             if (els.controls.packConsole) els.controls.packConsole.classList.add('drag-ready');
+            setPackTrashReady(meta.deletable, meta.deletable && isPointInsideElement(event, els.controls.packTrashZone));
             event.preventDefault();
         }
     }
@@ -1350,6 +1421,7 @@ function createPackCard(meta) {
             pointerDrag.moved = true;
             card.classList.add('dragging');
             if (els.controls.packConsole) els.controls.packConsole.classList.add('drag-ready');
+            setPackTrashReady(meta.deletable, meta.deletable && isPointInsideElement(event, els.controls.packTrashZone));
         }
     });
     card.addEventListener('pointerup', event => {
@@ -1365,13 +1437,21 @@ function createPackCard(meta) {
         clearMouseDrag();
         card.classList.remove('dragging');
         if (els.controls.packConsole) els.controls.packConsole.classList.remove('drag-ready');
+        setPackTrashReady(false);
     });
     card.addEventListener('dragstart', event => {
+        activePackDragMeta = meta;
         card.classList.add('dragging');
-        event.dataTransfer.effectAllowed = 'copy';
+        event.dataTransfer.effectAllowed = meta.deletable ? 'copyMove' : 'copy';
         event.dataTransfer.setData('text/plain', meta.value);
+        event.dataTransfer.setData('application/x-codedrop-pack-deletable', meta.deletable ? 'true' : 'false');
+        setPackTrashReady(meta.deletable);
     });
-    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    card.addEventListener('dragend', () => {
+        activePackDragMeta = null;
+        card.classList.remove('dragging');
+        setPackTrashReady(false);
+    });
     return card;
 }
 
@@ -1588,6 +1668,27 @@ function initPackSelector() {
         const source = controls.packCardGroups && controls.packCardGroups.querySelector(`[data-pack-value="${CSS.escape(value)}"]`);
         selectPackFromUi(value, source);
     });
+    if (controls.packTrashZone) {
+        controls.packTrashZone.addEventListener('dragover', event => {
+            const value = event.dataTransfer.getData('text/plain');
+            const meta = activePackDragMeta || (value ? packMetaForValue(value) : null);
+            if (!meta || !meta.deletable) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            setPackTrashReady(true, true);
+        });
+        controls.packTrashZone.addEventListener('dragleave', () => setPackTrashReady(false));
+        controls.packTrashZone.addEventListener('drop', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            setPackTrashReady(false);
+            const value = event.dataTransfer.getData('text/plain');
+            const meta = activePackDragMeta || (value ? packMetaForValue(value) : null);
+            activePackDragMeta = null;
+            if (!meta || !meta.deletable) return;
+            deletePackFromUi(meta);
+        });
+    }
     document.addEventListener('click', event => {
         if (!controls.packSelector.contains(event.target)) closePackPopover();
     });
@@ -3162,6 +3263,7 @@ function applyAppLanguage(value) {
     setText('.pack-trigger-kicker', 'menu.selectPack');
     setText('.pack-popover-head > span', 'menu.selectCartridge');
     setText('#pack-popover-close', 'menu.close');
+    setText('#pack-trash-zone span', 'menu.deletePackHint');
     setText('#start-btn', 'menu.startCodedrop');
     setText('#pack-maker-btn', 'menu.packMaker');
     setText('#keyboard-test-btn', 'menu.keyTest');

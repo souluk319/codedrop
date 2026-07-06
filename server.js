@@ -3410,6 +3410,47 @@ app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.
     }
 });
 
+app.delete("/api/packs/:id", authUser, rateLimit("packs-delete", 20, 60_000, req => req.user.id), async (req, res) => {
+    let id;
+    try {
+        id = packId(req.params.id);
+    } catch (err) {
+        return res.status(err.status || 400).json({ error: err.message });
+    }
+
+    await ensureCustomPackTables();
+    const connection = await db.getConnection();
+
+    try {
+        await connection.beginTransaction();
+        const [rows] = await connection.query(
+            "SELECT id, owner_id, title, status FROM custom_packs WHERE id = ? LIMIT 1",
+            [id]
+        );
+        const row = rows[0];
+        if (!row) {
+            await connection.rollback();
+            return res.status(404).json({ error: "Pack not found" });
+        }
+        if (row.owner_id !== req.user.id && !isPackAdmin(req.user)) {
+            await connection.rollback();
+            return res.status(403).json({ error: "Only the pack owner can delete this pack" });
+        }
+
+        await connection.query("DELETE FROM custom_pack_scores WHERE pack_id = ?", [id]);
+        await connection.query("DELETE FROM custom_pack_items WHERE pack_id = ?", [id]);
+        await connection.query("DELETE FROM custom_packs WHERE id = ?", [id]);
+        await connection.commit();
+        res.json({ ok: true, deletedId: id, title: row.title });
+    } catch (err) {
+        await connection.rollback();
+        console.error("Pack delete failed:", err.message);
+        res.status(500).json({ error: "Database error" });
+    } finally {
+        connection.release();
+    }
+});
+
 app.post("/api/packs/:id/review", authUser, rateLimit("packs-review", 20, 60_000, req => req.user.id), async (req, res) => {
     if (!isPackAdmin(req.user)) return res.status(403).json({ error: "Pack admin required" });
 

@@ -518,6 +518,8 @@ assert(index.includes('.pack-cartridge'), 'CSS cartridge card styling is missing
 assert(index.includes('.pack-console-deck'), 'retro console should render a visible game deck');
 assert(index.includes('id="pack-console-dock"'), 'pack console should include a handheld-style dock display');
 assert(index.includes('id="pack-console-status-art"'), 'pack console should include READY text art feedback');
+assert(index.includes('id="pack-trash-zone"'), 'pack selector should include a trash drop zone for My Packs');
+assert(index.includes('.pack-trash-zone.drop-hot'), 'pack selector trash drop zone should expose a hot drop state');
 [
     'pack-console-sfc-dot',
     'pack-console-slot',
@@ -535,6 +537,10 @@ assert(game.includes("card.dataset.packCard = 'true';"), 'pack cards should expo
 assert(game.includes('function playPackLatchSound()'), 'pack insertion should have a click/latch sound cue');
 assert(game.includes('packReadyText(meta)'), 'pack insertion should show READY text art');
 assert(game.includes('function animatePackEquip(meta, sourceEl)'), 'pack equip animation should target the handheld dock');
+assert(game.includes('async function deletePackFromUi'), 'pack selector should support deleting My Packs from the UI');
+assert(game.includes('packTrashZone'), 'pack selector should wire the trash drop zone');
+assert(game.includes('meta.deletable'), 'pack selector should protect official/public packs from trash deletion');
+assert(game.includes('window.PackMaker.deletePack'), 'pack selector delete flow should call PackMaker.deletePack');
 assert(!game.includes('animatePackInsert'), 'old slot insertion animation name should not remain');
 assert(index.includes('@keyframes packDockAfterimage'), 'pack dock afterimage animation is missing');
 const packPopover = cssBlock('.pack-popover', block => block.includes('width: min(780px, calc(100vw - 32px));'));
@@ -667,6 +673,10 @@ assert(server.includes('DRAFT SHORT'), 'pack maker should fail visibly when the 
 assert(server.includes('writeNdjson(res, "status"'), 'pack maker stream should send generation status events');
 assert(!server.includes('{ maxTokens: 2200 }'), 'pack maker should not use a fixed 2200-token budget for every pack');
 assert(server.includes('app.post("/api/packs", authUser'), 'custom pack save endpoint should require auth');
+assert(server.includes('app.delete("/api/packs/:id", authUser'), 'custom pack delete endpoint should require auth');
+assert(server.includes('DELETE FROM custom_pack_scores WHERE pack_id = ?'), 'custom pack delete should clean pack-specific scores');
+assert(server.includes('DELETE FROM custom_pack_items WHERE pack_id = ?'), 'custom pack delete should clean pack items');
+assert(server.includes('Only the pack owner can delete this pack'), 'custom pack delete should be owner/admin guarded');
 assert(server.includes('app.get("/api/packs?') === false, 'custom pack list should not be hardcoded as a static route');
 assert(server.includes('PACK_ADMIN_NICKNAMES'), 'pack review should be guarded by admin nicknames');
 assert(server.includes('app.get("/api/admin/packs"'), 'admin pack review queue endpoint is missing');
@@ -905,6 +915,10 @@ assert(packMaker.includes('/\\bProvider:\\s*OLLAMA\\b/i'), 'pack maker should re
 assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
 assert(packMaker.includes('function isDraftRevisionRequest'), 'pack maker should distinguish fresh generation from existing draft revision');
 assert(packMaker.includes('stateRef.submitting'), 'pack maker should block duplicate submits before streaming starts');
+assert(packMaker.includes('stateRef.saving'), 'pack maker should block duplicate save/public-list requests');
+assert(packMaker.includes('function setSaveBusy'), 'pack maker save buttons should show immediate busy feedback');
+assert(packMaker.includes("method: 'DELETE'"), 'pack maker should call the custom pack delete endpoint');
+assert(packMaker.includes('delete WORD_PACKS[packKey]'), 'deleted custom packs should be removed from runtime WORD_PACKS');
 assert(packMaker.includes("mode === 'revision' ? (context.history || []) : []"), 'fresh Pack Maker requests should not send stale chat history');
 assert(packMaker.includes("mode === 'revision' ? (context.draft || emptyDraft()) : emptyDraft()"), 'fresh Pack Maker requests should not send stale draft context');
 assert(packMaker.includes('requestId !== stateRef.activeRequestId'), 'pack maker should ignore stale stream events from obsolete requests');
