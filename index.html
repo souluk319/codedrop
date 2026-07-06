@@ -2847,13 +2847,21 @@
             letter-spacing: 0.045em !important;
         }
 
+        .readme-action-row {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            gap: 10px;
+            margin: 0 auto 18px;
+        }
+
         .readme-lang-toggle {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6px;
             width: 260px;
             padding: 4px;
-            margin: 0 auto 18px;
+            margin: 0;
             border: 1px solid rgba(0, 243, 255, 0.45);
             border-radius: 4px;
             background: rgba(0, 0, 0, 0.42);
@@ -2878,6 +2886,29 @@
             color: #000;
             background: var(--primary-neon);
             box-shadow: 0 0 12px var(--primary-neon);
+        }
+
+        #readme-tutorial-btn {
+            min-width: 124px;
+            border: 1px solid rgba(0, 243, 255, 0.45);
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.42);
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.12);
+            transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+        }
+
+        #readme-tutorial-btn:hover,
+        #readme-tutorial-btn:focus-visible {
+            color: #001014;
+            background: var(--primary-neon);
+            box-shadow: 0 0 14px var(--primary-neon);
+            transform: translateY(-1px);
+            outline: none;
         }
 
         #readme-box p {
@@ -2937,6 +2968,15 @@
                 width: 220px;
             }
 
+            .readme-action-row {
+                flex-wrap: wrap;
+            }
+
+            #readme-tutorial-btn {
+                width: 220px;
+                min-height: 36px;
+            }
+
             #readme-box h2,
             #readme-box[data-manual-lang="ko"] h2 {
                 white-space: normal;
@@ -2983,6 +3023,196 @@
             display: none !important;
         }
 
+        /* Tutorial Overlay */
+        #tutorial-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 11000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+            background:
+                radial-gradient(circle at 50% 12%, rgba(0, 243, 255, 0.12), transparent 34%),
+                linear-gradient(180deg, rgba(0, 0, 0, 0.58), rgba(0, 0, 0, 0.84));
+            backdrop-filter: blur(5px);
+        }
+
+        #tutorial-overlay.hidden {
+            display: none !important;
+        }
+
+        #tutorial-overlay [data-i18n] {
+            display: none !important;
+        }
+
+        #tutorial-overlay[data-tutorial-lang="en"] [data-i18n="en"],
+        #tutorial-overlay[data-tutorial-lang="ko"] [data-i18n="ko"] {
+            display: inline !important;
+        }
+
+        .tutorial-card {
+            width: min(960px, calc(100vw - 48px));
+            max-height: min(88dvh, 780px);
+            overflow: auto;
+            border: 1px solid rgba(0, 243, 255, 0.62);
+            border-radius: 10px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 5px),
+                linear-gradient(135deg, rgba(0, 18, 24, 0.92), rgba(4, 4, 10, 0.94));
+            box-shadow: 0 0 42px rgba(0, 243, 255, 0.25);
+            padding: clamp(26px, 4vw, 44px);
+            position: relative;
+        }
+
+        #tutorial-close {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            border: 0;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.58);
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.16s ease, text-shadow 0.16s ease;
+        }
+
+        #tutorial-close:hover,
+        #tutorial-close:focus-visible {
+            color: var(--primary-neon);
+            text-shadow: 0 0 12px var(--primary-neon);
+            outline: none;
+        }
+
+        .tutorial-kicker {
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            letter-spacing: 0.14em;
+            margin-bottom: 12px;
+        }
+
+        .tutorial-card h2 {
+            margin: 0 44px 12px 0;
+            color: #fff;
+            font-family: var(--font-display);
+            font-size: clamp(1.9rem, 4.5vw, 3.35rem);
+            line-height: 1.02;
+            letter-spacing: 0.02em;
+            text-shadow: 0 0 16px rgba(0, 243, 255, 0.42);
+        }
+
+        .tutorial-card p {
+            max-width: 760px;
+            margin: 0 0 24px;
+            color: rgba(255, 255, 255, 0.78);
+            font-size: clamp(1rem, 1.9vw, 1.18rem);
+            line-height: 1.65;
+        }
+
+        body[data-app-lang="ko"] .tutorial-card p,
+        body[data-app-lang="ko"] .tutorial-step p {
+            word-break: keep-all;
+            line-height: 1.72;
+        }
+
+        .tutorial-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin: 22px 0 26px;
+        }
+
+        .tutorial-step {
+            min-height: 132px;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.42);
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tutorial-step::before {
+            content: attr(data-step);
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            color: rgba(0, 243, 255, 0.15);
+            font-family: var(--font-display);
+            font-size: 2.4rem;
+            line-height: 1;
+        }
+
+        .tutorial-step strong {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            font-size: 0.92rem;
+            letter-spacing: 0.08em;
+        }
+
+        .tutorial-step p {
+            position: relative;
+            margin: 0;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.95rem;
+            line-height: 1.58;
+        }
+
+        .tutorial-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        #tutorial-start-btn {
+            min-width: 180px;
+            min-height: 48px;
+            border: 1px solid var(--primary-neon);
+            background: rgba(0, 0, 0, 0.35);
+            color: var(--primary-neon);
+            font-family: var(--font-display);
+            letter-spacing: 0.12em;
+            cursor: pointer;
+            box-shadow: 0 0 16px rgba(0, 243, 255, 0.18);
+        }
+
+        #tutorial-start-btn:hover,
+        #tutorial-start-btn:focus-visible {
+            color: #001014;
+            background: var(--primary-neon);
+            box-shadow: 0 0 22px rgba(0, 243, 255, 0.42);
+            outline: none;
+        }
+
+        @media (max-width: 720px) {
+            #tutorial-overlay {
+                padding: 14px;
+            }
+
+            .tutorial-card {
+                width: calc(100vw - 28px);
+                padding: 28px 20px;
+            }
+
+            .tutorial-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tutorial-card h2 {
+                margin-right: 34px;
+            }
+
+            .tutorial-actions {
+                justify-content: stretch;
+            }
+
+            #tutorial-start-btn {
+                width: 100%;
+            }
+        }
 
         #result-screen .card {
             height: auto;
@@ -6565,9 +6795,15 @@
             style="background: rgba(10, 10, 10, 0.95); border: 1px solid var(--primary-neon); padding: 40px; width: 400px; max-width: 600px; position: relative; box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);">
             <button id="readme-close"
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--primary-neon); font-size: 1.5rem; cursor: pointer;">X</button>
-            <div class="readme-lang-toggle" aria-label="Manual language">
-                <button type="button" class="active" data-readme-lang="en">ENG</button>
-                <button type="button" data-readme-lang="ko">KOR</button>
+            <div class="readme-action-row">
+                <div class="readme-lang-toggle" aria-label="Manual language">
+                    <button type="button" class="active" data-readme-lang="en">ENG</button>
+                    <button type="button" data-readme-lang="ko">KOR</button>
+                </div>
+                <button type="button" id="readme-tutorial-btn">
+                    <span data-i18n="en">TUTORIAL</span>
+                    <span data-i18n="ko">튜토리얼</span>
+                </button>
             </div>
             <h2
                 style="color: var(--primary-neon); font-family: var(--font-display); margin-bottom: 20px; text-align: center; letter-spacing: 2px;">
@@ -6641,6 +6877,78 @@
                         EMAIL
                     </a>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- First Run Tutorial Overlay -->
+    <div id="tutorial-overlay" class="hidden" data-tutorial-lang="en" role="dialog" aria-modal="true"
+        aria-labelledby="tutorial-title">
+        <div class="tutorial-card">
+            <button type="button" id="tutorial-close" aria-label="Close tutorial">X</button>
+            <div class="tutorial-kicker">
+                <span data-i18n="en">QUICK START</span>
+                <span data-i18n="ko">빠른 시작</span>
+            </div>
+            <h2 id="tutorial-title">
+                <span data-i18n="en">Run CodeDrop Like A Game</span>
+                <span data-i18n="ko">CodeDrop을 게임처럼 바로 시작하기</span>
+            </h2>
+            <p>
+                <span data-i18n="en">
+                    Pick a pack, choose a difficulty, and type falling words before they hit the floor. Guest play is open; Pack Maker and public scores ask you to sign in only when needed.
+                </span>
+                <span data-i18n="ko">
+                    팩을 고르고 난이도를 정한 뒤, 떨어지는 단어를 바닥에 닿기 전에 입력하세요. 기본 플레이는 비회원도 가능하고, 팩 제작과 점수 저장처럼 서버 기능이 필요할 때만 로그인을 요청합니다.
+                </span>
+            </p>
+            <div class="tutorial-grid">
+                <div class="tutorial-step" data-step="01">
+                    <strong>
+                        <span data-i18n="en">SELECT PACK</span>
+                        <span data-i18n="ko">팩 선택</span>
+                    </strong>
+                    <p>
+                        <span data-i18n="en">Use the cartridge picker for official packs, custom packs, and OCP command packs.</span>
+                        <span data-i18n="ko">카트리지 선택창에서 공식 팩, 내가 만든 팩, OCP 명령어 팩을 고릅니다.</span>
+                    </p>
+                </div>
+                <div class="tutorial-step" data-step="02">
+                    <strong>
+                        <span data-i18n="en">MISSION OR STUDY</span>
+                        <span data-i18n="ko">미션 또는 스터디</span>
+                    </strong>
+                    <p>
+                        <span data-i18n="en">Normal modes end when lives run out. INVINCIBLE [STUDY] keeps practice going and can use a study timer.</span>
+                        <span data-i18n="ko">일반 난이도는 생명이 끝나면 종료됩니다. 무적 [STUDY]는 계속 연습하고, 필요하면 학습 시간을 정할 수 있습니다.</span>
+                    </p>
+                </div>
+                <div class="tutorial-step" data-step="03">
+                    <strong>
+                        <span data-i18n="en">OCP EDITION</span>
+                        <span data-i18n="ko">OCP 에디션</span>
+                    </strong>
+                    <p>
+                        <span data-i18n="en">Switch to the red EX280 deck for CLI drops, lessons, scenarios, mock labs, and exam practice.</span>
+                        <span data-i18n="ko">빨간 EX280 덱으로 전환하면 CLI DROP, 학습, 시나리오, 모의랩, 시험 연습을 사용할 수 있습니다.</span>
+                    </p>
+                </div>
+                <div class="tutorial-step" data-step="04">
+                    <strong>
+                        <span data-i18n="en">PACK MAKER</span>
+                        <span data-i18n="ko">팩 메이커</span>
+                    </strong>
+                    <p>
+                        <span data-i18n="en">Ask the maker for a domain pack, review the draft, save it, then play it from SELECT PACK.</span>
+                        <span data-i18n="ko">도메인 팩을 자연어로 요청하고, 초안을 검수해 저장한 다음 SELECT PACK에서 바로 플레이합니다.</span>
+                    </p>
+                </div>
+            </div>
+            <div class="tutorial-actions">
+                <button type="button" id="tutorial-start-btn">
+                    <span data-i18n="en">ENTER SYSTEM</span>
+                    <span data-i18n="ko">시작하기</span>
+                </button>
             </div>
         </div>
     </div>

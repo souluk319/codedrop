@@ -252,6 +252,10 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'pack-popover',
     'pack-popover-close',
     'pack-card-groups',
+    'readme-tutorial-btn',
+    'tutorial-overlay',
+    'tutorial-close',
+    'tutorial-start-btn',
     'study-time-row',
     'study-time-input',
     'ocp-study-time-row',
@@ -310,6 +314,13 @@ assert(game.includes('if (isStudyMode())') && game.includes("els.hud.lives.textC
 assert(game.includes('t(\'score.studyMode\')'), 'study mode results should not upload leaderboard scores');
 assert(game.includes('soundAssetPath('), 'sound effects should use app-base sound asset URLs');
 assert(game.includes('playPackLatch') && game.includes('playEditionBurst') && game.includes('playBoot'), 'pack latch, edition switch, and game start SFX should be wired');
+assert(game.includes('TUTORIAL_SEEN_STORAGE_KEY'), 'tutorial first-run storage key is missing');
+assert(game.includes('function maybeShowFirstRunTutorial()'), 'tutorial should auto-open on first visit');
+assert(game.includes("localStorage.setItem(TUTORIAL_SEEN_STORAGE_KEY, '1')"), 'tutorial should mark itself seen after first display/close');
+assert(game.includes('handleReadmeTutorialClick'), 'README tutorial button should manually open the tutorial');
+assert(index.includes('class="readme-action-row"'), 'README language toggle should sit beside the tutorial action row');
+assert(index.includes('id="readme-tutorial-btn"'), 'README tutorial button is missing');
+assert(index.includes('id="tutorial-overlay"') && index.includes('data-tutorial-lang="en"'), 'tutorial overlay shell is missing');
 
 assert(index.includes('assets/red-hat-logo.svg'), 'OCP hat asset is not referenced');
 assert(fs.existsSync(path.join(root, 'assets/red-hat-logo.svg')), 'OCP hat asset file is missing');

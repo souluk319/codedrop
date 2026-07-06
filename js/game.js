@@ -8,6 +8,7 @@ const CODEDROP_BASE_PATH = (typeof window !== 'undefined' && window.CODEDROP_BAS
 const API_BASE = (typeof window !== 'undefined' && window.CODEDROP_API_BASE) || CODEDROP_BASE_PATH;
 const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language';
 const APP_LANGUAGE_STORAGE_KEY = 'codedrop_language';
+const TUTORIAL_SEEN_STORAGE_KEY = 'codedrop_tutorial_seen';
 const MUSIC_UI_STORAGE_KEY = 'codedrop_music_ui';
 const KUGNUS_HEALTH_TIMEOUT_MS = 12_000;
 const MUSIC_FALLBACK_TRACKS = [
@@ -3016,6 +3017,71 @@ function handleReadmeOverlayClick(e) {
     }
 }
 
+function tutorialOverlay() {
+    return document.getElementById('tutorial-overlay');
+}
+
+function openTutorialOverlay(options = {}) {
+    const overlay = tutorialOverlay();
+    if (!overlay) return;
+
+    const manual = Boolean(options.manual);
+    overlay.dataset.tutorialLang = appLang();
+    overlay.classList.remove('hidden');
+    if (!manual) {
+        localStorage.setItem(TUTORIAL_SEEN_STORAGE_KEY, '1');
+    }
+    if (options.sound !== false) sfx.playKey('Enter');
+}
+
+function closeTutorialOverlay() {
+    const overlay = tutorialOverlay();
+    if (overlay) overlay.classList.add('hidden');
+    localStorage.setItem(TUTORIAL_SEEN_STORAGE_KEY, '1');
+}
+
+function maybeShowFirstRunTutorial() {
+    if (localStorage.getItem(TUTORIAL_SEEN_STORAGE_KEY) === '1') return;
+
+    window.setTimeout(() => {
+        if (localStorage.getItem(TUTORIAL_SEEN_STORAGE_KEY) === '1') return;
+        const blockingScreens = [
+            'confirm-screen',
+            'pack-maker-screen',
+            'admin-pack-screen',
+            'keyboard-test-screen',
+            'learn-screen',
+            'dashboard-screen'
+        ];
+        const blocked = state.isPlaying || blockingScreens.some(id => {
+            const el = document.getElementById(id);
+            return el && !el.classList.contains('hidden');
+        });
+        if (!blocked) openTutorialOverlay({ manual: false, sound: false });
+    }, 650);
+}
+
+function handleTutorialCloseClick() {
+    closeTutorialOverlay();
+}
+
+function handleTutorialOverlayClick(e) {
+    if (e.target === e.currentTarget) closeTutorialOverlay();
+}
+
+function handleReadmeTutorialClick(e) {
+    e.preventDefault();
+    const readmeOverlay = document.getElementById('readme-overlay');
+    if (readmeOverlay) readmeOverlay.classList.add('hidden');
+    openTutorialOverlay({ manual: true });
+}
+
+function handleTutorialKeydown(e) {
+    if (e.key !== 'Escape') return;
+    const overlay = tutorialOverlay();
+    if (overlay && !overlay.classList.contains('hidden')) closeTutorialOverlay();
+}
+
 function normalizeReadmeLanguage(value) {
     return value === 'ko' ? 'ko' : 'en';
 }
@@ -3162,6 +3228,8 @@ function applyAppLanguage(value) {
 
     const readmeBox = document.getElementById('readme-box');
     if (readmeBox) readmeBox.dataset.manualLang = lang;
+    const tutorial = tutorialOverlay();
+    if (tutorial) tutorial.dataset.tutorialLang = lang;
     document.querySelectorAll('.readme-lang-toggle [data-readme-lang]').forEach(langButton => {
         langButton.classList.toggle('active', normalizeReadmeLanguage(langButton.dataset.readmeLang) === lang);
     });
@@ -3240,17 +3308,34 @@ function initGameControls() {
     const readmeOverlay = document.getElementById('readme-overlay');
     const readmeClose = document.getElementById('readme-close');
     const readmeLangToggle = document.querySelector('.readme-lang-toggle');
+    const readmeTutorialBtn = document.getElementById('readme-tutorial-btn');
+    const tutorial = tutorialOverlay();
+    const tutorialClose = document.getElementById('tutorial-close');
+    const tutorialStart = document.getElementById('tutorial-start-btn');
 
     if (readmeWidget && readmeOverlay && readmeClose) {
         readmeWidget.removeEventListener('click', handleReadmeWidgetClick);
         readmeClose.removeEventListener('click', handleReadmeCloseClick);
         readmeOverlay.removeEventListener('click', handleReadmeOverlayClick);
         if (readmeLangToggle) readmeLangToggle.removeEventListener('click', handleReadmeLanguageClick);
+        if (readmeTutorialBtn) readmeTutorialBtn.removeEventListener('click', handleReadmeTutorialClick);
         readmeWidget.addEventListener('click', handleReadmeWidgetClick);
         readmeClose.addEventListener('click', handleReadmeCloseClick);
         readmeOverlay.addEventListener('click', handleReadmeOverlayClick);
         if (readmeLangToggle) readmeLangToggle.addEventListener('click', handleReadmeLanguageClick);
+        if (readmeTutorialBtn) readmeTutorialBtn.addEventListener('click', handleReadmeTutorialClick);
         initReadmeLanguage();
+    }
+
+    if (tutorial && tutorialClose && tutorialStart) {
+        tutorial.removeEventListener('click', handleTutorialOverlayClick);
+        tutorialClose.removeEventListener('click', handleTutorialCloseClick);
+        tutorialStart.removeEventListener('click', handleTutorialCloseClick);
+        document.removeEventListener('keydown', handleTutorialKeydown);
+        tutorial.addEventListener('click', handleTutorialOverlayClick);
+        tutorialClose.addEventListener('click', handleTutorialCloseClick);
+        tutorialStart.addEventListener('click', handleTutorialCloseClick);
+        document.addEventListener('keydown', handleTutorialKeydown);
     }
 }
 
@@ -3273,6 +3358,7 @@ function init() {
     initPackSelector();
     initModeControls();
     initAppRouter();
+    maybeShowFirstRunTutorial();
 
 
     // Sfx Init on interaction
