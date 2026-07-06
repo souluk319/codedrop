@@ -840,6 +840,12 @@ assert(server.includes('이미 사용한 단어는 절대 다시 쓰지 마'), '
 assert(server.includes('PACK_MAKER_SWEEP_TEMPERATURE'), 'Pack Maker term sweep should use a higher temperature to diversify final candidates');
 assert(server.includes('function splitPackMakerCandidateLines'), 'Pack Maker should parse comma-separated KUGNUS term-only outputs');
 assert(server.includes('function fallbackItemDescription'), 'Pack Maker term sweep should provide descriptions for term-only candidates');
+assert(server.includes('function inferPackDescriptionLanguage'), 'Pack Maker should infer item description language separately from term language');
+assert(server.includes('const termScope = source') && server.includes('한줄|한\\s*줄|설명|해설|뜻'), 'Pack Maker term-language parser should ignore description-language clauses');
+assert(server.includes('desc 언어: ${packDescriptionLanguageLabel(intent.descriptionLanguage)}'), 'Pack Maker prompt contract should include description language');
+assert(server.includes('term이 영어여도 desc는 한국어로 뜻과 쓰임을 설명한다'), 'Pack Maker should support English typing terms with Korean explanations');
+assert(server.includes('function normalizeItemDescriptionForIntent'), 'Pack Maker should normalize wrong-language item descriptions server-side');
+assert(index.includes('#pack-maker-title,') && index.includes('#pack-maker-description') && index.includes('height: 58px;'), 'Pack Maker title and description fields should use matching header heights');
 assert(localEnvExample.includes('OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(localEnvExample.includes('GEMINI_API_KEY='), 'local env example should document the optional Gemini API key');
 assert(localEnvExample.includes('GEMINI_MODEL=gemini-2.5-flash'), 'local env example should document the Gemini Flash model');

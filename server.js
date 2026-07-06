@@ -332,7 +332,8 @@ const PACK_MAKER_SYSTEM_PROMPT = [
     "마지막에는 반드시 JSON draft 객체를 포함한다.",
     "JSON 형식은 {\"title\":\"...\",\"description\":\"...\",\"items\":[{\"term\":\"...\",\"desc\":\"...\",\"sources\":[{\"title\":\"...\",\"url\":\"https://...\",\"snippet\":\"...\"}]}]} 이다.",
     "별도 목표 개수가 주어지면 items 배열은 반드시 그 개수와 정확히 일치해야 한다.",
-    "term 언어 지시가 있으면 모든 term은 그 언어를 따른다. desc는 한국어 한 줄 설명으로 쓴다.",
+    "term 언어 지시가 있으면 모든 term은 그 언어를 따른다. desc 언어 지시가 있으면 모든 desc는 그 언어를 따른다.",
+    "desc 언어 지시가 없으면 desc는 한국어 한 줄 설명으로 쓴다.",
     "중복 term은 절대 넣지 않는다.",
     "raw HTML은 절대 쓰지 않는다."
 ].join(" ");
@@ -1027,10 +1028,32 @@ function extractPackTitle(message) {
 }
 
 function inferPackTermLanguage(message) {
-    const text = String(message || "").toLowerCase();
-    if (/(한글|한국어|한글로|한국어로|한국말)/i.test(message)) return "korean";
-    if (/(영어|영문|english|영어로)/i.test(message) || /\benglish\b/.test(text)) return "english";
+    const source = String(message || "");
+    const termScope = source
+        .replace(/(?:맞[^\s,.\n]*\s*때\s*뜨는\s*)?(?:한줄|한\s*줄|설명|해설|뜻|desc|description|explanation)[^,.\n]*(?:한글|한국어|한국말|영어|영문|english|korean)[^,.\n]*/gi, " ")
+        .replace(/(?:한글|한국어|한국말|영어|영문|english|korean)[^,.\n]*(?:한줄|한\s*줄|설명|해설|뜻|desc|description|explanation)/gi, " ");
+    const text = termScope.toLowerCase();
+    if (/(영어|영문|english|영어로)/i.test(termScope) || /\benglish\b/.test(text)) return "english";
+    if (/(한글|한국어|한글로|한국어로|한국말)/i.test(termScope)) return "korean";
     return "auto";
+}
+
+function inferPackDescriptionLanguage(message) {
+    const text = String(message || "");
+    const lower = text.toLowerCase();
+    const englishDesc =
+        /(?:설명|해설|뜻|한줄|한\s*줄)[^.\n]{0,24}(?:영어|영문|english)/i.test(text) ||
+        /(?:영어|영문|english)[^.\n]{0,24}(?:설명|해설|뜻|한줄|한\s*줄)/i.test(text) ||
+        /(?:desc|description|explanation)[^.\n]{0,24}english/i.test(lower);
+    if (englishDesc) return "english";
+
+    const koreanDesc =
+        /(?:설명|해설|뜻|한줄|한\s*줄)[^.\n]{0,24}(?:한글|한국어|한국말|korean)/i.test(text) ||
+        /(?:한글|한국어|한국말|korean)[^.\n]{0,24}(?:설명|해설|뜻|한줄|한\s*줄)/i.test(text) ||
+        /(?:desc|description|explanation)[^.\n]{0,24}korean/i.test(lower);
+    if (koreanDesc) return "korean";
+
+    return "korean";
 }
 
 function extractPackIntent(message) {
@@ -1040,6 +1063,7 @@ function extractPackIntent(message) {
         text.match(/(?:정확히|총|단어|용어|terms?|items?|words?)\s*(\d{1,3})/i);
     const requestedCount = clampPackTargetCount(countMatch ? countMatch[1] : DEFAULT_PACK_TARGET_COUNT);
     const termLanguage = inferPackTermLanguage(text);
+    const descriptionLanguage = inferPackDescriptionLanguage(text);
     const title = extractPackTitle(text);
     const topic = sanitizePackText(text
         .replace(/(?:팩\s*)?(?:초안|만들어줘|만들|생성|제작|작성|뽑아줘|뽑아서|부탁).*$/i, "")
@@ -1050,7 +1074,7 @@ function extractPackIntent(message) {
         .replace(/\s+/g, " ")
         .trim(), 160) || text;
 
-    return { requestedCount, termLanguage, title, topic };
+    return { requestedCount, termLanguage, descriptionLanguage, title, topic };
 }
 
 function packTopicSignal(intent) {
@@ -1113,6 +1137,16 @@ function packLanguageInstruction(language) {
     if (language === "korean") return "모든 term은 반드시 사용자가 요구한 도메인의 한글 표기로 작성한다. 영문 약어가 꼭 필요하면 한글 설명어를 함께 붙인다.";
     if (language === "english") return "모든 term은 영어 단어 또는 영어 약어로 작성한다. 한글 term은 넣지 않는다.";
     return "term은 사용자가 요구한 도메인에서 실제로 외울 가치가 있는 짧은 명사/약어/명령어로 작성한다.";
+}
+
+function packDescriptionLanguageLabel(language) {
+    if (language === "english") return "ENGLISH";
+    return "KOREAN";
+}
+
+function packDescriptionInstruction(language) {
+    if (language === "english") return "모든 desc는 반드시 영어 한 문장으로 작성한다.";
+    return "모든 desc는 반드시 한국어 한 문장으로 작성한다. term이 영어여도 desc는 한국어로 뜻과 쓰임을 설명한다.";
 }
 
 function packDomainText(intent) {
@@ -1179,6 +1213,11 @@ function packMakerDomainHint(intent) {
 
 function packMakerLineExample(intent) {
     const profile = packDomainProfile(intent);
+    if (intent.termLanguage === "english") {
+        if (profile === "country_names") return "예: South Korea | 동아시아에 있는 국가명입니다.";
+        if (profile === "car_repair") return "예: brake pad | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.";
+        return "예: cache | 자주 쓰는 데이터를 임시로 저장해 접근 속도를 높이는 개념입니다.";
+    }
     if (profile === "country_names") return "예: 대한민국 | 동아시아에 있는 국가명입니다.";
     if (profile === "car_repair") return "예: 브레이크 패드 | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.";
     return "예: 핵심 용어 | 사용자가 요청한 도메인에서 자주 등장하는 한줄 설명입니다.";
@@ -1209,10 +1248,12 @@ function packIntentMessage(intent) {
     return [
         `목표 item 개수: 정확히 ${intent.requestedCount}개`,
         `term 언어: ${packLanguageLabel(intent.termLanguage)}`,
+        `desc 언어: ${packDescriptionLanguageLabel(intent.descriptionLanguage)}`,
         `팩 제목 후보: ${intent.title || "-"}`,
         `주제/상황: ${intent.topic || "-"}`,
         `도메인 프로필: ${packDomainLabel(intent)}`,
         packLanguageInstruction(intent.termLanguage),
+        packDescriptionInstruction(intent.descriptionLanguage),
         "items 배열 길이가 목표 개수보다 적거나 많으면 실패다.",
         "JSON 밖 설명은 생략하거나 한 문장만 쓴다.",
         "마지막 JSON draft는 파싱 가능한 단일 객체여야 한다."
@@ -1241,9 +1282,11 @@ function draftLanguageMismatchCount(draft, intent) {
 
 function fallbackDescriptionForIntent(intent, title) {
     const count = clampPackTargetCount(intent.requestedCount);
-    if (intent.termLanguage === "korean") return `${title} - ${count}개 한글 도메인 용어`;
-    if (intent.termLanguage === "english") return `${title} - ${count} English domain terms`;
-    return `${title} - ${count} domain terms`;
+    const termLabel = intent.termLanguage === "korean"
+        ? "한글 제시어"
+        : (intent.termLanguage === "english" ? "영어 제시어" : "도메인 제시어");
+    if (intent.descriptionLanguage === "english") return `${title} - ${count} ${packLanguageLabel(intent.termLanguage).toLowerCase()} terms with English notes`;
+    return `${title} - ${count}개 ${termLabel} · 한글 설명`;
 }
 
 function descriptionHasWrongTargetCount(description, intent) {
@@ -1263,6 +1306,18 @@ function cleanDescriptionForIntent(description, intent, title) {
     return clean;
 }
 
+function descriptionMatchesLanguage(description, language) {
+    const value = String(description || "");
+    if (language === "english") return !/[가-힣]/.test(value) && /[A-Za-z]{2,}/.test(value);
+    return /[가-힣]/.test(value);
+}
+
+function normalizeItemDescriptionForIntent(description, term, intent) {
+    const clean = sanitizePackText(description, MAX_PACK_ITEM_DESC_LEN);
+    if (clean && descriptionMatchesLanguage(clean, intent.descriptionLanguage || "korean")) return clean;
+    return fallbackItemDescription(term, intent);
+}
+
 function normalizeDraftForIntent(value, intent, fallbackSources = []) {
     const draft = normalizeDraftFromLlm(value, fallbackSources);
     const title = intent.title || draft.title;
@@ -1270,7 +1325,10 @@ function normalizeDraftForIntent(value, intent, fallbackSources = []) {
     return {
         title: safeTitle,
         description: cleanDescriptionForIntent(draft.description, intent, safeTitle),
-        items: draft.items.slice(0, intent.requestedCount)
+        items: draft.items.slice(0, intent.requestedCount).map(item => ({
+            ...item,
+            desc: normalizeItemDescriptionForIntent(item.desc, item.term, intent)
+        }))
     };
 }
 
@@ -1367,6 +1425,7 @@ function buildPackMakerBatchMessages(payload, draft, batchCount, batchNumber) {
                 `팩 title은 반드시 "${payload.intent.title || "Generated Data Pack"}" 로 둔다.`,
                 `이번 batch는 특히 다음 범주에서 뽑아라: ${focus}`,
                 packLanguageInstruction(payload.intent.termLanguage),
+                packDescriptionInstruction(payload.intent.descriptionLanguage),
                 packMakerTermShapeInstruction(payload.intent),
                 "중복 없이, 각 줄을 '용어 | 한줄 설명' 형식으로만 답한다."
             ].join("\n")
@@ -1412,6 +1471,7 @@ function buildPackMakerFillMessages(payload, draft, count, repairNumber) {
                 `repair ${repairNumber}: 금지 목록에 없는 새 item을 정확히 ${count}개 생성해라.`,
                 `이번 repair는 특히 다음 범주에서 뽑아라: ${focus}`,
                 packLanguageInstruction(payload.intent.termLanguage),
+                packDescriptionInstruction(payload.intent.descriptionLanguage),
                 packMakerTermShapeInstruction(payload.intent),
                 "각 줄은 반드시 '용어 | 한줄 설명' 형식이다."
             ].join("\n")
@@ -1434,7 +1494,7 @@ function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
                 "목표는 기존 draft에 없는 새 후보를 많이 만들어 서버가 중복 제거 후 부족분을 채우게 하는 것이다.",
                 "응답은 반드시 줄 목록만 출력한다. markdown, 코드펜스, JSON, 머리말은 쓰지 않는다.",
                 "각 줄 형식은 정확히: 용어 | 한줄 설명",
-                "설명은 짧고 구체적인 한국어 한 줄로 쓴다.",
+                packDescriptionInstruction(payload.intent.descriptionLanguage),
                 "raw HTML은 절대 쓰지 않는다."
             ].join("\n")
         },
@@ -1458,6 +1518,7 @@ function buildPackMakerWideFillMessages(payload, draft, count, attempt) {
                 `wide fill ${attempt}: 금지 목록에 없는 후보를 정확히 ${count}줄 생성해라.`,
                 "위 후보 범주 풀을 골고루 섞어라. 한 범주에 몰리지 마라.",
                 packLanguageInstruction(payload.intent.termLanguage),
+                packDescriptionInstruction(payload.intent.descriptionLanguage),
                 packMakerTermShapeInstruction(payload.intent),
                 "각 줄은 반드시 '용어 | 한줄 설명' 형식이다."
             ].join("\n")
@@ -1540,6 +1601,13 @@ function splitPackMakerCandidateLines(answer) {
 }
 
 function fallbackItemDescription(term, intent) {
+    if (intent.descriptionLanguage === "english") {
+        const profile = packDomainProfile(intent);
+        if (profile === "country_names") return `${term} is a country or region name for this typing pack.`;
+        if (profile === "car_repair") return `${term} is a car repair part or maintenance term.`;
+        return `${term} is a key term in the requested domain.`;
+    }
+
     const profile = packDomainProfile(intent);
     if (profile === "country_names") {
         return `${term}는 국가명 학습팩에서 외울 수 있는 나라 이름입니다.`;
