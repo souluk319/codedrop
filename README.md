@@ -20,11 +20,19 @@ phones than PCs now, so the original DROP mode turns programming words, shell
 commands, and domain terms into a game that trains finger placement before code
 starts feeling intimidating.
 
-OCP Edition is also personal: site owner **Kim Sungwook** built it because he
+OCP Edition is also personal: site owner **Kim Sung-uk** built it because he
 wanted OpenShift / EX280 study to feel less like punishment and more like a game.
 This kind of nerdy fun is exactly the point.
 
 ## Product Screens
+
+### Quick Start Tutorial
+
+![CodeDrop quick start tutorial](assets/readme/quick-start.jpg)
+
+### Main Menu and Leaderboard
+
+![CodeDrop main menu and leaderboard](assets/readme/main-menu.jpg)
 
 ### Original CODEDROP
 
