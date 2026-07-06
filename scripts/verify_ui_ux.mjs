@@ -880,6 +880,7 @@ assert(keyboardTest.includes('window.addEventListener(\'keyup\', handleKeyUp, tr
 assert(keyboardTest.includes('event.preventDefault();') && keyboardTest.includes('event.stopPropagation();'), 'keyboard test should isolate captured keystrokes from game shortcuts');
 assert(keyboardTest.includes('event.getModifierState'), 'keyboard test should report lock key states');
 assert(keyboardTest.includes("key.classList.add('pressed', 'tested')"), 'keyboard test should mark pressed keys as tested');
+assert(keyboardTest.includes('function playInputFeedback') && keyboardTest.includes('window.sfx.playKey'), 'keyboard test should play input feedback when a key is registered');
 assert(keyboardTest.includes("key.classList.remove('pressed', 'recent', 'tested')"), 'keyboard test CLR should reset tested key states');
 assert(keyboardTest.includes("document.getElementById('start-screen')"), 'keyboard test should coordinate with the start screen overlay');
 assert(keyboardTest.includes("startScreen?.classList.add('hidden')"), 'keyboard test should hide the start screen while open');

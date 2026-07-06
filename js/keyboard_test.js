@@ -84,7 +84,8 @@
         firstAt: 0,
         lastAt: 0,
         pressed: new Set(),
-        recentTimer: 0
+        recentTimer: 0,
+        lastSoundAt: 0
     };
 
     function lang() {
@@ -181,12 +182,21 @@
         state.recentTimer = window.setTimeout(() => el.classList.remove('recent'), 520);
     }
 
+    function playInputFeedback(event, now) {
+        if (event.repeat) return;
+        if (!window.sfx || typeof window.sfx.playKey !== 'function') return;
+        if (now - state.lastSoundAt < 24) return;
+        state.lastSoundAt = now;
+        window.sfx.playKey(event.key === ' ' ? ' ' : (event.key || event.code));
+    }
+
     function handleKeyDown(event) {
         if (!state.open) return;
         event.preventDefault();
         event.stopPropagation();
 
         const now = performance.now();
+        playInputFeedback(event, now);
         if (!state.firstAt) state.firstAt = now;
         if (!event.repeat) {
             state.count += 1;
