@@ -1128,5 +1128,104 @@ const SCENARIO_PACKS = {
                 explain: "SCHEDULE, SUSPEND, LAST SCHEDULE이 보입니다. 일시 중지는 spec.suspend=true 패치로 합니다."
             }
         ]
+    },
+
+    INCIDENTS: {
+        label: "오류 진단 (Incident Drill)",
+        questions: [
+            {
+                id: "incident-01-crashloop",
+                scenario: "증상: apps 네임스페이스의 api 파드가 CrashLoopBackOff입니다. 관찰 자료: 이전 컨테이너 로그에 실제 원인이 남아 있을 가능성이 큽니다. 진단 명령으로 직전 실패 로그를 확인하세요.",
+                answers: [
+                    "oc logs pod/api-7d9f -p (?:-n|--namespace)[ =]apps",
+                    "oc logs -p pod/api-7d9f (?:-n|--namespace)[ =]apps",
+                    "oc logs api-7d9f -p (?:-n|--namespace)[ =]apps"
+                ],
+                canonical: "oc logs pod/api-7d9f -p -n apps",
+                hint: "CrashLoopBackOff는 현재 로그보다 --previous / -p 로그가 더 중요합니다.",
+                explain: "재시작된 컨테이너의 직전 실행 로그를 보면 환경변수 누락, 파일 경로 오류, 포트 충돌 같은 실제 원인을 빠르게 찾을 수 있습니다."
+            },
+            {
+                id: "incident-02-pending",
+                scenario: "증상: batch 네임스페이스의 worker-0 파드가 Pending입니다. 관찰 자료: 이벤트에 스케줄 실패 이유가 남습니다. 진단 명령으로 파드 이벤트와 스케줄링 원인을 확인하세요.",
+                answers: [
+                    "oc describe pod worker-0 (?:-n|--namespace)[ =]batch",
+                    "oc (?:-n|--namespace)[ =]batch describe pod worker-0"
+                ],
+                canonical: "oc describe pod worker-0 -n batch",
+                hint: "Pending 원인은 describe pod 하단 Events에서 봅니다.",
+                explain: "Insufficient cpu/memory, taint, PVC 미바인딩, quota 초과 등은 describe pod Events에 직접 표시됩니다."
+            },
+            {
+                id: "incident-03-imagepull",
+                scenario: "증상: apps 네임스페이스의 web-1 파드가 ImagePullBackOff입니다. 관찰 자료: 이미지 이름/태그/인증 문제를 확인해야 합니다. 진단 명령으로 pull 실패 이벤트를 확인하세요.",
+                answers: [
+                    "oc describe pod web-1 (?:-n|--namespace)[ =]apps",
+                    "oc (?:-n|--namespace)[ =]apps describe pod web-1"
+                ],
+                canonical: "oc describe pod web-1 -n apps",
+                hint: "ImagePullBackOff도 describe pod Events가 1차 진단 명령입니다.",
+                explain: "ErrImagePull/ImagePullBackOff 이벤트에는 이미지 경로 오타, 태그 없음, registry 인증 실패가 남습니다. 그 다음 imagePullSecret 또는 image 값을 수정합니다."
+            },
+            {
+                id: "incident-04-rbac-forbidden",
+                scenario: "증상: developer 사용자가 project1 네임스페이스에서 pod 생성 시 Forbidden을 받습니다. 관찰 자료: 권한 문제인지 확인해야 합니다. 진단 명령으로 해당 사용자 권한을 검사하세요.",
+                answers: [
+                    "oc auth can-i create pods --as[ =]developer (?:-n|--namespace)[ =]project1",
+                    "oc auth can-i create pod --as[ =]developer (?:-n|--namespace)[ =]project1",
+                    "oc (?:-n|--namespace)[ =]project1 auth can-i create pods --as[ =]developer"
+                ],
+                canonical: "oc auth can-i create pods --as=developer -n project1",
+                hint: "RBAC 진단은 oc auth can-i --as=<user> 로 빠르게 시작합니다.",
+                explain: "Forbidden은 실제 작업 전에 auth can-i로 재현할 수 있습니다. no가 나오면 RoleBinding/ClusterRoleBinding을 확인하고 필요한 role을 바인딩합니다."
+            },
+            {
+                id: "incident-05-scc",
+                scenario: "증상: legacy-pod.yaml 배포가 SCC 거부로 실패합니다. 관찰 자료: 어떤 SCC가 허용/거부하는지 확인해야 합니다. 진단 명령으로 SCC subject review를 실행하세요.",
+                answers: [
+                    "oc adm policy scc-subject-review -f legacy-pod\\.yaml",
+                    "oc adm policy scc-subject-review --filename[ =]legacy-pod\\.yaml"
+                ],
+                canonical: "oc adm policy scc-subject-review -f legacy-pod.yaml",
+                hint: "SCC 문제는 scc-subject-review로 어떤 SCC가 적용 가능한지 확인합니다.",
+                explain: "SCC 거부는 serviceAccount와 SCC 권한의 조합 문제입니다. 리뷰 결과를 보고 필요한 경우 전용 SA를 만들고 최소 권한 SCC를 연결합니다."
+            },
+            {
+                id: "incident-06-networkpolicy",
+                scenario: "증상: apps 네임스페이스에서 frontend가 backend에 접속하지 못합니다. 관찰 자료: deny-all NetworkPolicy가 의심됩니다. 진단 명령으로 네임스페이스의 NetworkPolicy 목록을 확인하세요.",
+                answers: [
+                    "oc get networkpolic(?:y|ies) (?:-n|--namespace)[ =]apps",
+                    "oc get netpol (?:-n|--namespace)[ =]apps",
+                    "oc (?:-n|--namespace)[ =]apps get networkpolic(?:y|ies)",
+                    "oc (?:-n|--namespace)[ =]apps get netpol"
+                ],
+                canonical: "oc get networkpolicy -n apps",
+                hint: "NetworkPolicy 축약형은 netpol입니다.",
+                explain: "NetworkPolicy가 하나라도 있으면 선택된 pod에는 명시 허용 규칙만 적용될 수 있습니다. deny-all 이후 필요한 ingress/egress를 열어야 합니다."
+            },
+            {
+                id: "incident-07-quota",
+                scenario: "증상: project1 네임스페이스에서 새 파드 생성이 quota 초과로 실패합니다. 관찰 자료: 어떤 리소스가 한도에 걸렸는지 봐야 합니다. 진단 명령으로 ResourceQuota 상세를 확인하세요.",
+                answers: [
+                    "oc describe quota compute-quota (?:-n|--namespace)[ =]project1",
+                    "oc (?:-n|--namespace)[ =]project1 describe quota compute-quota",
+                    "oc describe resourcequota compute-quota (?:-n|--namespace)[ =]project1"
+                ],
+                canonical: "oc describe quota compute-quota -n project1",
+                hint: "quota 상세에는 hard/used가 함께 표시됩니다.",
+                explain: "Used가 Hard에 도달한 cpu/memory/pods 항목을 확인한 뒤 요청량을 줄이거나 불필요한 워크로드를 정리하거나 quota를 조정합니다."
+            },
+            {
+                id: "incident-08-route",
+                scenario: "증상: web 서비스는 동작하지만 외부 Route 접속이 실패합니다. 관찰 자료: Route가 어떤 host와 service/port를 가리키는지 확인해야 합니다. 진단 명령으로 Route 상세를 확인하세요.",
+                answers: [
+                    "oc describe route web (?:-n|--namespace)[ =]apps",
+                    "oc (?:-n|--namespace)[ =]apps describe route web"
+                ],
+                canonical: "oc describe route web -n apps",
+                hint: "Route 문제는 host, service, targetPort, admitted 상태를 봅니다.",
+                explain: "Route 상세에서 admitted, target service/port, TLS 설정을 확인합니다. 그 다음 service endpoint와 pod readiness를 이어서 검증합니다."
+            }
+        ]
     }
 };

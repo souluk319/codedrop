@@ -246,63 +246,16 @@ This pack is for mixed-language typing flow, not copied song lyrics.
 한 줄씩 넘어가며 beat, breath, and keyboard control을 같이 연습한다.`
     },
     {
-        id: 'template_lyrics_adele_someone_like_you',
+        id: 'template_lyrics_user_provided',
         group: 'User Templates',
         type: 'template',
-        title: 'Someone Like You 직접입력',
-        label: 'Someone Like You · USER PROVIDED',
+        title: '노래 가사 직접입력',
+        label: 'Lyrics · USER PROVIDED',
         source: 'USER PROVIDED',
-        providerId: 'manual_lyrics_adele_001',
-        tags: ['english', 'lyrics-template', 'user-provided'],
-        promptText: '이 템플릿은 원문을 포함하지 않습니다. 보유한 가사나 직접 입력한 연습문을 아래 칸에 붙여넣으면 English ballad 장문타자로 연습합니다.',
-        text: ''
-    },
-    {
-        id: 'template_lyrics_sia_unstoppable',
-        group: 'User Templates',
-        type: 'template',
-        title: 'Unstoppable 직접입력',
-        label: 'Unstoppable · USER PROVIDED',
-        source: 'USER PROVIDED',
-        providerId: 'manual_lyrics_sia_001',
-        tags: ['english', 'lyrics-template', 'user-provided'],
-        promptText: '이 템플릿은 원문을 포함하지 않습니다. 보유한 가사나 직접 입력한 연습문을 아래 칸에 붙여넣으면 빠른 English pop rhythm 장문타자로 연습합니다.',
-        text: ''
-    },
-    {
-        id: 'template_lyrics_cortis_redred',
-        group: 'User Templates',
-        type: 'template',
-        title: 'CORTIS redred 직접입력',
-        label: 'CORTIS redred · USER PROVIDED',
-        source: 'USER PROVIDED',
-        providerId: 'manual_lyrics_cortis_001',
-        tags: ['mixed', 'lyrics-template', 'user-provided', 'k-pop'],
-        promptText: '이 템플릿은 원문을 포함하지 않습니다. 사용자가 직접 확보한 redred 가사나 연습문을 붙여넣으면 한영 혼합 장문타자로 연습합니다.',
-        text: ''
-    },
-    {
-        id: 'template_lyrics_illit_its_me',
-        group: 'User Templates',
-        type: 'template',
-        title: "ILLIT it's me 직접입력",
-        label: "ILLIT it's me · USER PROVIDED",
-        source: 'USER PROVIDED',
-        providerId: 'manual_lyrics_illit_001',
-        tags: ['mixed', 'lyrics-template', 'user-provided', 'k-pop'],
-        promptText: "이 템플릿은 원문을 포함하지 않습니다. 사용자가 직접 확보한 it's me 가사나 연습문을 붙여넣으면 한영 혼합 장문타자로 연습합니다.",
-        text: ''
-    },
-    {
-        id: 'template_lyrics_kpop_mixed',
-        group: 'User Templates',
-        type: 'template',
-        title: 'K-pop 가사 믹스 직접입력',
-        label: 'K-pop Mixed Lyrics · USER PROVIDED',
-        source: 'USER PROVIDED',
-        providerId: 'manual_lyrics_kpop_mix_001',
-        tags: ['mixed', 'lyrics-template', 'user-provided', 'k-pop'],
-        promptText: '여러 K-pop 구절을 사용자가 직접 붙여넣어 만드는 개인 연습 템플릿입니다. 줄바꿈과 한영 전환이 많은 텍스트를 장문타자로 연습하기 좋습니다.',
+        providerId: 'manual_lyrics_user_001',
+        tags: ['mixed', 'lyrics-template', 'user-provided', 'song'],
+        preprocess: 'lyrics',
+        promptText: '보유한 가사나 직접 작성한 노래형 텍스트를 붙여넣어 개인 장문타자 연습에 사용합니다. 시작할 때 괄호 속 애드립/코러스 표기는 자동으로 정리됩니다.',
         text: ''
     }
 ];

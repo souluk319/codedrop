@@ -7,11 +7,18 @@ const LongPractice = (() => {
     const CUSTOM_STORAGE_KEY = 'codedrop_long_text_packs_v1';
     const longState = {
         packs: [],
+        fullText: '',
+        units: [],
+        unitIndex: 0,
+        completedChars: 0,
+        completedCorrect: 0,
         target: '',
         source: '',
         startedAt: 0,
         completed: false,
-        pendingPackId: ''
+        pendingPackId: '',
+        advanceTimer: 0,
+        lastKeySoundAt: 0
     };
 
     const ui = {};
@@ -55,6 +62,163 @@ const LongPractice = (() => {
             .replace(/\r\n?/g, '\n')
             .replace(/[ \t]+\n/g, '\n')
             .trim();
+    }
+
+    function normalizePracticePunctuation(text) {
+        return String(text || '')
+            .replace(/\u00a0/g, ' ')
+            .replace(/[‘’‚‛ʼ`´＇]/g, "'")
+            .replace(/[“”„‟＂]/g, '"')
+            .replace(/[‐‑‒–—―]/g, '-')
+            .replace(/…/g, '...');
+    }
+
+    function isLyricsStopword(text) {
+        const token = String(text || '')
+            .trim()
+            .replace(/[#[\](){}【】（）［］｛｝·ㆍ.。!！?？:：-]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .toLowerCase();
+        if (!token) return true;
+        return /^(?:intro|outro|verse|pre chorus|post chorus|chorus|hook|bridge|refrain|interlude|repeat|instrumental|ad lib|adlib|rap|dance break|break|x\s*\d+|\d+\s*x|후렴|벌스|버스|인트로|아웃트로|브릿지|브리지|코러스|훅|반복|간주|전주|후주|랩|댄스 브레이크)(?:\s*\d+)?$/i.test(token);
+    }
+
+    function trimBracketShell(text) {
+        return String(text || '')
+            .replace(/^[\s[\](){}【】（）［］｛｝]+|[\s[\](){}【】（）［］｛｝]+$/g, '')
+            .trim();
+    }
+
+    function cleanLyricsText(text) {
+        const stageLinePattern = /^\s*(?:\[[^\]]+\]|\([^)]{1,80}\)|\{[^}]{1,80}\}|【[^】]{1,80}】|（[^）]{1,80}）|［[^］]{1,80}］|｛[^｝]{1,80}｝)\s*$/;
+        return normalizeText(normalizePracticePunctuation(text))
+            .split('\n')
+            .map(line => {
+                let next = line
+                    .replace(/\b\d{1,2}:\d{2}(?:\.\d{1,3})?\b/g, ' ')
+                    .replace(/[♪♫♬※]/g, ' ')
+                    .replace(/^\s*(?:lyrics?|official lyrics?|romanized|translation|english translation|hangul|가사|번역|로마자)\s*[:：-]?\s*$/i, '');
+
+                if (stageLinePattern.test(next)) {
+                    const inner = trimBracketShell(next);
+                    if (isLyricsStopword(inner)) return '';
+                }
+
+                next = next.replace(/[\[({【（［｛]\s*([^\])}】）］｝]{1,80}?)\s*[\])}】）］｝]/g, (match, inner) => {
+                    const clean = String(inner || '').trim();
+                    return isLyricsStopword(clean) ? ' ' : ` ${clean} `;
+                });
+
+                return next
+                    .replace(/^\s*(?:intro|outro|verse|pre[-\s]?chorus|post[-\s]?chorus|chorus|hook|bridge|refrain|interlude|후렴|벌스|인트로|아웃트로|브릿지|브리지|코러스|훅)\s*\d*\s*[:：-]\s*/i, '')
+                    .replace(/[ \t]{2,}/g, ' ')
+                    .trim();
+            })
+            .filter(Boolean)
+            .join('\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
+    function cleanUserProvidedText(text) {
+        const stageLinePattern = /^\s*(?:\[[^\]]+\]|\([^)]{1,80}\)|\{[^}]{1,80}\}|【[^】]{1,80}】|（[^）]{1,80}）|［[^］]{1,80}］|｛[^｝]{1,80}｝)\s*$/;
+        return normalizeText(normalizePracticePunctuation(text))
+            .split('\n')
+            .map(line => {
+                let next = line
+                    .replace(/\b\d{1,2}:\d{2}(?:\.\d{1,3})?\b/g, ' ')
+                    .replace(/[♪♫♬※]/g, ' ');
+
+                if (stageLinePattern.test(next)) {
+                    const inner = trimBracketShell(next);
+                    if (isLyricsStopword(inner)) return '';
+                }
+
+                next = next.replace(/[\[({【（［｛]\s*([^\])}】）］｝]{1,120}?)\s*[\])}】）］｝]/g, (match, inner) => {
+                    const clean = String(inner || '').trim();
+                    return isLyricsStopword(clean) ? ' ' : ` ${clean} `;
+                });
+
+                return next
+                    .replace(/[ \t]{2,}/g, ' ')
+                    .replace(/\s+([,.;:!?])/g, '$1')
+                    .trim();
+            })
+            .filter(Boolean)
+            .join('\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
+    function preprocessPracticeText(text, pack, options = {}) {
+        if (pack?.preprocess === 'lyrics') {
+            return cleanLyricsText(text);
+        }
+        if (options.userProvided || isUserProvidedPack(pack)) {
+            return cleanUserProvidedText(text);
+        }
+        return normalizeText(text);
+    }
+
+    function isUserProvidedPack(pack) {
+        if (!pack) return false;
+        const tags = Array.isArray(pack.tags) ? pack.tags : [];
+        return (
+            pack.preprocess === 'user-provided' ||
+            pack.source === 'USER PROVIDED' ||
+            tags.includes('user-provided') ||
+            String(pack.providerId || '').startsWith('manual_') ||
+            String(pack.id || '').startsWith('user_')
+        );
+    }
+
+    function comparableChar(char) {
+        return normalizePracticePunctuation(char);
+    }
+
+    function comparableText(text) {
+        return Array.from(String(text || '')).map(comparableChar).join('');
+    }
+
+    function sanitizeUnitInput(value) {
+        return String(value || '').replace(/\r?\n/g, ' ');
+    }
+
+    function splitPracticeUnits(text) {
+        const normalized = normalizeText(text);
+        if (!normalized) return [];
+
+        const roughUnits = normalized
+            .split(/\n+/)
+            .flatMap(line => {
+                const clean = line.trim();
+                if (!clean) return [];
+                if (clean.length <= 150) return [clean];
+                const sentences = clean.match(/[^.!?。！？]+[.!?。！？]?/g) || [clean];
+                return sentences.map(sentence => sentence.trim()).filter(Boolean);
+            });
+
+        const units = [];
+        roughUnits.forEach(unit => {
+            if (unit.length <= 170) {
+                units.push(unit);
+                return;
+            }
+
+            let chunk = '';
+            unit.split(/\s+/).forEach(word => {
+                const next = chunk ? `${chunk} ${word}` : word;
+                if (next.length > 150 && chunk) {
+                    units.push(chunk);
+                    chunk = word;
+                } else {
+                    chunk = next;
+                }
+            });
+            if (chunk) units.push(chunk);
+        });
+
+        return units.filter(Boolean);
     }
 
     function isTemplatePack(pack) {
@@ -145,17 +309,24 @@ const LongPractice = (() => {
 
     function resetSelectedTarget() {
         const pack = selectedPack();
-        longState.target = isTemplatePack(pack) ? '' : normalizeText(pack?.text || '');
+        const usesCustomText = ui.packSelect?.value === '__custom__';
+        longState.fullText = usesCustomText || isTemplatePack(pack) ? '' : preprocessPracticeText(pack?.text || '', pack);
+        longState.units = [];
+        longState.unitIndex = 0;
+        longState.completedChars = 0;
+        longState.completedCorrect = 0;
+        longState.target = '';
         longState.source = isTemplatePack(pack) ? 'USER PROVIDED' : sourceLabel(pack);
         longState.startedAt = 0;
         longState.completed = false;
+        window.clearTimeout(longState.advanceTimer);
         if (ui.input) {
             ui.input.value = '';
             ui.input.disabled = true;
         }
         renderPassage('');
         updateStats();
-        setStatus(isTemplatePack(pack) ? 'PASTE TEXT TO START' : 'READY');
+        setStatus(usesCustomText || isTemplatePack(pack) ? 'PASTE TEXT TO START' : 'READY');
     }
 
     function handlePackChange() {
@@ -187,14 +358,14 @@ const LongPractice = (() => {
         if (!ui.passage) return;
         const fragment = document.createDocumentFragment();
         const target = longState.target || '';
-        const typed = String(input || '');
+        const typed = sanitizeUnitInput(input);
 
         for (let index = 0; index < target.length; index += 1) {
             const span = document.createElement('span');
             const char = target[index];
             span.textContent = char;
             if (index < typed.length) {
-                span.className = `long-char ${typed[index] === char ? 'ok' : 'miss'}`;
+                span.className = `long-char ${comparableChar(typed[index]) === comparableChar(char) ? 'ok' : 'miss'}`;
             } else if (index === typed.length) {
                 span.className = 'long-char cursor';
             } else {
@@ -206,34 +377,97 @@ const LongPractice = (() => {
         ui.passage.replaceChildren(fragment);
     }
 
+    function countCorrectChars(input, target = longState.target || '') {
+        const typed = comparableText(sanitizeUnitInput(input));
+        const expected = comparableText(target);
+        let correct = 0;
+        for (let i = 0; i < typed.length; i += 1) {
+            if (typed[i] === expected[i]) correct += 1;
+        }
+        return correct;
+    }
+
+    function isUnitReadyToComplete(input, target = longState.target || '') {
+        return sanitizeUnitInput(input).length >= String(target || '').length;
+    }
+
     function calculateStats(input) {
         const typed = String(input || '');
-        const target = longState.target || '';
         const totalTyped = typed.length;
-        let correct = 0;
-        for (let i = 0; i < totalTyped; i += 1) {
-            if (typed[i] === target[i]) correct += 1;
-        }
-        const accuracy = totalTyped === 0 ? 100 : Math.round((correct / totalTyped) * 100);
+        const correct = countCorrectChars(typed);
+        const allTyped = longState.completedChars + totalTyped;
+        const allCorrect = longState.completedCorrect + correct;
+        const accuracy = allTyped === 0 ? 100 : Math.round((allCorrect / allTyped) * 100);
         const minutes = longState.startedAt ? Math.max((Date.now() - longState.startedAt) / 60000, 0.01) : 0.01;
-        const wpm = Math.round((correct / 5) / minutes);
+        const wpm = Math.round((allCorrect / 5) / minutes);
         return { correct, totalTyped, accuracy, wpm };
     }
 
     function updateStats() {
         const input = ui.input?.value || '';
         const stats = calculateStats(input);
-        if (ui.progress) ui.progress.textContent = `${Math.min(input.length, longState.target.length)}/${longState.target.length}`;
+        const totalLength = longState.units.reduce((sum, unit) => sum + unit.length, 0) || longState.target.length;
+        const progress = Math.min(longState.completedChars + input.length, totalLength);
+        if (ui.progress) ui.progress.textContent = `${progress}/${totalLength}`;
         if (ui.accuracy) ui.accuracy.textContent = `${stats.accuracy}%`;
         if (ui.wpm) ui.wpm.textContent = String(Number.isFinite(stats.wpm) ? stats.wpm : 0);
-        if (ui.source) ui.source.textContent = longState.source || 'PACK';
+        if (ui.source) {
+            const current = longState.units.length ? ` ${longState.unitIndex + 1}/${longState.units.length}` : '';
+            ui.source.textContent = `${longState.source || 'PACK'}${current}`;
+        }
+    }
+
+    function setCurrentUnit(index) {
+        longState.unitIndex = Math.max(0, Math.min(index, longState.units.length - 1));
+        longState.target = longState.units[longState.unitIndex] || '';
+        longState.completed = false;
+        if (ui.input) {
+            ui.input.value = '';
+            ui.input.disabled = !longState.target;
+            ui.input.focus();
+        }
+        renderPassage('');
+        updateStats();
+    }
+
+    function completeCurrentUnit() {
+        if (longState.completed) return;
+
+        const currentTarget = longState.target || '';
+        const value = sanitizeUnitInput(ui.input?.value || '');
+        const correct = countCorrectChars(value, currentTarget);
+        longState.completed = true;
+        longState.completedChars += currentTarget.length;
+        longState.completedCorrect += correct;
+        if (ui.input) {
+            ui.input.value = '';
+            ui.input.disabled = true;
+        }
+        renderPassage(currentTarget);
+        updateStats();
+        if (typeof window.sfx !== 'undefined') window.sfx.playSuccess?.();
+
+        const isLast = longState.unitIndex >= longState.units.length - 1;
+        if (isLast) {
+            if (ui.input) ui.input.disabled = true;
+            setStatus('COMPLETE · 모든 문장을 입력했습니다');
+            return;
+        }
+
+        setStatus(`NEXT LINE ${longState.unitIndex + 2}/${longState.units.length}`);
+        window.clearTimeout(longState.advanceTimer);
+        longState.advanceTimer = window.setTimeout(() => {
+            setCurrentUnit(longState.unitIndex + 1);
+            setStatus('PRACTICE RUNNING');
+        }, 520);
     }
 
     function start() {
         const pack = selectedPack();
-        const customText = normalizeText(ui.customText?.value || '');
+        const rawCustomText = ui.customText?.value || '';
+        const customText = preprocessPracticeText(rawCustomText, pack, { userProvided: true });
         const usesCustomText = ui.packSelect?.value === '__custom__' || isTemplatePack(pack);
-        const text = usesCustomText ? customText : normalizeText(pack?.text || customText);
+        const text = usesCustomText ? customText : preprocessPracticeText(pack?.text || customText, pack);
 
         if (isTemplatePack(pack) && !customText) {
             setStatus('이 템플릿은 직접 붙여넣은 텍스트가 있어야 시작할 수 있습니다.', true);
@@ -247,10 +481,18 @@ const LongPractice = (() => {
             return;
         }
 
-        longState.target = text;
-        longState.source = usesCustomText ? 'USER PROVIDED' : sourceLabel(pack);
+        longState.fullText = text;
+        longState.units = splitPracticeUnits(text);
+        longState.unitIndex = 0;
+        longState.completedChars = 0;
+        longState.completedCorrect = 0;
+        longState.target = longState.units[0] || text;
+        longState.source = usesCustomText
+            ? (pack?.preprocess === 'lyrics' ? 'USER PROVIDED · LYRICS CLEAN' : 'USER PROVIDED')
+            : sourceLabel(pack);
         longState.startedAt = Date.now();
         longState.completed = false;
+        window.clearTimeout(longState.advanceTimer);
         if (ui.input) {
             ui.input.value = '';
             ui.input.disabled = false;
@@ -262,34 +504,82 @@ const LongPractice = (() => {
     }
 
     function reset() {
+        window.clearTimeout(longState.advanceTimer);
         longState.startedAt = Date.now();
         longState.completed = false;
-        if (ui.input) ui.input.value = '';
+        longState.completedChars = 0;
+        longState.completedCorrect = 0;
+        longState.unitIndex = 0;
+        if (longState.fullText && !longState.units.length) {
+            longState.units = splitPracticeUnits(longState.fullText);
+        }
+        if (longState.units.length) {
+            longState.target = longState.units[0];
+        }
+        if (ui.input) {
+            ui.input.value = '';
+            ui.input.disabled = !longState.target;
+        }
         renderPassage('');
         updateStats();
         setStatus(longState.target ? 'RESET' : 'READY');
         ui.input?.focus();
     }
 
-    function handleInput() {
+    function isAudibleKey(key) {
+        return key === 'Enter' || key === 'Backspace' || key === ' ' || String(key || '').length === 1;
+    }
+
+    function playLongTypingSound(key = 'a') {
+        if (!window.sfx || typeof window.sfx.playKey !== 'function') return;
+        window.sfx.playKey(key);
+        longState.lastKeySoundAt = Date.now();
+    }
+
+    function handleKeydown(event) {
+        if (!longState.target || ui.input?.disabled) return;
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
+        if (event.key === 'Process' || event.isComposing) return;
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            playLongTypingSound(event.key);
+            setStatus('제시어를 끝까지 입력하면 자동으로 다음 제시어로 넘어갑니다.');
+            return;
+        }
+        if (!isAudibleKey(event.key)) return;
+        playLongTypingSound(event.key);
+    }
+
+    function handleInput(event) {
         if (!longState.target) return;
-        const value = ui.input.value;
+        const value = sanitizeUnitInput(ui.input.value);
+        if (ui.input.value !== value) {
+            ui.input.value = value;
+        }
         if (!longState.startedAt) longState.startedAt = Date.now();
+        if (event && event.inputType !== 'insertFromPaste' && Date.now() - longState.lastKeySoundAt > 35) {
+            const key = event.inputType?.startsWith('delete') ? 'Backspace' : (event.data === ' ' ? ' ' : 'a');
+            playLongTypingSound(key);
+        }
         renderPassage(value);
         updateStats();
 
-        if (!longState.completed && value === longState.target) {
-            longState.completed = true;
-            setStatus('COMPLETE · 정확히 입력했습니다');
-        } else if (longState.completed && value !== longState.target) {
+        if (isUnitReadyToComplete(value)) {
+            completeCurrentUnit();
+        } else if (longState.completed) {
             longState.completed = false;
+            setStatus('PRACTICE RUNNING');
+        } else {
             setStatus('PRACTICE RUNNING');
         }
     }
 
-    function open() {
+    function open(options = {}) {
         bindUi();
         populatePackSelect();
+        if (options.packId) {
+            selectPack(options.packId, true);
+        }
         updatePackMeta();
         if (ui.screen) {
             ui.screen.classList.remove('hidden');
@@ -299,6 +589,9 @@ const LongPractice = (() => {
         window.syncCodeDropChrome?.();
         if (!longState.target) {
             resetSelectedTarget();
+        }
+        if (options.autoStart) {
+            window.setTimeout(start, 0);
         }
     }
 
@@ -312,7 +605,7 @@ const LongPractice = (() => {
     }
 
     function saveUserPack(pack) {
-        const text = normalizeText(pack?.text);
+        const text = preprocessPracticeText(pack?.text, pack, { userProvided: true });
         if (!text) return null;
         const title = String(pack.title || 'User Long Pack').slice(0, 60) || 'User Long Pack';
         const label = String(pack.label || pack.title || title).slice(0, 80) || title;
@@ -340,7 +633,8 @@ const LongPractice = (() => {
             text,
             tags: Array.isArray(pack.tags) ? pack.tags.slice(0, 8) : ['user-provided'],
             source: 'USER PROVIDED',
-            providerId
+            providerId,
+            preprocess: pack.preprocess || 'user-provided'
         }, ...existing];
         saveUserPacks(next);
         longState.pendingPackId = id;
@@ -348,6 +642,12 @@ const LongPractice = (() => {
         if (ui.packSelect) ui.packSelect.value = id;
         updatePackMeta();
         return id;
+    }
+
+    function listPacks() {
+        bindUi();
+        buildPackList();
+        return longState.packs.map(pack => ({ ...pack }));
     }
 
     function init() {
@@ -362,6 +662,7 @@ const LongPractice = (() => {
             close();
             window.CodeDropRouter?.navigate?.('home');
         });
+        ui.input?.addEventListener('keydown', handleKeydown);
         ui.input?.addEventListener('input', handleInput);
         updatePackMeta();
     }
@@ -377,7 +678,8 @@ const LongPractice = (() => {
         close,
         selectPack,
         saveUserPack,
-        refresh: populatePackSelect
+        refresh: populatePackSelect,
+        listPacks
     };
 })();
 

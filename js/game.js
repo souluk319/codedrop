@@ -36,10 +36,13 @@ const I18N_TEXT = {
         'menu.studyTime': 'STUDY TIME',
         'menu.studyTimePlaceholder': 'MINUTES (blank = infinite)',
         'menu.selectPack': 'SELECT PACK',
+        'menu.selectText': 'SELECT TEXT',
         'menu.selectCartridge': 'SELECT CARTRIDGE',
+        'menu.selectTextCartridge': 'SELECT TEXT DECK',
         'menu.close': 'CLOSE',
         'menu.deletePackHint': 'DROP MY PACK TO DELETE',
         'menu.startCodedrop': 'START CODEDROP',
+        'menu.startLongPractice': 'START LONG PRACTICE',
         'menu.packMaker': 'PACK MAKER',
         'menu.keyTest': 'KEY TEST',
         'menu.topAgents': 'TOP AGENTS',
@@ -57,6 +60,8 @@ const I18N_TEXT = {
         'ocp.scenarioDesc': '10 situational command questions',
         'ocp.lab': 'MOCK LAB',
         'ocp.labDesc': 'Hands-on procedure training',
+        'ocp.incident': 'INCIDENT DRILL',
+        'ocp.incidentDesc': 'CrashLoop, Pending, RBAC, SCC diagnosis',
         'ocp.exam': 'EXAM',
         'ocp.examDesc': '15 questions · 90 seconds',
         'ocp.learnMode': 'Learn Mode',
@@ -65,6 +70,11 @@ const I18N_TEXT = {
         'ocp.fixedPack': 'Fixed to the OpenShift CLI (EX280) pack.',
         'ocp.scenarioCategory': 'Scenario Category',
         'ocp.mockLab': 'Mock Lab',
+        'ocp.practiceStyle': 'Practice Style',
+        'ocp.practiceSolve': 'Problem Solving',
+        'ocp.practiceFollow': 'Follow Typing',
+        'ocp.practiceSolveInfo': 'Hide the answer and recall the command yourself.',
+        'ocp.practiceFollowInfo': 'Show the canonical command first and train muscle memory without score pressure.',
         'ocp.examMode': 'Exam Mode',
         'ocp.examInfo': '15 questions across all areas · 90 seconds each · no hints · 70% passing line',
         'ocp.start': 'START OCP',
@@ -183,10 +193,13 @@ const I18N_TEXT = {
         'menu.studyTime': '학습 시간',
         'menu.studyTimePlaceholder': '분 단위 · 비우면 무한',
         'menu.selectPack': '팩 선택',
+        'menu.selectText': '연습문 선택',
         'menu.selectCartridge': '카트리지 선택',
+        'menu.selectTextCartridge': '장문 덱 선택',
         'menu.close': '닫기',
         'menu.deletePackHint': '내 팩을 끌어와 삭제',
         'menu.startCodedrop': 'START CODEDROP',
+        'menu.startLongPractice': 'START LONG PRACTICE',
         'menu.packMaker': 'PACK MAKER',
         'menu.keyTest': 'KEY TEST',
         'menu.topAgents': '상위 요원',
@@ -204,6 +217,8 @@ const I18N_TEXT = {
         'ocp.scenarioDesc': '상황별 명령 10문제',
         'ocp.lab': '모의 랩',
         'ocp.labDesc': '실전 절차 훈련',
+        'ocp.incident': '진단훈련',
+        'ocp.incidentDesc': 'CrashLoop, Pending, RBAC, SCC 원인 찾기',
         'ocp.exam': '시험 모드',
         'ocp.examDesc': '15문제 · 90초',
         'ocp.learnMode': '학습 모드',
@@ -212,6 +227,11 @@ const I18N_TEXT = {
         'ocp.fixedPack': 'OpenShift CLI (EX280) 팩으로 고정됩니다.',
         'ocp.scenarioCategory': '시나리오 카테고리',
         'ocp.mockLab': '모의 랩',
+        'ocp.practiceStyle': '훈련 방식',
+        'ocp.practiceSolve': '문제풀이',
+        'ocp.practiceFollow': '따라치기',
+        'ocp.practiceSolveInfo': '정답을 가리고 직접 떠올려 입력합니다.',
+        'ocp.practiceFollowInfo': '정답 명령을 먼저 보고 점수 부담 없이 손가락 기억을 만듭니다.',
         'ocp.examMode': '시험 모드',
         'ocp.examInfo': '전 영역 15문제 · 문제당 90초 · 힌트 없음 · 합격선 70%',
         'ocp.start': 'START OCP',
@@ -512,6 +532,7 @@ const APP_ROUTE_PATHS = {
     ocpLearn: '/ocp/learn',
     ocpScenario: '/ocp/scenario',
     ocpLab: '/ocp/lab',
+    ocpIncident: '/ocp/incident',
     ocpExam: '/ocp/exam',
     ocpDashboard: '/ocp/dashboard'
 };
@@ -615,6 +636,9 @@ function applyAppRoute(route) {
             if (typeof LabMode !== 'undefined') {
                 LabMode.start(document.getElementById('lab-select')?.value);
             }
+        } else if (route === 'ocpIncident') {
+            window.CodeDropModeControls?.setMode('INCIDENT');
+            if (typeof ScenarioMode !== 'undefined') ScenarioMode.startIncidentDrill();
         } else if (route === 'ocpExam') {
             window.CodeDropModeControls?.setMode('EXAM');
             if (typeof ScenarioMode !== 'undefined') ScenarioMode.startExam();
@@ -1147,6 +1171,130 @@ const PACK_META = {
     MIX: { title: 'Mix', chip: 'MIX', style: 'mix' }
 };
 let activePackDragMeta = null;
+let standardMode = 'DROP';
+let selectedLongPackId = '';
+const LONG_SELECTOR_PREFIX = 'LONG__';
+const LONG_SELECTOR_FEATURED_IDS = [
+    'template_lyrics_user_provided',
+    'ko_keyboard_reviewer_flow',
+    'en_keyboard_reviewer_pangram',
+    'mixed_keyboard_reviewer',
+    'ko_focus_flow',
+    'en_tech_onboarding'
+];
+
+function isLongSelectorMode() {
+    return typeof standardMode !== 'undefined' && standardMode === 'LONG';
+}
+
+function longSelectorText(en, ko) {
+    return appLang() === 'ko' ? ko : en;
+}
+
+function longPackValue(id) {
+    return `${LONG_SELECTOR_PREFIX}${id}`;
+}
+
+function longPackIdFromValue(value) {
+    const text = String(value || '');
+    return text.startsWith(LONG_SELECTOR_PREFIX) ? text.slice(LONG_SELECTOR_PREFIX.length) : '';
+}
+
+function longPackListForSelector() {
+    if (window.LongPractice && typeof window.LongPractice.listPacks === 'function') {
+        return window.LongPractice.listPacks();
+    }
+    return Array.isArray(window.LONG_TEXT_PACKS) ? window.LONG_TEXT_PACKS.slice() : [];
+}
+
+function customPackStyle(seed = '') {
+    const styles = ['custom', 'custom-blue', 'custom-green', 'custom-violet', 'custom-amber'];
+    const text = String(seed || 'custom');
+    let hash = 0;
+    for (let index = 0; index < text.length; index += 1) {
+        hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+    }
+    return styles[Math.abs(hash) % styles.length];
+}
+
+function longPackStyle(pack) {
+    const group = String(pack?.group || '').toLowerCase();
+    const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ').toLowerCase() : '';
+    if (pack?.type === 'template') return 'custom-blue';
+    if (pack?.source === 'USER PROVIDED') return customPackStyle(`${pack.id}:${pack.title || pack.label || ''}`);
+    if (group.includes('korean') || tags.includes('korean')) return 'vocab';
+    if (group.includes('english') || tags.includes('english')) return 'js';
+    if (group.includes('mixed') || tags.includes('mixed')) return 'http';
+    return 'vocab';
+}
+
+function longPackChip(pack) {
+    if (pack?.type === 'template') return 'PASTE';
+    if (pack?.source === 'USER PROVIDED') return 'USER';
+    const group = String(pack?.group || '').toLowerCase();
+    const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ').toLowerCase() : '';
+    if (group.includes('korean') || tags.includes('korean')) return 'KOR';
+    if (group.includes('english') || tags.includes('english')) return 'ENG';
+    if (group.includes('mixed') || tags.includes('mixed')) return 'MIX';
+    return 'TEXT';
+}
+
+function packMetaFromLongPack(pack) {
+    if (!pack) {
+        return {
+            value: longPackValue('__custom__'),
+            title: longSelectorText('Paste Text', '직접 붙여넣기'),
+            chip: 'PASTE',
+            style: 'custom-blue',
+            group: longSelectorText('Direct Input', '직접 입력'),
+            longPackId: '__custom__',
+            deletable: false
+        };
+    }
+    const title = pack.title || pack.label || pack.id || 'Long Text';
+    const userProvided = pack.source === 'USER PROVIDED' && pack.type !== 'template';
+    return {
+        value: longPackValue(pack.id),
+        title,
+        chip: longPackChip(pack),
+        style: longPackStyle(pack),
+        group: userProvided
+            ? longSelectorText('My Text Packs', '내 장문팩')
+            : pack.group || longSelectorText('Practice Texts', '추천 연습문'),
+        longPackId: pack.id,
+        deletable: false
+    };
+}
+
+function ensureSelectedLongPackId() {
+    const packs = longPackListForSelector();
+    if (selectedLongPackId && (selectedLongPackId === '__custom__' || packs.some(pack => pack.id === selectedLongPackId))) {
+        return selectedLongPackId;
+    }
+    selectedLongPackId = longPackDefaultId(packs);
+    return selectedLongPackId;
+}
+
+function longPackDefaultId(packs = longPackListForSelector()) {
+    const saved = packs.find(pack => pack.source === 'USER PROVIDED' && pack.type !== 'template');
+    if (saved) return saved.id;
+    const template = packs.find(pack => pack.id === 'template_lyrics_user_provided');
+    if (template) return template.id;
+    const featured = LONG_SELECTOR_FEATURED_IDS
+        .map(id => packs.find(pack => pack.id === id))
+        .find(Boolean);
+    return featured?.id || packs[0]?.id || '__custom__';
+}
+
+function longPackMetaForValue(value) {
+    const packId = longPackIdFromValue(value) || ensureSelectedLongPackId();
+    if (packId === '__custom__') return packMetaFromLongPack(null);
+    return packMetaFromLongPack(longPackListForSelector().find(pack => pack.id === packId));
+}
+
+function selectedLongPackMeta() {
+    return longPackMetaForValue(longPackValue(ensureSelectedLongPackId()));
+}
 
 function selectedPackOption() {
     const select = els.controls.packSelect;
@@ -1167,7 +1315,7 @@ function packMetaFromOption(option) {
         value,
         title: option.textContent.replace(/\s+·\s+(PUBLIC|DRAFT|PENDING|APPROVED|REJECTED).*$/i, '').trim() || 'Custom Pack',
         chip: isPublic ? 'PUBLIC' : 'CUSTOM',
-        style: 'custom',
+        style: customPackStyle(`${value}:${option.textContent}`),
         group,
         customPackId: customPackIdFromValue(value),
         deletable: option.dataset.deletablePack === 'true'
@@ -1175,6 +1323,7 @@ function packMetaFromOption(option) {
 }
 
 function packMetaForValue(value) {
+    if (String(value || '').startsWith(LONG_SELECTOR_PREFIX)) return longPackMetaForValue(value);
     const select = els.controls.packSelect;
     const option = select ? Array.from(select.options).find(opt => opt.value === value) : null;
     return packMetaFromOption(option || selectedPackOption());
@@ -1202,6 +1351,29 @@ function packGroupsFromSelect() {
 
     if (official.items.length && !groups.includes(official)) groups.unshift(official);
     return groups.filter(group => group.items.length);
+}
+
+function longPackGroupsForSelector() {
+    const packs = longPackListForSelector();
+    const byId = new Map(packs.map(pack => [pack.id, pack]));
+    const savedItems = packs
+        .filter(pack => pack.source === 'USER PROVIDED' && pack.type !== 'template')
+        .map(packMetaFromLongPack);
+    const inputItems = [];
+    const lyricTemplate = byId.get('template_lyrics_user_provided');
+    if (lyricTemplate) inputItems.push(packMetaFromLongPack(lyricTemplate));
+    inputItems.push(packMetaFromLongPack(null));
+    const featuredItems = LONG_SELECTOR_FEATURED_IDS
+        .map(id => byId.get(id))
+        .filter(Boolean)
+        .filter(pack => pack.id !== 'template_lyrics_user_provided')
+        .map(packMetaFromLongPack);
+
+    return [
+        savedItems.length ? { label: longSelectorText('My Text Packs', '내 장문팩'), items: savedItems } : null,
+        { label: longSelectorText('Direct Input', '직접 입력'), items: inputItems },
+        featuredItems.length ? { label: longSelectorText('Recommended Practice', '추천 연습문'), items: featuredItems } : null
+    ].filter(Boolean);
 }
 
 function closePackPopover() {
@@ -1243,10 +1415,11 @@ function packLogoText(style) {
 
 function createPackLogo(meta) {
     const logo = document.createElement('span');
-    logo.className = `pack-card-logo pack-logo-${meta.style}`;
+    const style = String(meta.style || 'custom');
+    logo.className = `pack-card-logo ${style.startsWith('custom') ? 'pack-logo-custom' : `pack-logo-${style}`}`;
     logo.setAttribute('aria-hidden', 'true');
-    logo.textContent = packLogoText(meta.style);
-    if (meta.style === 'python') {
+    logo.textContent = packLogoText(style);
+    if (style === 'python') {
         logo.appendChild(Object.assign(document.createElement('span'), {
             className: 'logo-dot'
         }));
@@ -1474,9 +1647,12 @@ function renderPackCards() {
     const container = els.controls.packCardGroups;
     if (!container) return;
     container.replaceChildren();
-    const currentValue = els.controls.packSelect ? els.controls.packSelect.value : '';
+    const currentValue = isLongSelectorMode()
+        ? longPackValue(ensureSelectedLongPackId())
+        : (els.controls.packSelect ? els.controls.packSelect.value : '');
 
-    packGroupsFromSelect().forEach(group => {
+    const groups = isLongSelectorMode() ? longPackGroupsForSelector() : packGroupsFromSelect();
+    groups.forEach(group => {
         const wrap = document.createElement('section');
         wrap.className = 'pack-card-group';
 
@@ -1498,17 +1674,28 @@ function renderPackCards() {
 }
 
 function syncPackSelector() {
+    const longMode = isLongSelectorMode();
     const option = selectedPackOption();
-    const meta = packMetaFromOption(option);
+    const meta = longMode ? selectedLongPackMeta() : packMetaFromOption(option);
     const controls = els.controls;
+    const packGroupLabel = document.querySelector('#drop-pack-group > label');
+    const packTriggerKicker = controls.packTrigger?.querySelector('.pack-trigger-kicker');
+    const popoverTitle = controls.packPopover?.querySelector('.pack-popover-head > span');
+    if (controls.packSelector) controls.packSelector.classList.toggle('long-mode', longMode);
+    if (packGroupLabel) packGroupLabel.textContent = longMode ? t('menu.selectText') : t('menu.selectPack');
+    if (packTriggerKicker) packTriggerKicker.textContent = longMode ? t('menu.selectText') : t('menu.selectPack');
+    if (popoverTitle) popoverTitle.textContent = longMode ? t('menu.selectTextCartridge') : t('menu.selectCartridge');
     if (controls.packCurrentTitle) controls.packCurrentTitle.textContent = meta.title;
     if (controls.packCurrentChip) controls.packCurrentChip.textContent = meta.chip;
-    if (controls.packDockLabel) controls.packDockLabel.textContent = meta.chip ? `${meta.chip} DOCK` : 'PACK DOCK';
+    if (controls.packDockLabel) controls.packDockLabel.textContent = longMode
+        ? (meta.chip ? `${meta.chip} TEXT` : 'TEXT DOCK')
+        : (meta.chip ? `${meta.chip} DOCK` : 'PACK DOCK');
+    if (controls.packTrashZone) controls.packTrashZone.classList.toggle('hidden', longMode);
     if (controls.packConsoleStatusArt && controls.packConsole && !controls.packConsole.classList.contains('pack-inserting')) {
         controls.packConsoleStatusArt.textContent = '';
     }
     if (controls.packConsole) {
-        controls.packConsole.dataset.packValue = meta.value || 'PYTHON';
+        controls.packConsole.dataset.packValue = meta.value || (longMode ? longPackValue(ensureSelectedLongPackId()) : 'PYTHON');
         controls.packConsole.className = `pack-console pack-style-${meta.style}`;
     }
     renderPackCards();
@@ -1611,6 +1798,19 @@ function animatePackEquip(meta, sourceEl) {
 }
 
 async function selectPackFromUi(value, sourceEl = null) {
+    if (isLongSelectorMode()) {
+        const packId = longPackIdFromValue(value);
+        if (!packId) return;
+        selectedLongPackId = packId;
+        syncPackSelector();
+        if (sourceEl && sourceEl.classList) {
+            sourceEl.classList.add('selected');
+        }
+        playPackLatchSound();
+        window.setTimeout(closePackPopover, 220);
+        return;
+    }
+
     const select = els.controls.packSelect;
     if (!select || !Array.from(select.options).some(option => option.value === value)) return;
     const sourceRect = sourceEl && sourceEl.getBoundingClientRect ? sourceEl.getBoundingClientRect() : null;
@@ -2495,7 +2695,6 @@ function renderLeaderboard(list) {
 
 // --- Mode Routing (DROP / SCENARIO / LAB / EXAM) ---
 let gameMode = 'DROP';
-let standardMode = 'DROP';
 let editionBurstTimer = null;
 
 function isOcpEditionActive() {
@@ -2514,21 +2713,34 @@ function triggerEditionBurst() {
     }, 760);
 }
 
+function getOcpPracticeStyle() {
+    const active = document.querySelector('#practice-style-toggle [data-practice-style].active');
+    return active && active.dataset.practiceStyle === 'follow' ? 'follow' : 'solve';
+}
+
 function handleStart() {
+    const practiceStyle = getOcpPracticeStyle();
     if (gameMode === 'LEARN') {
         navigateAppRoute('ocpLearn');
         els.screens.start.classList.add('hidden');
-        LearnMode.openPicker();
+        LearnMode.openPicker({ practiceMode: practiceStyle });
     } else if (gameMode === 'SCENARIO') {
         navigateAppRoute('ocpScenario');
         const catSelect = document.getElementById('scenario-category-select');
         els.screens.start.classList.add('hidden');
-        ScenarioMode.start(catSelect.value);
+        if (practiceStyle === 'follow') ScenarioMode.startGuided(catSelect.value);
+        else ScenarioMode.start(catSelect.value);
     } else if (gameMode === 'LAB') {
         navigateAppRoute('ocpLab');
         const labSelect = document.getElementById('lab-select');
         els.screens.start.classList.add('hidden');
-        LabMode.start(labSelect.value);
+        if (practiceStyle === 'follow') LabMode.startGuided(labSelect.value);
+        else LabMode.start(labSelect.value);
+    } else if (gameMode === 'INCIDENT') {
+        navigateAppRoute('ocpIncident');
+        els.screens.start.classList.add('hidden');
+        if (practiceStyle === 'follow') ScenarioMode.startGuided('INCIDENTS');
+        else ScenarioMode.startIncidentDrill();
     } else if (gameMode === 'EXAM') {
         navigateAppRoute('ocpExam');
         els.screens.start.classList.add('hidden');
@@ -2545,31 +2757,40 @@ function handleStart() {
 
 function handleStandardStart() {
     if (standardMode === 'LONG') {
+        const packId = ensureSelectedLongPackId();
         navigateAppRoute('longPractice');
-        window.LongPractice?.open();
+        window.LongPractice?.open({ packId, autoStart: true });
         return;
     }
 
     startGame();
 }
 
+function syncStandardModeUi() {
+    const buttons = Array.from(document.querySelectorAll('[data-standard-mode]'));
+    buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.standardMode === standardMode));
+    if (els.controls.startBtn) {
+        els.controls.startBtn.textContent = standardMode === 'LONG'
+            ? t('menu.startLongPractice')
+            : t('menu.startCodedrop');
+    }
+    syncPackSelector();
+}
+
+function setStandardMode(mode) {
+    standardMode = mode === 'LONG' ? 'LONG' : 'DROP';
+    syncStandardModeUi();
+}
+
 function initStandardModeControls() {
     const buttons = Array.from(document.querySelectorAll('[data-standard-mode]'));
     if (buttons.length === 0) return;
-
-    function setStandardMode(mode) {
-        standardMode = mode === 'LONG' ? 'LONG' : 'DROP';
-        buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.standardMode === standardMode));
-        if (els.controls.startBtn) {
-            els.controls.startBtn.textContent = standardMode === 'LONG' ? 'START LONG PRACTICE' : 'START CODEDROP';
-        }
-    }
 
     buttons.forEach(btn => {
         btn.addEventListener('click', () => setStandardMode(btn.dataset.standardMode));
     });
 
-    setStandardMode(standardMode);
+    syncStandardModeUi();
 }
 
 function initModeControls() {
@@ -2583,11 +2804,15 @@ function initModeControls() {
     const ocpDiffSelect = document.getElementById('ocp-difficulty-select');
     const ocpStartBtn = document.getElementById('ocp-start-btn');
     const dashboardBtn = document.getElementById('dashboard-btn');
+    const practiceStyleGroup = document.getElementById('practice-style-group');
+    const practiceStyleButtons = Array.from(document.querySelectorAll('[data-practice-style]'));
+    const practiceStyleInfo = document.getElementById('practice-style-info');
     const modeGroups = {
         LEARN: ['learn-info-group'],
         DROP: ['ocp-drop-group'],
         SCENARIO: ['scenario-select-group'],
         LAB: ['lab-select-group'],
+        INCIDENT: [],
         EXAM: ['exam-info-group']
     };
 
@@ -2624,6 +2849,10 @@ function initModeControls() {
                 if (el) el.classList.toggle('hidden', groupMode !== mode);
             });
         });
+
+        if (practiceStyleGroup) {
+            practiceStyleGroup.classList.toggle('hidden', !['LEARN', 'SCENARIO', 'LAB', 'INCIDENT'].includes(mode));
+        }
 
         // 학습 모드: 커리큘럼 진행도 문구 갱신
         if (mode === 'LEARN' && typeof LearnMode !== 'undefined') {
@@ -2697,6 +2926,17 @@ function initModeControls() {
 
     modeButtons.forEach(btn => {
         btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+
+    practiceStyleButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            practiceStyleButtons.forEach(item => item.classList.toggle('active', item === btn));
+            if (practiceStyleInfo) {
+                practiceStyleInfo.textContent = t(btn.dataset.practiceStyle === 'follow'
+                    ? 'ocp.practiceFollowInfo'
+                    : 'ocp.practiceSolveInfo');
+            }
+        });
     });
 
     if (editionOcpBtn) {
@@ -3314,6 +3554,7 @@ function applyAppLanguage(value) {
     setText('#pack-maker-btn', 'menu.packMaker');
     setText('#keyboard-test-btn', 'menu.keyTest');
     setText('#leaderboard-preview h3', 'menu.topAgents');
+    syncStandardModeUi();
     setOptionText('#difficulty-select option[value="EASY"], #ocp-difficulty-select option[value="EASY"]', 'difficulty.easy');
     setOptionText('#difficulty-select option[value="NORMAL"], #ocp-difficulty-select option[value="NORMAL"]', 'difficulty.normal');
     setOptionText('#difficulty-select option[value="DEVELOPER"], #ocp-difficulty-select option[value="DEVELOPER"]', 'difficulty.developer');
@@ -3330,6 +3571,8 @@ function applyAppLanguage(value) {
     setText('#mode-scenario span', 'ocp.scenarioDesc');
     setText('#mode-lab strong', 'ocp.lab');
     setText('#mode-lab span', 'ocp.labDesc');
+    setText('#mode-incident strong', 'ocp.incident');
+    setText('#mode-incident span', 'ocp.incidentDesc');
     setText('#mode-exam strong', 'ocp.exam');
     setText('#mode-exam span', 'ocp.examDesc');
     setText('#learn-info-group label', 'ocp.learnMode');
@@ -3339,6 +3582,16 @@ function applyAppLanguage(value) {
     setText('#ocp-drop-group .mode-info', 'ocp.fixedPack');
     setText('#scenario-select-group label', 'ocp.scenarioCategory');
     setText('#lab-select-group label', 'ocp.mockLab');
+    setText('#practice-style-group label', 'ocp.practiceStyle');
+    setText('[data-practice-style="solve"]', 'ocp.practiceSolve');
+    setText('[data-practice-style="follow"]', 'ocp.practiceFollow');
+    const practiceInfo = document.getElementById('practice-style-info');
+    const activePracticeStyle = document.querySelector('#practice-style-toggle [data-practice-style].active');
+    if (practiceInfo && activePracticeStyle) {
+        practiceInfo.textContent = t(activePracticeStyle.dataset.practiceStyle === 'follow'
+            ? 'ocp.practiceFollowInfo'
+            : 'ocp.practiceSolveInfo');
+    }
     setText('#exam-info-group label', 'ocp.examMode');
     setText('#exam-info-group .mode-info:not(.exam-gate-note)', 'ocp.examInfo');
     setText('#ocp-start-btn', 'ocp.start');
@@ -4012,6 +4265,7 @@ async function handleWithdraw() {
 function showLoggedInView() {
     els.auth.authContainer.style.display = 'none';
     els.auth.loggedInView.classList.add('active');
+    els.screens.start.querySelector('.card')?.classList.remove('auth-mode');
     els.auth.userDisplay.textContent = state.nickname;
     if (els.auth.btns.withdraw) {
         els.auth.btns.withdraw.classList.toggle('hidden', !state.userToken);
@@ -4039,6 +4293,7 @@ function showAuthView() {
     if (editionCodeBtn) editionCodeBtn.classList.add('active');
     els.auth.authContainer.style.display = 'block';
     els.auth.loggedInView.classList.remove('active');
+    els.screens.start.querySelector('.card')?.classList.add('auth-mode');
     switchTab('login');
     syncOverlayChrome();
 }

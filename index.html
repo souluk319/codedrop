@@ -845,6 +845,171 @@
             width: 100%;
             height: 4px;
             background: linear-gradient(90deg, transparent, var(--primary-neon), transparent);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        #start-screen .card.auth-mode::after {
+            content: '';
+            position: absolute;
+            inset: 28px;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(90deg,
+                    rgba(0, 0, 0, 0.08) 0%,
+                    rgba(0, 243, 255, 0.05) 16%,
+                    rgba(0, 0, 0, 0.02) 32%,
+                    rgba(0, 0, 0, 0.02) 68%,
+                    rgba(255, 0, 85, 0.06) 84%,
+                    rgba(0, 0, 0, 0.1) 100%),
+                url("assets/auth-city.svg") center 18% / 112% auto no-repeat;
+            opacity: 0.52;
+            filter: saturate(1.2) contrast(1.08);
+            mask-image:
+                linear-gradient(90deg, #000 0 22%, transparent 34% 66%, #000 78% 100%),
+                linear-gradient(180deg, #000 0 24%, transparent 38% 62%, #000 76% 100%);
+            mask-composite: add;
+            -webkit-mask-image:
+                linear-gradient(90deg, #000 0 22%, transparent 34% 66%, #000 78% 100%),
+                linear-gradient(180deg, #000 0 24%, transparent 38% 62%, #000 76% 100%);
+            -webkit-mask-composite: source-over;
+        }
+
+        .auth-gap-decor {
+            display: none;
+        }
+
+        #start-screen .card.auth-mode .auth-gap-decor {
+            display: block;
+            position: absolute;
+            inset: 18px 22px;
+            z-index: 1;
+            pointer-events: none;
+            overflow: hidden;
+            border-radius: 12px;
+            opacity: 1;
+        }
+
+        .auth-city-wing {
+            position: absolute;
+            top: 42px;
+            bottom: 48px;
+            width: 220px;
+            overflow: hidden;
+            opacity: 0.56;
+            background:
+                radial-gradient(circle at 26% 22%, rgba(0, 243, 255, 0.18), transparent 16%),
+                radial-gradient(circle at 74% 68%, rgba(255, 0, 85, 0.16), transparent 18%),
+                linear-gradient(108deg, rgba(0, 243, 255, 0.08), rgba(255, 0, 85, 0.06) 46%, transparent 78%),
+                repeating-linear-gradient(92deg,
+                    rgba(0, 243, 255, 0.22) 0 1px,
+                    transparent 1px 19px,
+                    rgba(255, 0, 85, 0.14) 19px 21px,
+                    transparent 21px 47px),
+                repeating-linear-gradient(0deg, transparent 0 11px, rgba(0, 243, 255, 0.11) 11px 12px);
+            clip-path: polygon(0 7%, 10% 13%, 19% 5%, 31% 25%, 43% 10%, 57% 28%, 71% 15%, 83% 36%, 100% 24%, 92% 52%, 100% 73%, 78% 65%, 68% 93%, 53% 77%, 38% 90%, 24% 69%, 12% 84%, 0 76%);
+            filter: saturate(1.18) blur(0.1px);
+            box-shadow: 0 0 36px rgba(0, 243, 255, 0.08);
+            mix-blend-mode: screen;
+            mask-image: radial-gradient(ellipse at 50% 50%, #000 0 48%, transparent 82%);
+            -webkit-mask-image: radial-gradient(ellipse at 50% 50%, #000 0 48%, transparent 82%);
+        }
+
+        .auth-city-wing::before,
+        .auth-city-wing::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .auth-city-wing::before {
+            background:
+                linear-gradient(135deg, transparent 0 18%, rgba(0, 243, 255, 0.16) 18% 19%, transparent 19% 46%, rgba(255, 0, 85, 0.18) 46% 47%, transparent 47%),
+                linear-gradient(70deg, transparent 0 60%, rgba(0, 243, 255, 0.15) 60% 61%, transparent 61%),
+                radial-gradient(circle at 32% 38%, rgba(0, 243, 255, 0.22), transparent 18%),
+                radial-gradient(circle at 74% 64%, rgba(255, 0, 85, 0.18), transparent 22%);
+            mix-blend-mode: screen;
+        }
+
+        .auth-city-wing::after {
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 6px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.28), transparent 34%, transparent 66%, rgba(0, 0, 0, 0.2));
+            opacity: 0.75;
+        }
+
+        .auth-city-wing.left {
+            left: 4px;
+        }
+
+        .auth-city-wing.right {
+            right: 4px;
+            transform: scaleX(-1);
+        }
+
+        .auth-circuit-rail {
+            position: absolute;
+            left: 118px;
+            right: 118px;
+            height: 150px;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 17% 46%, rgba(0, 243, 255, 0.14), transparent 5%),
+                radial-gradient(circle at 62% 44%, rgba(255, 0, 85, 0.12), transparent 6%),
+                linear-gradient(112deg, transparent 0 13%, rgba(0, 243, 255, 0.16) 13.2% 13.8%, transparent 14% 43%, rgba(0, 243, 255, 0.12) 43.2% 43.8%, transparent 44%),
+                linear-gradient(68deg, transparent 0 37%, rgba(255, 0, 85, 0.13) 37.2% 37.9%, transparent 38%),
+                repeating-linear-gradient(90deg, transparent 0 64px, rgba(0, 243, 255, 0.09) 64px 66px, transparent 66px 130px),
+                repeating-linear-gradient(0deg, rgba(0, 243, 255, 0.03) 0 1px, transparent 1px 8px);
+            clip-path: polygon(0 31%, 9% 18%, 20% 28%, 34% 14%, 49% 24%, 65% 11%, 82% 27%, 100% 18%, 94% 48%, 100% 72%, 86% 80%, 71% 67%, 56% 88%, 39% 77%, 24% 87%, 10% 68%, 0 78%);
+            box-shadow: inset 0 0 28px rgba(0, 243, 255, 0.06);
+            opacity: 0.54;
+            mix-blend-mode: screen;
+            mask-image:
+                radial-gradient(ellipse at center, transparent 0 25%, #000 42% 74%, transparent 92%),
+                linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            -webkit-mask-image:
+                radial-gradient(ellipse at center, transparent 0 25%, #000 42% 74%, transparent 92%),
+                linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+        }
+
+        .auth-circuit-rail.top {
+            top: -8px;
+        }
+
+        .auth-circuit-rail.bottom {
+            bottom: -8px;
+            transform: scaleX(-1) rotate(180deg);
+        }
+
+        .auth-circuit-rail::before {
+            content: '';
+            position: absolute;
+            inset: 30px 44px;
+            border-top: 1px solid rgba(0, 243, 255, 0.14);
+            border-bottom: 1px solid rgba(255, 0, 85, 0.09);
+            transform: skewX(-22deg) rotate(-1deg);
+            box-shadow:
+                0 0 14px rgba(0, 243, 255, 0.08),
+                inset 0 0 16px rgba(255, 0, 85, 0.04);
+        }
+
+        .auth-floating-glyphs {
+            position: absolute;
+            inset: 64px 132px 64px;
+            color: rgba(0, 243, 255, 0.18);
+            font-family: var(--font-code);
+            font-size: 0.58rem;
+            letter-spacing: 0.18em;
+            line-height: 2.4;
+            text-transform: uppercase;
+            text-shadow: 0 0 12px rgba(0, 243, 255, 0.22);
+            opacity: 0.58;
+            column-count: 3;
+            column-gap: 48px;
+            mask-image: radial-gradient(ellipse at center, transparent 0 43%, #000 54% 74%, transparent 86%);
+            -webkit-mask-image: radial-gradient(ellipse at center, transparent 0 43%, #000 54% 74%, transparent 86%);
         }
 
         h1 {
@@ -996,7 +1161,8 @@
             border: 1px solid var(--glass-border);
             width: 440px;
             max-width: 440px;
-            height: 700px;
+            height: 760px;
+            min-height: 760px;
             max-height: calc(100dvh - 120px);
             overflow-y: auto;
             display: flex;
@@ -3593,6 +3759,70 @@
         }
 
         /* --- Auth UI --- */
+        #auth-container {
+            position: relative;
+            z-index: 2;
+            width: min(660px, 100%);
+            margin: auto;
+            padding: 62px 44px 40px;
+            border: 1px solid rgba(0, 243, 255, 0.18);
+            border-radius: 10px;
+            overflow: hidden;
+            background:
+                linear-gradient(180deg, rgba(0, 12, 17, 0.18), rgba(0, 0, 0, 0.84) 58%, rgba(0, 0, 0, 0.94)),
+                url("assets/auth-city.svg") center / cover no-repeat;
+            box-shadow:
+                inset 0 0 54px rgba(0, 0, 0, 0.72),
+                inset 0 0 28px rgba(0, 243, 255, 0.08),
+                0 0 22px rgba(0, 243, 255, 0.08);
+        }
+
+        #auth-container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 5px),
+                radial-gradient(circle at 24% 18%, rgba(0, 243, 255, 0.18), transparent 28%),
+                radial-gradient(circle at 78% 18%, rgba(255, 0, 85, 0.14), transparent 26%);
+            opacity: 0.7;
+        }
+
+        #auth-container::after {
+            content: "ACCESS NODE";
+            position: absolute;
+            top: 18px;
+            left: 22px;
+            z-index: 1;
+            color: rgba(0, 243, 255, 0.78);
+            font-family: var(--font-display);
+            font-size: 0.62rem;
+            letter-spacing: 0.22em;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.42);
+        }
+
+        #auth-container .auth-tabs,
+        #auth-container .auth-form {
+            position: relative;
+            z-index: 1;
+        }
+
+        #auth-container .auth-tabs {
+            max-width: 520px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #auth-container .auth-form {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        #auth-container .btn {
+            width: 100%;
+        }
+
         .auth-tabs {
             display: flex;
             margin-bottom: 25px;
@@ -3641,21 +3871,36 @@
         }
 
         .auth-form input {
-            background: rgba(0, 0, 0, 0.8);
-            border: 1px solid #333;
+            background: rgba(0, 7, 10, 0.84);
+            border: 1px solid rgba(0, 243, 255, 0.24);
             padding: 15px;
             color: #fff;
             font-family: var(--font-code);
             font-size: 1rem;
             outline: none;
             transition: all 0.3s;
-            border-left: 3px solid #333;
+            border-left: 3px solid rgba(0, 243, 255, 0.38);
+            box-shadow:
+                inset 0 0 18px rgba(0, 0, 0, 0.82),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.03);
         }
 
         .auth-form input:focus {
             border-color: var(--primary-neon);
             box-shadow: -5px 0 10px -5px var(--primary-neon);
             background: rgba(0, 243, 255, 0.05);
+        }
+
+        .auth-form input:-webkit-autofill,
+        .auth-form input:-webkit-autofill:hover,
+        .auth-form input:-webkit-autofill:focus {
+            -webkit-text-fill-color: #fff;
+            caret-color: #fff;
+            box-shadow:
+                0 0 0 1000px rgba(0, 7, 10, 0.96) inset,
+                inset 0 0 18px rgba(0, 243, 255, 0.14);
+            border-color: rgba(0, 243, 255, 0.42);
+            transition: background-color 9999s ease-in-out 0s;
         }
 
         .auth-error {
@@ -3677,6 +3922,8 @@
 
         .logged-in-view {
             display: none;
+            position: relative;
+            z-index: 2;
             flex-direction: column;
             align-items: center;
             width: 100%;
@@ -4514,6 +4761,65 @@
         .pack-style-vocab { --pack-accent: #7e39ff; --pack-shell: #bb87ff; --pack-shell-dark: #6431b6; }
         .pack-style-mix { --pack-accent: #101214; --pack-shell: #f0f0e8; --pack-shell-dark: #8d918c; }
         .pack-style-custom { --pack-accent: #ff5cc8; --pack-shell: #ff86d9; --pack-shell-dark: #ac2f80; }
+        .pack-style-custom-blue { --pack-accent: #22d7ff; --pack-shell: #7edcff; --pack-shell-dark: #1b7490; }
+        .pack-style-custom-green { --pack-accent: #00f0a8; --pack-shell: #65eebf; --pack-shell-dark: #16875f; }
+        .pack-style-custom-violet { --pack-accent: #a35cff; --pack-shell: #c894ff; --pack-shell-dark: #6337a8; }
+        .pack-style-custom-amber { --pack-accent: #ffd44d; --pack-shell: #ffc45b; --pack-shell-dark: #9c6514; }
+
+        .pack-selector.long-mode {
+            --pack-card-width: 126px;
+            --pack-card-height: 138px;
+        }
+
+        .pack-selector.long-mode .pack-popover {
+            width: min(720px, calc(100vw - 32px));
+            height: min(560px, calc(100dvh - 96px));
+            max-height: min(560px, calc(100dvh - 96px));
+        }
+
+        .pack-selector.long-mode .pack-popover-body {
+            grid-template-rows: 1fr;
+            gap: 0;
+            padding: 14px 16px 16px;
+        }
+
+        .pack-selector.long-mode .pack-popover-console {
+            display: none;
+        }
+
+        .pack-selector.long-mode .pack-card-groups {
+            gap: 14px;
+            padding-right: 6px;
+        }
+
+        .pack-selector.long-mode .pack-card-grid {
+            justify-content: start;
+            grid-template-columns: repeat(auto-fill, minmax(var(--pack-card-width), var(--pack-card-width)));
+            gap: 10px;
+        }
+
+        .pack-selector.long-mode .pack-cartridge {
+            grid-template-rows: 18px 48px auto;
+            gap: 4px;
+            padding: 9px 9px 12px;
+            border-radius: 12px 12px 5px 5px;
+        }
+
+        .pack-selector.long-mode .pack-card-chip {
+            padding: 2px 6px;
+            font-size: 0.43rem;
+            letter-spacing: 0.8px;
+        }
+
+        .pack-selector.long-mode .pack-card-logo {
+            height: 48px;
+            font-size: 0.64rem;
+        }
+
+        .pack-selector.long-mode .pack-card-title {
+            font-size: 0.58rem;
+            line-height: 1.05;
+        }
 
         .pack-cartridge-ghost {
             position: fixed;
@@ -4771,6 +5077,25 @@
             font-size: 0.85rem;
         }
 
+        .practice-style-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .practice-style-toggle button {
+            min-height: 42px;
+            margin: 0;
+        }
+
+        .practice-style-toggle button.active {
+            color: #090000;
+            background: var(--primary-neon);
+            border-color: var(--primary-neon);
+            text-shadow: none;
+            box-shadow: 0 0 16px rgba(255, 48, 69, 0.24);
+        }
+
         .standard-menu,
         .ocp-menu {
             display: flex;
@@ -4938,14 +5263,14 @@
             justify-content: center;
             align-items: center;
             width: 100%;
-            max-width: 1280px;
-            gap: 28px;
+            max-width: 1320px;
+            gap: 36px;
         }
 
         body.ocp-edition #start-screen .card {
             width: 840px;
-            height: 720px;
-            min-height: 720px;
+            height: 760px;
+            min-height: 760px;
             max-width: 92vw;
             max-height: calc(100dvh - 120px);
             overflow: hidden;
@@ -4971,7 +5296,7 @@
         body.ocp-edition .ocp-menu {
             display: grid;
             grid-template-columns: minmax(0, 1.18fr) minmax(270px, 0.82fr);
-            grid-template-rows: auto minmax(0, 1fr) auto auto;
+            grid-template-rows: auto auto auto auto auto;
             gap: 14px 18px;
             flex: 1 1 auto;
             padding: 4px 0 0;
@@ -4996,16 +5321,16 @@
 
         body.ocp-edition .mode-grid {
             grid-column: 1;
-            grid-row: 2 / 5;
+            grid-row: 2 / 6;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            grid-auto-rows: minmax(104px, 1fr);
+            grid-auto-rows: minmax(86px, 1fr);
             gap: 12px;
             min-height: 0;
         }
 
         body.ocp-edition .mode-choice {
-            min-height: 104px;
-            padding: 16px 18px;
+            min-height: 86px;
+            padding: 13px 16px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -5105,12 +5430,24 @@
         body.ocp-edition #ocp-drop-group,
         body.ocp-edition #scenario-select-group,
         body.ocp-edition #lab-select-group,
-        body.ocp-edition #exam-info-group {
+        body.ocp-edition #exam-info-group,
+        body.ocp-edition #practice-style-group {
             grid-column: 2;
-            grid-row: 2;
             align-self: start;
             margin: 0;
             gap: 6px;
+        }
+
+        body.ocp-edition #learn-info-group,
+        body.ocp-edition #ocp-drop-group,
+        body.ocp-edition #scenario-select-group,
+        body.ocp-edition #lab-select-group,
+        body.ocp-edition #exam-info-group {
+            grid-row: 2;
+        }
+
+        body.ocp-edition #practice-style-group {
+            grid-row: 3;
         }
 
         body.ocp-edition .select-group select {
@@ -5125,7 +5462,7 @@
 
         body.ocp-edition #ocp-start-btn {
             grid-column: 2;
-            grid-row: 3;
+            grid-row: 4;
             align-self: end;
             margin: 0;
             padding: 14px;
@@ -5136,15 +5473,16 @@
 
         body.ocp-edition #dashboard-btn {
             grid-column: 2;
-            grid-row: 4;
+            grid-row: 5;
             margin: 0;
         }
 
         body.ocp-edition #leaderboard-preview {
             position: static;
-            width: 340px;
-            max-width: min(340px, 26vw);
-            height: 520px;
+            width: 440px;
+            max-width: 440px;
+            height: 760px;
+            min-height: 760px;
             max-height: calc(100dvh - 120px);
             transform: none;
             opacity: 1;
@@ -5705,6 +6043,17 @@
             gap: 22px;
         }
 
+        #learn-screen.learn-session-active #learn-picker {
+            width: 100%;
+            max-width: none;
+            height: min(820px, calc(100dvh - 72px));
+            min-height: 0;
+            max-height: calc(100dvh - 72px);
+            overflow-y: auto;
+            padding: 34px 38px;
+            gap: 22px;
+        }
+
         #learn-screen.learn-session-active .scenario-text {
             font-size: 1.04rem;
             line-height: 1.75;
@@ -5727,6 +6076,41 @@
         #learn-screen.learn-session-active #learn-input {
             font-size: 1.12rem;
             padding: 17px 18px;
+        }
+
+        #scenario-screen.chat-session-active,
+        #lab-screen.chat-session-active {
+            display: grid;
+            grid-template-columns: minmax(650px, min(56vw, 860px)) minmax(430px, min(37vw, 560px));
+            gap: clamp(22px, 2vw, 34px);
+            align-items: stretch;
+            justify-items: stretch;
+            place-content: center;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            margin: 0;
+            padding: clamp(24px, 3vh, 36px) clamp(24px, 4vw, 48px);
+            box-sizing: border-box;
+        }
+
+        #scenario-screen.chat-session-active > .scenario-card:not(.hidden),
+        #lab-screen.chat-session-active > .scenario-card:not(.hidden) {
+            width: 100%;
+            max-width: none;
+            height: min(820px, calc(100dvh - 72px));
+            min-height: 0;
+            max-height: calc(100dvh - 72px);
+            overflow-y: auto;
+            padding: 34px 38px;
+            gap: 22px;
+        }
+
+        #scenario-screen.chat-session-active .learn-chat-panel,
+        #lab-screen.chat-session-active .learn-chat-panel {
+            width: 100%;
+            max-width: none;
+            height: min(820px, calc(100dvh - 72px));
         }
 
         .learn-step-nav {
@@ -6137,7 +6521,7 @@
 
         .learn-chat-bottom {
             position: absolute;
-            right: 12px;
+            right: 42px;
             bottom: 10px;
             z-index: 3;
             padding: 7px 10px;
@@ -6336,7 +6720,9 @@
         }
 
         @media (max-width: 1180px) {
-            #learn-screen.learn-session-active {
+            #learn-screen.learn-session-active,
+            #scenario-screen.chat-session-active,
+            #lab-screen.chat-session-active {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -6345,14 +6731,19 @@
                 padding: 24px 0;
             }
 
-            #learn-screen.learn-session-active #learn-card {
+            #learn-screen.learn-session-active #learn-card,
+            #learn-screen.learn-session-active #learn-picker,
+            #scenario-screen.chat-session-active > .scenario-card:not(.hidden),
+            #lab-screen.chat-session-active > .scenario-card:not(.hidden) {
                 width: min(860px, 92vw);
                 height: auto;
                 max-height: none;
                 min-height: 0;
             }
 
-            .learn-chat-panel {
+            .learn-chat-panel,
+            #scenario-screen.chat-session-active .learn-chat-panel,
+            #lab-screen.chat-session-active .learn-chat-panel {
                 width: min(860px, 92vw);
                 height: 420px;
                 max-height: calc(100dvh - 90px);
@@ -6377,6 +6768,16 @@
                 overflow-y: auto;
             }
 
+            #auth-container {
+                width: 100%;
+                padding: 0;
+            }
+
+            #auth-container::before,
+            #auth-container::after {
+                display: none;
+            }
+
             .card.scenario-card,
             .dashboard-card {
                 width: min(640px, 92vw);
@@ -6398,7 +6799,9 @@
                 gap: 16px;
             }
 
-            #learn-screen.learn-session-active {
+            #learn-screen.learn-session-active,
+            #scenario-screen.chat-session-active,
+            #lab-screen.chat-session-active {
                 flex-direction: column;
                 justify-content: flex-start;
                 gap: 12px;
@@ -6407,7 +6810,10 @@
                 padding: 18px 0 calc(var(--corner-widget-size) + var(--corner-widget-offset) + 18px);
             }
 
-            #learn-screen.learn-session-active #learn-card {
+            #learn-screen.learn-session-active #learn-card,
+            #learn-screen.learn-session-active #learn-picker,
+            #scenario-screen.chat-session-active > .scenario-card:not(.hidden),
+            #lab-screen.chat-session-active > .scenario-card:not(.hidden) {
                 width: min(640px, 92vw);
                 flex: 0 0 min(260px, 38vh);
                 height: auto;
@@ -6416,7 +6822,9 @@
                 overflow-y: auto;
             }
 
-            .learn-chat-panel {
+            .learn-chat-panel,
+            #scenario-screen.chat-session-active .learn-chat-panel,
+            #lab-screen.chat-session-active .learn-chat-panel {
                 width: min(640px, 92vw);
                 flex: 1 1 0;
                 height: auto;
@@ -6569,6 +6977,13 @@
 
             <!-- Main Menu Card -->
             <div class="card">
+                <div class="auth-gap-decor" aria-hidden="true">
+                    <div class="auth-city-wing left"></div>
+                    <div class="auth-city-wing right"></div>
+                    <div class="auth-circuit-rail top"></div>
+                    <div class="auth-circuit-rail bottom"></div>
+                    <div class="auth-floating-glyphs">AUTH NODE / SIGNAL PATH / GUEST VECTOR / CODEDROP ACCESS / PACK CHANNEL / KEYBOARD FLOW /</div>
+                </div>
                 <!-- Auth Container -->
                 <div id="auth-container">
                     <div class="auth-tabs">
@@ -6720,6 +7135,10 @@
                                 <strong>MOCK LAB</strong>
                                 <span>실전 절차 훈련</span>
                             </button>
+                            <button class="mode-choice" id="mode-incident" data-mode="INCIDENT" type="button">
+                                <strong>INCIDENT DRILL</strong>
+                                <span>CrashLoop/Pending/RBAC/SCC 원인 찾기</span>
+                            </button>
                             <button class="mode-choice" id="mode-exam" data-mode="EXAM" type="button">
                                 <strong>EXAM</strong>
                                 <span>15문제 · 90초</span>
@@ -6760,6 +7179,15 @@
                         <div class="select-group hidden" id="lab-select-group">
                             <label>Mock Lab</label>
                             <select id="lab-select"></select>
+                        </div>
+                        <div class="select-group hidden" id="practice-style-group">
+                            <label>훈련 방식</label>
+                            <div class="practice-style-toggle" id="practice-style-toggle" role="group"
+                                aria-label="OCP practice style">
+                                <button class="btn-small active" data-practice-style="solve" type="button">문제풀이</button>
+                                <button class="btn-small" data-practice-style="follow" type="button">따라치기</button>
+                            </div>
+                            <div class="mode-info" id="practice-style-info">정답을 가리고 직접 떠올려 입력합니다.</div>
                         </div>
                         <div class="select-group hidden" id="exam-info-group">
                             <label>Exam Mode</label>
@@ -7084,6 +7512,7 @@
                 <span id="scenario-progress">1 / 10</span>
                 <span id="scenario-score">SCORE 0</span>
                 <span id="scenario-timer" class="hidden">90</span>
+                <button class="btn-small hidden" id="scenario-chat" type="button">질문</button>
                 <button class="btn-small" id="scenario-quit">종료</button>
             </div>
             <div class="scenario-text" id="scenario-text"></div>
@@ -7115,6 +7544,7 @@
                 <span class="scenario-badge" id="lab-title"></span>
                 <span id="lab-progress">STEP 1 / 5</span>
                 <span id="lab-score">SCORE 0</span>
+                <button class="btn-small hidden" id="lab-chat" type="button">질문</button>
                 <button class="btn-small" id="lab-quit">종료</button>
             </div>
             <div class="lab-goal" id="lab-goal"></div>
@@ -7173,6 +7603,7 @@
             <div class="scenario-top">
                 <span class="scenario-badge">학습 모드</span>
                 <span id="learn-picker-progress"></span>
+                <button class="btn-small" id="learn-picker-chat" type="button">질문</button>
                 <button class="btn-small" id="learn-picker-home">홈</button>
             </div>
             <div class="learn-picker-intro">따라 치면서 배우는 EX280 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.</div>

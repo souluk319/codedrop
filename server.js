@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import https from "https";
-import { resolve4 } from "dns/promises";
+import { Resolver, resolve4 } from "dns/promises";
 dotenv.config({ path: [".env.local", ".env"], quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -107,7 +107,7 @@ app.use(cors({
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -336,7 +336,13 @@ const LEARN_CHAT_SYSTEM_PROMPT = [
     "항상 한국어로 답하고, 시험장에서 바로 쓸 수 있는 명령 중심으로 짧고 정확하게 설명한다.",
     "정답만 던지기보다 왜 이 명령을 쓰는지, 자주 틀리는 플래그, 검증 명령을 함께 알려준다.",
     "사용자가 현재 퀴즈를 풀고 있으면 먼저 힌트와 사고 방향을 주고, 사용자가 명시적으로 정답을 원할 때만 완성 명령을 제시한다.",
-    "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다."
+    "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다.",
+    "응답은 원칙적으로 6~10줄 안에서 끝낸다. 장황한 개론, 인사말, 면책 문구, 불필요한 Markdown 장식은 쓰지 않는다.",
+    "항상 아래 답변 골격을 따른다:",
+    "1) 핵심: 사용자의 질문에 대한 결론을 1~2문장으로 말한다.",
+    "2) 명령: 필요한 경우 바로 따라 칠 명령어를 코드블록 1개 이하로 제시한다.",
+    "3) 확인: 결과를 검증할 oc/kubectl 명령이나 관찰 포인트를 1~2개 말한다.",
+    "4) 조교의 한마디: 마지막 줄은 반드시 '조교의 한마디:'로 시작하고, 시험장에서 기억할 핵심 습관을 한 문장으로 짚는다."
 ].join(" ");
 
 const PACK_MAKER_SYSTEM_PROMPT = [
@@ -629,7 +635,7 @@ function httpsTextRequestWithLookup(urlString, { method = "GET", headers = {}, b
 
 async function httpsTextRequestWithResolve4(urlString, options = {}) {
     const url = new URL(urlString);
-    const addresses = await resolve4(url.hostname);
+    const addresses = await resolveGatewayAddresses(url.hostname);
     if (!addresses.length) throw new Error(`DNS resolve4 returned no addresses for ${url.hostname}`);
 
     let lastError;
@@ -641,6 +647,42 @@ async function httpsTextRequestWithResolve4(urlString, options = {}) {
         }
     }
     throw lastError || new Error(`KUGNUS gateway DNS fallback failed for ${url.hostname}`);
+}
+
+async function resolveGatewayAddresses(hostname) {
+    const attempts = [
+        { label: "system", run: () => resolve4(hostname) },
+        {
+            label: "cloudflare",
+            run: () => {
+                const resolver = new Resolver();
+                resolver.setServers(["1.1.1.1", "1.0.0.1"]);
+                return resolver.resolve4(hostname);
+            }
+        },
+        {
+            label: "google",
+            run: () => {
+                const resolver = new Resolver();
+                resolver.setServers(["8.8.8.8", "8.8.4.4"]);
+                return resolver.resolve4(hostname);
+            }
+        }
+    ];
+
+    const errors = [];
+    for (const attempt of attempts) {
+        try {
+            const addresses = await attempt.run();
+            if (Array.isArray(addresses) && addresses.length) return addresses;
+        } catch (err) {
+            errors.push(`${attempt.label}:${err.code || err.message}`);
+        }
+    }
+
+    const err = new Error(`KUGNUS gateway DNS fallback failed for ${hostname} (${errors.join(", ")})`);
+    err.code = "KUGNUS_DNS_FALLBACK_FAILED";
+    throw err;
 }
 
 async function fetchLlmText(target, url, options = {}) {
