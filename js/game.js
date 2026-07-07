@@ -81,7 +81,11 @@ const I18N_TEXT = {
         'packMaker.title': 'PACK MAKER',
         'packMaker.subtitle': 'Search-grounded data packs for CODEDROP',
         'packMaker.home': 'HOME',
-        'packMaker.inputPlaceholder': 'e.g. Make 50 proper nouns for Linux network commands',
+        'packMaker.inputPlaceholder': 'e.g. Make a 50-item K-pop group pack',
+        'packMaker.termLanguage': 'PROMPT TERMS',
+        'packMaker.descLanguage': 'ONE-LINE NOTE',
+        'packMaker.langKorean': 'Korean',
+        'packMaker.langEnglish': 'English',
         'packMaker.ask': 'ASK',
         'packMaker.stop': 'STOP',
         'packMaker.packTitle': 'PACK TITLE',
@@ -224,7 +228,11 @@ const I18N_TEXT = {
         'packMaker.title': 'PACK MAKER',
         'packMaker.subtitle': '검색 기반 CODEDROP 데이터팩 제작',
         'packMaker.home': 'HOME',
-        'packMaker.inputPlaceholder': '예: 리눅스 네트워크 명령어 고유명사 50개 만들어줘',
+        'packMaker.inputPlaceholder': '예: K-pop 그룹 이름 50개 팩 만들어줘',
+        'packMaker.termLanguage': '제시어',
+        'packMaker.descLanguage': '한줄설명',
+        'packMaker.langKorean': '한글',
+        'packMaker.langEnglish': '영어',
         'packMaker.ask': 'ASK',
         'packMaker.stop': 'STOP',
         'packMaker.packTitle': '팩 제목',
@@ -377,7 +385,8 @@ const els = {
     screens: {
         start: document.getElementById('start-screen'),
         result: document.getElementById('result-screen'),
-        pause: document.getElementById('pause-screen')
+        pause: document.getElementById('pause-screen'),
+        longPractice: document.getElementById('long-practice-screen')
     },
     result: {
         title: document.getElementById('result-title'),
@@ -461,6 +470,7 @@ const overlayChromeIds = [
     'lab-screen',
     'dashboard-screen',
     'learn-screen',
+    'long-practice-screen',
     'pack-maker-screen',
     'admin-pack-screen',
     'keyboard-test-screen',
@@ -494,6 +504,7 @@ const APP_ROUTE_PATHS = {
     home: '/',
     play: '/play',
     packMaker: '/pack-maker',
+    longPractice: '/long-practice',
     adminPacks: '/admin/packs',
     keyTest: '/key-test',
     ocp: '/ocp',
@@ -535,6 +546,7 @@ function hideAppOverlaysForRoute() {
         'pause-screen',
         'result-screen',
         'confirm-screen',
+        'long-practice-screen',
         'pack-maker-screen',
         'admin-pack-screen',
         'keyboard-test-screen',
@@ -582,6 +594,8 @@ function applyAppRoute(route) {
 
         if (route === 'packMaker') {
             window.PackMaker?.open();
+        } else if (route === 'longPractice') {
+            window.LongPractice?.open();
         } else if (route === 'adminPacks') {
             window.AdminPacks?.open();
         } else if (route === 'keyTest') {
@@ -624,6 +638,7 @@ function initAppRouter() {
 
     document.getElementById('pack-maker-btn')?.addEventListener('click', () => navigateAppRoute('packMaker'));
     document.getElementById('pack-maker-close')?.addEventListener('click', () => navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home'));
+    document.getElementById('long-home')?.addEventListener('click', () => navigateAppRoute('home'));
     document.getElementById('keyboard-test-btn')?.addEventListener('click', () => navigateAppRoute('keyTest'));
     document.getElementById('keytest-close')?.addEventListener('click', () => navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home'));
     document.getElementById('dashboard-close')?.addEventListener('click', () => navigateAppRoute('ocp'));
@@ -2480,6 +2495,7 @@ function renderLeaderboard(list) {
 
 // --- Mode Routing (DROP / SCENARIO / LAB / EXAM) ---
 let gameMode = 'DROP';
+let standardMode = 'DROP';
 let editionBurstTimer = null;
 
 function isOcpEditionActive() {
@@ -2527,6 +2543,35 @@ function handleStart() {
     }
 }
 
+function handleStandardStart() {
+    if (standardMode === 'LONG') {
+        navigateAppRoute('longPractice');
+        window.LongPractice?.open();
+        return;
+    }
+
+    startGame();
+}
+
+function initStandardModeControls() {
+    const buttons = Array.from(document.querySelectorAll('[data-standard-mode]'));
+    if (buttons.length === 0) return;
+
+    function setStandardMode(mode) {
+        standardMode = mode === 'LONG' ? 'LONG' : 'DROP';
+        buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.standardMode === standardMode));
+        if (els.controls.startBtn) {
+            els.controls.startBtn.textContent = standardMode === 'LONG' ? 'START LONG PRACTICE' : 'START CODEDROP';
+        }
+    }
+
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => setStandardMode(btn.dataset.standardMode));
+    });
+
+    setStandardMode(standardMode);
+}
+
 function initModeControls() {
     const modeButtons = Array.from(document.querySelectorAll('[data-mode]'));
     const catSelect = document.getElementById('scenario-category-select');
@@ -2547,6 +2592,7 @@ function initModeControls() {
     };
 
     if (modeButtons.length === 0) return;
+    initStandardModeControls();
     initDifficultyPickers();
 
     // 카테고리 옵션을 SCENARIO_PACKS에서 자동 생성
@@ -3307,6 +3353,12 @@ function applyAppLanguage(value) {
     setText('.pack-maker-subtitle', 'packMaker.subtitle');
     setText('#pack-maker-close', 'packMaker.home');
     setPlaceholder('#pack-maker-input', 'packMaker.inputPlaceholder');
+    setText('#pack-maker-term-label', 'packMaker.termLanguage');
+    setText('#pack-maker-desc-label', 'packMaker.descLanguage');
+    setText('#pack-maker-term-ko', 'packMaker.langKorean');
+    setText('#pack-maker-desc-ko', 'packMaker.langKorean');
+    setText('#pack-maker-term-en', 'packMaker.langEnglish');
+    setText('#pack-maker-desc-en', 'packMaker.langEnglish');
     setText('#pack-maker-send', stateRefSafePackMakerBusy() ? 'packMaker.stop' : 'packMaker.ask');
     setPlaceholder('#pack-maker-title', 'packMaker.packTitle');
     setPlaceholder('#pack-maker-description', 'packMaker.packDescription');
@@ -3387,6 +3439,7 @@ function initGameControls() {
     els.hud.btnHome.removeEventListener('click', goHome);
     els.screens.pause.removeEventListener('click', togglePause);
     els.controls.restartBtn.removeEventListener('click', handleRestart);
+    els.controls.startBtn.removeEventListener('click', handleStandardStart);
     if (els.musicWidget) els.musicWidget.removeEventListener('click', handleMusicWidgetClick);
 
     // Add
@@ -3396,6 +3449,7 @@ function initGameControls() {
     els.hud.btnHome.addEventListener('click', goHome);
     els.screens.pause.addEventListener('click', togglePause);
     els.controls.restartBtn.addEventListener('click', handleRestart);
+    els.controls.startBtn.addEventListener('click', handleStandardStart);
     initSessionModeControls();
 
     // Music Widget Logic
@@ -3552,8 +3606,7 @@ function initAuth() {
     els.auth.btns.logout.addEventListener('click', handleLogout);
     els.auth.btns.withdraw.addEventListener('click', handleWithdraw);
 
-    // Start Button (now in logged in view)
-    els.controls.startBtn.addEventListener('click', startGame);
+    // Start button is routed through handleStandardStart so DROP and LONG PRACTICE share one CTA.
 
     // Enter key shortcuts for Auth
     els.auth.inputs.loginPass.addEventListener('keydown', (e) => {

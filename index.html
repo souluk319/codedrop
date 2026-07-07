@@ -1816,11 +1816,109 @@
             gap: 10px;
             padding: 14px;
             border-top: 1px solid rgba(188, 19, 254, 0.2);
+            align-items: stretch;
+        }
+
+        .pack-maker-input-stack {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pack-maker-example-rail {
+            min-height: 20px;
+            overflow: hidden;
+            color: rgba(0, 243, 255, 0.78);
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 0;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+
+        .pack-maker-example-rail span {
+            display: inline-block;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            animation: packMakerExampleRise 4.2s ease both;
+        }
+
+        .pack-maker-chat-form:focus-within .pack-maker-example-rail {
+            opacity: 0.42;
         }
 
         .pack-maker-chat-form textarea {
             min-height: 72px;
             resize: none;
+        }
+
+        .pack-maker-language-toggles {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .pack-maker-lang-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+            padding: 5px;
+            border: 1px solid rgba(0, 243, 255, 0.24);
+            border-radius: 4px;
+            background: rgba(0, 243, 255, 0.045);
+        }
+
+        .pack-maker-lang-toggle-label {
+            flex: 1 1 auto;
+            min-width: 0;
+            color: rgba(234, 234, 234, 0.72);
+            font-family: var(--font-code);
+            font-size: 0.68rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pack-maker-lang-toggle button {
+            flex: 0 0 auto;
+            min-width: 64px;
+            height: 28px;
+            padding: 0 9px;
+            border: 1px solid rgba(188, 19, 254, 0.46);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.68);
+            color: rgba(234, 234, 234, 0.64);
+            font-family: var(--font-display);
+            font-size: 0.62rem;
+            cursor: pointer;
+        }
+
+        .pack-maker-lang-toggle button.active,
+        .pack-maker-lang-toggle button[aria-pressed="true"] {
+            border-color: var(--primary-neon);
+            color: #02070a;
+            background: var(--primary-neon);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.38);
+        }
+
+        @keyframes packMakerExampleRise {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            18%,
+            68% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
         }
 
         .pack-maker-tools,
@@ -1830,6 +1928,29 @@
             align-items: center;
             padding: 14px;
             border-bottom: 1px solid rgba(188, 19, 254, 0.2);
+        }
+
+        .pack-maker-tools {
+            flex-wrap: wrap;
+        }
+
+        .pack-maker-type-toggle {
+            flex: 1 0 100%;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .pack-maker-type-toggle button {
+            min-height: 42px;
+            border-color: rgba(188, 19, 254, 0.5);
+            color: rgba(224, 230, 237, 0.7);
+        }
+
+        .pack-maker-type-toggle button.active {
+            color: #000;
+            background: var(--secondary-neon);
+            box-shadow: 0 0 16px rgba(188, 19, 254, 0.42);
         }
 
         .pack-maker-tools select,
@@ -1966,6 +2087,62 @@
             overflow: auto;
             scrollbar-gutter: stable both-edges;
             padding: 14px;
+        }
+
+        .pack-maker-long-editor {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 14px;
+            padding: 14px;
+            border: 1px solid rgba(188, 19, 254, 0.24);
+            border-radius: 8px;
+            background: rgba(188, 19, 254, 0.035);
+        }
+
+        .pack-maker-long-editor textarea {
+            flex: 1;
+            min-height: 360px;
+            width: 100%;
+            resize: none;
+            border: 1px solid rgba(188, 19, 254, 0.42);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.72);
+            color: #eee;
+            padding: 14px;
+            font-family: var(--font-code);
+            line-height: 1.62;
+            outline: none;
+        }
+
+        .pack-maker-long-hint {
+            color: #aaa;
+            line-height: 1.5;
+            font-size: 0.82rem;
+        }
+
+        .pack-maker-long-saved {
+            border: 1px solid rgba(0, 243, 255, 0.35);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #dffcff;
+            background: rgba(0, 243, 255, 0.06);
+            font-family: var(--font-code);
+            font-size: 0.82rem;
+            line-height: 1.5;
+            box-shadow: inset 0 0 16px rgba(0, 243, 255, 0.08);
+        }
+
+        .pack-maker-long-actions {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 10px;
+        }
+
+        .pack-maker-long-actions .btn-small {
+            width: 100%;
         }
 
         .pack-maker-table {
@@ -2120,6 +2297,165 @@
         .pack-maker-review-alert.approved {
             border-color: rgba(57, 255, 20, 0.42);
             background: linear-gradient(135deg, rgba(57, 255, 20, 0.12), rgba(5, 5, 10, 0.88));
+        }
+
+        #long-practice-screen {
+            padding: clamp(20px, 3vw, 44px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .long-shell {
+            width: min(1500px, calc(100vw - 72px));
+            height: min(840px, calc(100dvh - 112px));
+            display: grid;
+            grid-template-columns: minmax(300px, 0.78fr) minmax(520px, 1.35fr);
+            gap: 24px;
+        }
+
+        .long-panel {
+            min-height: 0;
+            border: 1px solid rgba(0, 243, 255, 0.32);
+            border-radius: 12px;
+            background: rgba(8, 10, 16, 0.92);
+            box-shadow: 0 0 28px rgba(0, 243, 255, 0.12), inset 0 0 28px rgba(0, 0, 0, 0.55);
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .long-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .long-title {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 4vw, 4rem);
+            color: var(--primary-neon);
+            text-shadow: 0 0 20px rgba(0, 243, 255, 0.55);
+            letter-spacing: 2px;
+            line-height: 0.95;
+        }
+
+        .long-subtitle,
+        .long-note {
+            color: #aaa;
+            line-height: 1.5;
+            font-size: 0.86rem;
+        }
+
+        .long-controls {
+            display: grid;
+            gap: 14px;
+        }
+
+        .long-controls select,
+        .long-controls textarea,
+        #long-input {
+            width: 100%;
+            border: 1px solid rgba(0, 243, 255, 0.34);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.68);
+            color: #eee;
+            font-family: var(--font-code);
+            outline: none;
+        }
+
+        .long-controls textarea {
+            min-height: 180px;
+            resize: vertical;
+            padding: 12px;
+            line-height: 1.55;
+        }
+
+        .long-action-row,
+        .long-stat-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .long-stat-row {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin-bottom: 14px;
+        }
+
+        .long-stat {
+            border: 1px solid rgba(0, 243, 255, 0.18);
+            border-radius: 6px;
+            padding: 10px;
+            background: rgba(0, 243, 255, 0.04);
+        }
+
+        .long-stat span {
+            display: block;
+            color: #777;
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .long-stat strong {
+            color: #eee;
+            font-family: var(--font-display);
+            font-size: 1rem;
+        }
+
+        .long-practice-card {
+            min-height: 0;
+            display: grid;
+            grid-template-rows: auto minmax(0, 1fr) minmax(170px, 0.38fr);
+            gap: 14px;
+        }
+
+        .long-passage {
+            overflow-y: auto;
+            border: 1px solid rgba(0, 243, 255, 0.18);
+            border-radius: 8px;
+            padding: 22px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.22));
+            color: #d8d8d8;
+            font-family: var(--font-code);
+            font-size: clamp(1rem, 1.3vw, 1.35rem);
+            line-height: 1.85;
+            white-space: pre-wrap;
+        }
+
+        .long-passage .ok {
+            color: var(--success-color);
+            text-shadow: 0 0 8px rgba(0, 255, 65, 0.45);
+        }
+
+        .long-passage .miss {
+            color: var(--danger-color);
+            background: rgba(255, 48, 69, 0.14);
+            border-radius: 2px;
+        }
+
+        .long-passage .cursor {
+            color: #000;
+            background: var(--primary-neon);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.6);
+        }
+
+        #long-input {
+            min-height: 170px;
+            resize: none;
+            padding: 16px;
+            line-height: 1.55;
+            font-size: 1rem;
+        }
+
+        .long-status {
+            min-height: 20px;
+            color: var(--secondary-neon);
+            font-family: var(--font-code);
+            font-size: 0.86rem;
         }
 
         /* --- Admin Pack Review --- */
@@ -2768,6 +3104,14 @@
             .pack-maker-draft-head,
             .pack-maker-chat-form {
                 grid-template-columns: 1fr;
+            }
+
+            .pack-maker-language-toggles {
+                grid-template-columns: 1fr;
+            }
+
+            .pack-maker-lang-toggle-label {
+                font-size: 0.64rem;
             }
         }
 
@@ -4292,9 +4636,9 @@
         /* Ensure card has no padding that interferes */
         #start-screen .card {
             padding: 38px 46px 28px;
-            width: 560px;
-            height: 700px;
-            min-height: 700px;
+            width: 840px;
+            height: 760px;
+            min-height: 760px;
             max-width: 92vw;
             max-height: calc(100dvh - 120px);
             justify-content: flex-start;
@@ -4441,6 +4785,49 @@
 
         .standard-menu .select-group {
             margin: 0;
+        }
+
+        .standard-mode-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            width: 100%;
+        }
+
+        .standard-mode-choice {
+            min-height: 68px;
+            padding: 10px 12px;
+            border: 1px solid rgba(0, 243, 255, 0.28);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.44);
+            color: #858585;
+            cursor: pointer;
+            font-family: var(--font-display);
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+
+        .standard-mode-choice:hover,
+        .standard-mode-choice.active {
+            color: var(--primary-neon);
+            border-color: var(--primary-neon);
+            background: rgba(0, 243, 255, 0.08);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.18);
+        }
+
+        .standard-mode-choice strong {
+            display: block;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .standard-mode-choice span {
+            display: block;
+            font-family: var(--font-code);
+            font-size: 0.66rem;
+            line-height: 1.35;
+            color: #aaa;
         }
 
         .ocp-menu {
@@ -4845,6 +5232,26 @@
             body.ocp-edition #start-screen {
                 overflow-y: auto;
                 padding: 18px 0;
+            }
+
+            #long-practice-screen {
+                padding: 16px;
+                overflow-y: auto;
+            }
+
+            .long-shell {
+                width: calc(100vw - 28px);
+                height: auto;
+                min-height: calc(100dvh - 32px);
+                grid-template-columns: 1fr;
+            }
+
+            .long-panel {
+                padding: 16px;
+            }
+
+            .long-stat-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
             body.ocp-edition #start-screen .card {
@@ -6198,6 +6605,16 @@
                     </div>
 
                     <div class="standard-menu" id="standard-menu">
+                        <div class="standard-mode-grid" id="standard-mode-grid" aria-label="CodeDrop practice mode">
+                            <button class="standard-mode-choice active" type="button" data-standard-mode="DROP">
+                                <strong>DROP</strong>
+                                <span>낙하 단어를 빠르게 격추하는 기본 타자 게임</span>
+                            </button>
+                            <button class="standard-mode-choice" type="button" data-standard-mode="LONG">
+                                <strong>LONG PRACTICE</strong>
+                                <span>문장과 긴 글을 따라 치며 손가락 흐름 만들기</span>
+                            </button>
+                        </div>
                         <div class="select-group" id="drop-diff-group">
                             <label>System Difficulty</label>
                             <select id="difficulty-select" class="difficulty-native-select" aria-hidden="true" tabindex="-1">
@@ -6423,6 +6840,43 @@
         </div>
     </div>
 
+    <div id="long-practice-screen" class="overlay hidden" aria-hidden="true">
+        <div class="long-shell">
+            <section class="long-panel">
+                <div class="long-head">
+                    <div>
+                        <div class="long-title">LONG<br>PRACTICE</div>
+                        <div class="long-subtitle">문장, 속담, 긴 글을 정확히 따라 치는 CodeDrop 장문 연습장</div>
+                    </div>
+                    <button class="btn-small" id="long-home" type="button">HOME</button>
+                </div>
+                <div class="long-controls">
+                    <div class="select-group">
+                        <label for="long-pack-select">TEXT PACK</label>
+                        <select id="long-pack-select"></select>
+                    </div>
+                    <div class="long-note" id="long-pack-meta">공개/오리지널 연습문을 기본 제공하고, 직접 붙여넣기 텍스트도 연습할 수 있습니다.</div>
+                    <textarea id="long-custom-text" placeholder="사용자가 직접 입력한 글을 연습하려면 여기에 붙여넣으세요. 가사 템플릿을 선택한 경우에도 원문은 이 개인 연습 슬롯에 직접 붙여넣어 사용합니다."></textarea>
+                    <div class="long-action-row">
+                        <button class="btn-small" id="long-start" type="button">START TEXT</button>
+                        <button class="btn-small" id="long-reset" type="button">RESET</button>
+                    </div>
+                    <div class="long-status" id="long-status">READY</div>
+                </div>
+            </section>
+            <section class="long-panel long-practice-card">
+                <div class="long-stat-row">
+                    <div class="long-stat"><span>Progress</span><strong id="long-progress">0/0</strong></div>
+                    <div class="long-stat"><span>Accuracy</span><strong id="long-accuracy">100%</strong></div>
+                    <div class="long-stat"><span>WPM</span><strong id="long-wpm">0</strong></div>
+                    <div class="long-stat"><span>Source</span><strong id="long-source">PACK</strong></div>
+                </div>
+                <div class="long-passage" id="long-passage">텍스트팩을 선택하고 START TEXT를 누르세요.</div>
+                <textarea id="long-input" autocomplete="off" spellcheck="false" placeholder="여기에 위 문장을 그대로 입력합니다."></textarea>
+            </section>
+        </div>
+    </div>
+
     <!-- Pack Maker Screen -->
     <div id="pack-maker-screen" class="overlay hidden">
         <div class="pack-maker-head">
@@ -6437,6 +6891,10 @@
         <div class="pack-maker-shell">
             <section class="pack-maker-panel" aria-label="Pack maker chat">
                 <div class="pack-maker-tools">
+                    <div class="pack-maker-type-toggle" aria-label="Pack Maker type">
+                        <button class="btn-small active" id="pack-maker-word-mode" type="button">WORD PACK</button>
+                        <button class="btn-small" id="pack-maker-long-mode" type="button">LONG PACK</button>
+                    </div>
                     <div class="pack-maker-engine-select" id="pack-maker-engine-shell">
                         <button class="pack-maker-engine-toggle" id="pack-maker-engine-toggle" type="button"
                             aria-haspopup="listbox" aria-expanded="false">
@@ -6466,7 +6924,24 @@
                     <button class="learn-chat-bottom hidden" id="pack-maker-chat-bottom" type="button">↓ NEW</button>
                 </div>
                 <form class="pack-maker-chat-form" id="pack-maker-chat-form">
-                    <textarea id="pack-maker-input" placeholder="예: 리눅스 네트워크 명령어 고유명사 50개 만들어줘"></textarea>
+                    <div class="pack-maker-input-stack">
+                        <div class="pack-maker-example-rail" aria-hidden="true">
+                            <span id="pack-maker-example-text">K-pop 그룹 이름 50개 팩 만들어줘</span>
+                        </div>
+                        <textarea id="pack-maker-input" placeholder="예: K-pop 그룹 이름 50개 팩 만들어줘"></textarea>
+                        <div class="pack-maker-language-toggles" aria-label="Pack Maker language options">
+                            <div class="pack-maker-lang-toggle" id="pack-maker-term-language" role="group" aria-label="제시어 언어">
+                                <span class="pack-maker-lang-toggle-label" id="pack-maker-term-label">제시어</span>
+                                <button type="button" id="pack-maker-term-ko" class="active" data-pack-lang-target="term" data-pack-lang-value="korean" aria-pressed="true">한글</button>
+                                <button type="button" id="pack-maker-term-en" data-pack-lang-target="term" data-pack-lang-value="english" aria-pressed="false">English</button>
+                            </div>
+                            <div class="pack-maker-lang-toggle" id="pack-maker-desc-language" role="group" aria-label="한줄설명 언어">
+                                <span class="pack-maker-lang-toggle-label" id="pack-maker-desc-label">한줄설명</span>
+                                <button type="button" id="pack-maker-desc-ko" class="active" data-pack-lang-target="description" data-pack-lang-value="korean" aria-pressed="true">한글</button>
+                                <button type="button" id="pack-maker-desc-en" data-pack-lang-target="description" data-pack-lang-value="english" aria-pressed="false">English</button>
+                            </div>
+                        </div>
+                    </div>
                     <button class="btn-small" id="pack-maker-send" type="submit">ASK</button>
                 </form>
             </section>
@@ -6490,6 +6965,17 @@
                         </thead>
                         <tbody id="pack-maker-items-body"></tbody>
                     </table>
+                </div>
+                <div class="pack-maker-long-editor hidden" id="pack-maker-long-editor">
+                    <div class="pack-maker-long-hint">
+                        LONG PACK은 사용자가 직접 입력한 긴 글을 장문 연습팩으로 저장합니다. 저작권 있는 가사는 기본 제공하거나 검색해 가져오지 않고, 직접 붙여넣기 텍스트로만 다룹니다. 저장된 글은 USER PROVIDED로 표시됩니다.
+                    </div>
+                    <textarea id="pack-maker-long-text" placeholder="여기에 장문 연습용 텍스트를 붙여넣으세요. 저장 후 LONG PRACTICE에서 바로 선택할 수 있습니다."></textarea>
+                    <div class="pack-maker-long-saved hidden" id="pack-maker-long-saved" aria-live="polite"></div>
+                    <div class="pack-maker-long-actions">
+                        <button class="btn-small" id="pack-maker-save-long" type="button">SAVE LONG PACK</button>
+                        <button class="btn-small" id="pack-maker-open-long" type="button">OPEN LONG PRACTICE</button>
+                    </div>
                 </div>
                 <div class="pack-maker-footer">
                     <button class="btn-small" id="pack-maker-add-item" type="button">ADD ITEM</button>
@@ -7061,6 +7547,7 @@
     <script src="js/scenario_packs.js"></script>
     <script src="js/lab_packs.js"></script>
     <script src="js/lesson_packs.js"></script>
+    <script src="js/long_packs.js"></script>
     <script src="js/study_stats.js"></script>
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <script src="js/game.js"></script>
@@ -7068,6 +7555,7 @@
     <script src="js/lab_mode.js"></script>
     <script src="js/learn_mode.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/long_mode.js"></script>
     <script src="js/pack_maker.js"></script>
     <script src="js/admin_packs.js"></script>
     <script src="js/keyboard_test.js"></script>
