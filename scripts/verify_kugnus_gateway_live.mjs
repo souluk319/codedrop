@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import https from 'node:https';
+import { Resolver, resolve4 } from 'node:dns/promises';
 
 const root = process.cwd();
 const args = new Map();
@@ -68,6 +70,115 @@ function extractAnswer(data) {
     return String(choice?.message?.content || choice?.text || '').trim();
 }
 
+async function resolveGatewayAddresses(hostname) {
+    const attempts = [
+        { label: 'system', run: () => resolve4(hostname) },
+        {
+            label: 'cloudflare',
+            run: () => {
+                const resolver = new Resolver();
+                resolver.setServers(['1.1.1.1', '1.0.0.1']);
+                return resolver.resolve4(hostname);
+            }
+        },
+        {
+            label: 'google',
+            run: () => {
+                const resolver = new Resolver();
+                resolver.setServers(['8.8.8.8', '8.8.4.4']);
+                return resolver.resolve4(hostname);
+            }
+        }
+    ];
+
+    const errors = [];
+    for (const attempt of attempts) {
+        try {
+            const addresses = await attempt.run();
+            if (Array.isArray(addresses) && addresses.length) return addresses;
+        } catch (err) {
+            errors.push(`${attempt.label}:${err.code || err.message}`);
+        }
+    }
+
+    const err = new Error(`KUGNUS gateway DNS fallback failed for ${hostname} (${errors.join(', ')})`);
+    err.code = 'KUGNUS_DNS_FALLBACK_FAILED';
+    throw err;
+}
+
+function httpsTextRequestWithLookup(urlString, options, address) {
+    const url = new URL(urlString);
+    const body = options.body || '';
+    return new Promise((resolve, reject) => {
+        const request = https.request({
+            method: options.method || 'GET',
+            hostname: url.hostname,
+            port: url.port || 443,
+            path: `${url.pathname}${url.search}`,
+            headers: options.headers || {},
+            lookup: (hostname, lookupOptions, callback) => {
+                if (typeof lookupOptions === 'function') {
+                    callback = lookupOptions;
+                    lookupOptions = {};
+                }
+                if (lookupOptions?.all) {
+                    callback(null, [{ address, family: 4 }]);
+                    return;
+                }
+                callback(null, address, 4);
+            }
+        }, response => {
+            let text = '';
+            response.setEncoding('utf8');
+            response.on('data', chunk => { text += chunk; });
+            response.on('end', () => {
+                resolve({
+                    ok: response.statusCode >= 200 && response.statusCode < 300,
+                    status: response.statusCode || 0,
+                    text
+                });
+            });
+        });
+
+        request.on('error', reject);
+
+        const abort = () => request.destroy(new Error('Request aborted'));
+        if (options.signal) {
+            if (options.signal.aborted) return abort();
+            options.signal.addEventListener('abort', abort, { once: true });
+        }
+
+        if (body) request.write(body);
+        request.end();
+    });
+}
+
+async function fetchGatewayText(url, options) {
+    try {
+        const res = await fetch(url, options);
+        return {
+            ok: res.ok,
+            status: res.status,
+            text: await res.text()
+        };
+    } catch (err) {
+        const code = err?.cause?.code || err?.code || '';
+        if (code !== 'ENOTFOUND' && code !== 'EAI_AGAIN') throw err;
+
+        const parsed = new URL(url);
+        const addresses = await resolveGatewayAddresses(parsed.hostname);
+        let lastError = err;
+        for (const address of addresses) {
+            try {
+                return await httpsTextRequestWithLookup(url, options, address);
+            } catch (fallbackErr) {
+                lastError = fallbackErr;
+            }
+        }
+        throw lastError;
+    }
+}
+
 function fetchErrorDetail(err) {
     const cause = err?.cause || {};
     const code = cause.code || err?.code || '';
@@ -125,7 +236,7 @@ const started = Date.now();
 const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
 try {
-    const res = await fetch(chatCompletionsUrl(baseUrl), {
+    const res = await fetchGatewayText(chatCompletionsUrl(baseUrl), {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -140,7 +251,7 @@ try {
             stream: false
         })
     });
-    const text = await res.text();
+    const text = res.text;
     let data = {};
     try {
         data = text ? JSON.parse(text) : {};

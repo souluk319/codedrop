@@ -11,6 +11,8 @@
 const LearnMode = (() => {
 
     const LEARN_API_BASE = (typeof window !== 'undefined' && window.CODEDROP_API_BASE) || '/games/codedrop';
+    const MIN_LESSON_QUIZ_COUNT = 5;
+    const QUIZ_PASS_RATE = 0.8;
 
     const $ = (id) => document.getElementById(id);
     const ui = {};
@@ -156,6 +158,12 @@ const LearnMode = (() => {
             .map(item => ({ id: item.lesson.id, title: item.lesson.title }));
     }
 
+    function effectiveLessonQuizCount(lesson) {
+        const pack = (typeof SCENARIO_PACKS !== 'undefined') ? SCENARIO_PACKS[lesson.quizFrom] : null;
+        const poolSize = pack && Array.isArray(pack.questions) ? pack.questions.length : Number(lesson.quizCount) || 0;
+        return Math.min(Math.max(Number(lesson.quizCount) || 0, MIN_LESSON_QUIZ_COUNT), poolSize);
+    }
+
     function lessonCategories(lesson) {
         const cats = Array.isArray(lesson.categories) ? lesson.categories.slice() : [];
         if (lesson.quizFrom && !cats.includes(lesson.quizFrom)) cats.push(lesson.quizFrom);
@@ -182,11 +190,13 @@ const LearnMode = (() => {
     const session = {
         lesson: null,
         track: null,
+        practiceMode: 'solve',
         phase: 'intro',      // 'intro' | 'step' | 'quiz' | 'summary'
         stepIdx: 0,
         answered: false,     // 현재 스텝/퀴즈 완료 여부 (Enter → 다음)
         peeked: false,       // 현재 hint 스텝에서 정답 보기 사용
         stepHintOpen: false,
+        stepWrongAttempts: 0,
         peekCount: 0,
         quizList: [],
         quizIdx: 0,
@@ -194,7 +204,13 @@ const LearnMode = (() => {
         quizWrongAttempts: 0,
         quizHintUsed: false,
         quizHintOpen: false,
+        quizOutcomes: [],
         missed: [],          // 퀴즈 오답/스킵 → 요약 리뷰
+        followStartedAt: 0,
+        followCommands: 0,
+        followClean: 0,
+        followWrongAttempts: 0,
+        followChars: 0,
         reviewingStage: false,
         navReturn: null,
         chat: [],
@@ -206,14 +222,26 @@ const LearnMode = (() => {
         chatActiveMessage: null,
         chatStoppedByUser: false,
         chatAutoStick: true,
-        chatInternalScroll: false
+        chatInternalScroll: false,
+        externalContext: null,
+        chatOwnerScreen: null,
+        chatOwnerClass: ''
     };
+
+    function setPracticeMode(mode) {
+        session.practiceMode = mode === 'follow' ? 'follow' : 'solve';
+    }
+
+    function isFollowMode() {
+        return session.practiceMode === 'follow';
+    }
 
     function cacheEls() {
         ui.screen = $('learn-screen');
         ui.picker = $('learn-picker');
         ui.pickerProgress = $('learn-picker-progress');
         ui.pickerHome = $('learn-picker-home');
+        ui.pickerChat = $('learn-picker-chat');
         ui.continueBtn = $('learn-continue-btn');
         ui.trackList = $('learn-track-list');
 
@@ -265,7 +293,7 @@ const LearnMode = (() => {
 
     function ensureEls() {
         const required = [
-            'screen', 'picker', 'pickerProgress', 'pickerHome', 'continueBtn', 'trackList',
+            'screen', 'picker', 'pickerProgress', 'pickerHome', 'pickerChat', 'continueBtn', 'trackList',
             'card', 'lessonTitle', 'progress', 'quitBtn', 'prevStepBtn', 'nextStepBtn', 'introWrap', 'intro', 'beginBtn',
             'workWrap', 'desc', 'target', 'input', 'output', 'feedback', 'peekBtn',
             'hintBtn', 'skipBtn', 'nextBtn', 'chatPanel', 'chatTitle', 'chatEngine', 'chatEngineShell',
@@ -293,6 +321,8 @@ const LearnMode = (() => {
         ui.input.addEventListener('input', () => {
             if (session.phase === 'step' && !session.answered) {
                 renderTarget();
+            } else if (session.phase === 'quiz' && !session.answered && isFollowMode()) {
+                renderQuizTarget();
             }
         });
 
@@ -344,6 +374,7 @@ const LearnMode = (() => {
         ui.chatBottom.addEventListener('click', () => scrollChatToBottom(true));
 
         ui.pickerHome.addEventListener('click', quit);
+        ui.pickerChat.addEventListener('click', openPickerChat);
         ui.continueBtn.addEventListener('click', () => {
             const next = resumeLesson();
             if (next) startLesson(next.lesson.id);
@@ -523,7 +554,30 @@ const LearnMode = (() => {
         ui.chatStatus.textContent = busy ? chatEngineStatus('THINKING') : chatEngineStatus('READY');
     }
 
+    function normalizeExternalContext(context = {}) {
+        const safeKey = String(context.key || 'external')
+            .replace(/[^a-z0-9_-]+/gi, '_')
+            .replace(/^_+|_+$/g, '')
+            .slice(0, 90) || 'external';
+        return {
+            key: safeKey,
+            label: String(context.label || '따라치기 화면').slice(0, 160),
+            lessonTitle: String(context.lessonTitle || context.title || 'OCP 따라치기').slice(0, 160),
+            trackTitle: String(context.trackTitle || context.track || 'OCP Edition').slice(0, 120),
+            phase: String(context.phase || 'follow').slice(0, 60),
+            progress: String(context.progress || '').slice(0, 80),
+            prompt: String(context.prompt || '').slice(0, 2000),
+            command: String(context.command || '').slice(0, 1200),
+            output: String(context.output || '').slice(0, 2000),
+            explanation: String(context.explanation || '').slice(0, 2000),
+            hint: String(context.hint || '').slice(0, 1000)
+        };
+    }
+
     function chatStorageKey() {
+        if (session.externalContext && session.externalContext.key) {
+            return `codedrop_learn_chat_history_context_${session.externalContext.key}`;
+        }
         const lessonId = session.lesson ? session.lesson.id : 'general';
         return `codedrop_learn_chat_history_${lessonId}`;
     }
@@ -1009,13 +1063,19 @@ const LearnMode = (() => {
         session.chatAutoStick = true;
         ui.chatStatus.textContent = chatEngineStatus('READY');
         ui.chatLog.replaceChildren();
-        appendChat('system', `${chatEngineLabel()}가 현재 레슨 화면을 같이 보고 답합니다. 막히는 명령, 플래그, 왜 쓰는지 물어보세요.`);
+        const surface = session.externalContext ? '현재 OCP 학습 화면' : '현재 레슨 화면';
+        appendChat('system', `${chatEngineLabel()}가 ${surface}을 같이 보고 답합니다. 막히는 명령, 플래그, 왜 쓰는지 물어보세요.`);
         session.chat.forEach(entry => appendChat(entry.role, entry.content, { question: entry.question || '' }));
         scrollChatToBottom(true);
     }
 
     function updateChatContext() {
-        if (!ui.chatContext || !session.lesson) return;
+        if (!ui.chatContext) return;
+        if (session.externalContext) {
+            ui.chatContext.textContent = session.externalContext.label;
+            return;
+        }
+        if (!session.lesson) return;
         const phaseLabel = session.phase === 'quiz' ? '퀴즈' : (session.phase === 'step' ? '스텝' : '개념');
         ui.chatContext.textContent = `${session.lesson.title} · ${phaseLabel} · ${ui.progress.textContent || '-'}`;
     }
@@ -1057,6 +1117,20 @@ const LearnMode = (() => {
     }
 
     function currentChatContext() {
+        if (session.externalContext) {
+            return {
+                lessonTitle: session.externalContext.lessonTitle,
+                trackTitle: session.externalContext.trackTitle,
+                phase: session.externalContext.phase,
+                progress: session.externalContext.progress,
+                prompt: session.externalContext.prompt,
+                command: session.externalContext.command,
+                output: session.externalContext.output,
+                explanation: session.externalContext.explanation,
+                hint: session.externalContext.hint
+            };
+        }
+
         const ctx = {
             lessonTitle: session.lesson ? session.lesson.title : '',
             trackTitle: session.track ? session.track.title : '',
@@ -1242,10 +1316,19 @@ const LearnMode = (() => {
         }
     }
 
-    function showChatPanel() {
+    function showChatPanel(options = {}) {
+        const ownerScreen = options.ownerScreen || ui.screen;
+        const ownerClass = options.ownerClass || 'learn-session-active';
+        session.externalContext = options.externalContext ? normalizeExternalContext(options.externalContext) : null;
+        session.chatOwnerScreen = ownerScreen;
+        session.chatOwnerClass = ownerClass;
+
+        if (ownerScreen && ui.chatPanel && ui.chatPanel.parentElement !== ownerScreen) {
+            ownerScreen.appendChild(ui.chatPanel);
+        }
         ui.chatEngine.value = preferredChatEngine();
         syncChatEngineUi();
-        ui.screen.classList.add('learn-session-active');
+        if (ownerScreen) ownerScreen.classList.add(ownerClass);
         ui.chatPanel.classList.remove('hidden');
         updateChatContext();
         loadChatHistory();
@@ -1255,23 +1338,71 @@ const LearnMode = (() => {
     function hideChatPanel() {
         if (session.chatBusy) stopChat();
         closeChatEngineMenu();
+        if (session.chatOwnerScreen && session.chatOwnerClass) {
+            session.chatOwnerScreen.classList.remove(session.chatOwnerClass);
+        }
         ui.screen.classList.remove('learn-session-active');
         if (ui.chatPanel) ui.chatPanel.classList.add('hidden');
+        session.externalContext = null;
+        session.chatOwnerScreen = null;
+        session.chatOwnerClass = '';
+    }
+
+    function setExternalChatContext(context = {}) {
+        if (!session.externalContext) return;
+        session.externalContext = normalizeExternalContext(context);
+        updateChatContext();
+    }
+
+    function openContextChat(context = {}, options = {}) {
+        cacheEls();
+        if (!ensureEls()) return;
+        bindEvents();
+        const ownerScreen = context.ownerScreen || ui.screen;
+        showChatPanel({
+            ownerScreen,
+            ownerClass: 'chat-session-active',
+            externalContext: context
+        });
+        if (options.focus !== false && ui.chatInput) ui.chatInput.focus();
+    }
+
+    function openPickerChat(options = {}) {
+        const p = progress();
+        showChatPanel({
+            ownerScreen: ui.screen,
+            ownerClass: 'learn-session-active',
+            externalContext: {
+                key: 'learn-picker',
+                label: 'OCP 학습 목록',
+                lessonTitle: 'OCP 학습 목록',
+                trackTitle: 'EX280 커리큘럼',
+                phase: 'lesson-picker',
+                progress: `${p.done} / ${p.total} 레슨 완료`,
+                prompt: 'EX280 학습 커리큘럼 목록 화면입니다. 사용자가 어떤 레슨부터 보면 좋을지, 현재 보이는 학습 흐름을 질문할 수 있습니다.',
+                command: '',
+                output: '',
+                explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
+                hint: '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.'
+            }
+        });
+        if (options.focus !== false && ui.chatInput) ui.chatInput.focus();
     }
 
     // ---------- 픽커 ----------
 
-    function openPicker() {
+    function openPicker(options = {}) {
         cacheEls();
         if (!ensureEls()) return;
+        setPracticeMode(options.practiceMode);
         bindEvents();
         renderPicker();
 
         ui.card.classList.add('hidden');
         ui.summary.classList.add('hidden');
-        hideChatPanel();
         ui.picker.classList.remove('hidden');
         ui.screen.classList.remove('hidden');
+        openPickerChat({ focus: false });
     }
 
     function renderPicker() {
@@ -1314,7 +1445,7 @@ const LearnMode = (() => {
                 const rec = LearnProgress.load().lessons[lesson.id];
                 quiz.textContent = rec && rec.done
                     ? `퀴즈 ${rec.quizBest}/${rec.quizTotal}`
-                    : `${lesson.steps.length}스텝 · 퀴즈 ${lesson.quizCount}`;
+                    : `${lesson.steps.length}스텝 · 퀴즈 ${effectiveLessonQuizCount(lesson)}`;
 
                 row.append(state, title, quiz);
                 if (unlocked) {
@@ -1327,12 +1458,13 @@ const LearnMode = (() => {
 
     // ---------- 레슨 흐름 ----------
 
-    function startLesson(lessonId) {
+    function startLesson(lessonId, options = {}) {
         const found = findLesson(lessonId);
         if (!found || !isUnlocked(lessonId)) return;
 
         cacheEls();
         if (!ensureEls()) return;
+        if (options.practiceMode) setPracticeMode(options.practiceMode);
         bindEvents();
 
         session.lesson = found.lesson;
@@ -1341,11 +1473,17 @@ const LearnMode = (() => {
         session.stepIdx = 0;
         session.answered = false;
         session.peeked = false;
+        session.stepWrongAttempts = 0;
         session.peekCount = 0;
         session.quizIdx = 0;
         session.quizCorrect = 0;
         session.missed = [];
         session.quizList = buildQuizList(found.lesson);
+        session.followStartedAt = Date.now();
+        session.followCommands = 0;
+        session.followClean = 0;
+        session.followWrongAttempts = 0;
+        session.followChars = 0;
         session.reviewingStage = false;
         session.navReturn = null;
 
@@ -1369,12 +1507,21 @@ const LearnMode = (() => {
         if (typeof SCENARIO_PACKS === 'undefined' || typeof StudyCore === 'undefined') return [];
         const pack = SCENARIO_PACKS[lesson.quizFrom];
         if (!pack) return [];
+        const targetCount = Math.min(
+            Math.max(Number(lesson.quizCount) || 0, MIN_LESSON_QUIZ_COUNT),
+            pack.questions.length
+        );
         if (lesson.quizIds) {
-            return lesson.quizIds
+            const explicit = lesson.quizIds
                 .map(qid => pack.questions.find(q => q.id === qid))
                 .filter(Boolean);
+            const used = new Set(explicit.map(q => q.id));
+            const extra = StudyCore.shuffle(pack.questions)
+                .filter(q => !used.has(q.id))
+                .slice(0, Math.max(0, targetCount - explicit.length));
+            return explicit.concat(extra).slice(0, targetCount);
         }
-        return StudyCore.shuffle(pack.questions).slice(0, lesson.quizCount);
+        return StudyCore.shuffle(pack.questions).slice(0, targetCount);
     }
 
     function beginSteps() {
@@ -1414,11 +1561,13 @@ const LearnMode = (() => {
 
     function renderStep(options = {}) {
         const review = Boolean(options.review);
+        const replay = Boolean(options.replay);
         const step = currentStep();
-        session.reviewingStage = review;
+        session.reviewingStage = review || replay;
         session.answered = review;
         session.peeked = review;
         session.stepHintOpen = false;
+        session.stepWrongAttempts = 0;
 
         ui.progress.textContent = `스텝 ${session.stepIdx + 1} / ${session.lesson.steps.length}`;
         ui.desc.textContent = step.desc;
@@ -1438,8 +1587,8 @@ const LearnMode = (() => {
         ui.feedback.className = 'scenario-feedback hidden';
         ui.feedback.innerHTML = '';
 
-        const hasStepHint = scaffold === 'hint' && Boolean(step.hint);
-        ui.peekBtn.classList.toggle('hidden', review || scaffold !== 'hint');
+        const hasStepHint = !isFollowMode() && scaffold === 'hint' && Boolean(step.hint);
+        ui.peekBtn.classList.toggle('hidden', review || isFollowMode() || scaffold !== 'hint');
         ui.peekBtn.disabled = false;
         ui.peekBtn.textContent = '정답 보기';
         ui.hintBtn.classList.toggle('hidden', review || !hasStepHint);
@@ -1479,18 +1628,20 @@ const LearnMode = (() => {
         const step = currentStep();
         const cmd = step.cmd;
         const input = ui.input.value;
-        const masked = stepScaffold(step, session.stepIdx) === 'hint' && !session.peeked;
+        const masked = !isFollowMode() && stepScaffold(step, session.stepIdx) === 'hint' && !session.peeked;
 
+        renderCommandTarget(cmd, input, masked);
+    }
+
+    function renderCommandTarget(cmd, input, masked) {
         ui.target.innerHTML = '';
         for (let i = 0; i < cmd.length; i++) {
             const span = document.createElement('span');
             if (i < input.length) {
                 span.className = input[i] === cmd[i] ? 'ok' : 'bad';
+                // The target is the answer key. Keep it canonical even when the
+                // learner mistypes; the input box already shows what they typed.
                 span.textContent = cmd[i] === ' ' ? ' ' : cmd[i];
-                if (span.className === 'bad' && input[i] !== ' ') {
-                    // 오타 위치에 실제 입력 문자를 보여줘 무엇이 틀렸는지 인지시킴
-                    span.textContent = input[i];
-                }
             } else {
                 span.className = 'rest';
                 if (cmd[i] === ' ') {
@@ -1508,6 +1659,12 @@ const LearnMode = (() => {
             span.textContent = input[i] === ' ' ? ' ' : input[i];
             ui.target.appendChild(span);
         }
+    }
+
+    function renderQuizTarget() {
+        const q = currentQuiz();
+        if (!q) return;
+        renderCommandTarget(q.canonical, ui.input.value, false);
     }
 
     function peekAnswer() {
@@ -1529,6 +1686,7 @@ const LearnMode = (() => {
 
     function showStepHint() {
         if (session.phase !== 'step' || session.answered) return;
+        if (isFollowMode()) return;
         const step = currentStep();
         const scaffold = stepScaffold(step, session.stepIdx);
         if (scaffold !== 'hint' || !step.hint) return;
@@ -1558,6 +1716,8 @@ const LearnMode = (() => {
         const match = StudyCore.normalizeCmd(ui.input.value) === StudyCore.normalizeCmd(step.cmd);
 
         if (!match) {
+            session.stepWrongAttempts++;
+            if (isFollowMode()) session.followWrongAttempts++;
             if (typeof sfx !== 'undefined') sfx.playFail();
             ui.input.classList.remove('wrong');
             void ui.input.offsetWidth;
@@ -1567,6 +1727,11 @@ const LearnMode = (() => {
         }
 
         session.answered = true;
+        if (isFollowMode()) {
+            session.followCommands++;
+            session.followChars += step.cmd.length;
+            if (session.stepWrongAttempts === 0) session.followClean++;
+        }
         if (typeof sfx !== 'undefined') sfx.playSuccess();
 
         ui.input.disabled = true;
@@ -1602,6 +1767,7 @@ const LearnMode = (() => {
         session.quizIdx = 0;
         session.quizCorrect = 0;
         session.missed = [];
+        session.quizOutcomes = new Array(session.quizList.length).fill(null);
         ui.introWrap.classList.add('hidden');
         ui.workWrap.classList.remove('hidden');
         renderQuiz();
@@ -1613,8 +1779,10 @@ const LearnMode = (() => {
 
     function renderQuiz(options = {}) {
         const review = Boolean(options.review);
+        const replay = Boolean(options.replay);
         const q = currentQuiz();
-        session.reviewingStage = review;
+        if (replay && !review) resetQuizAttemptAt(session.quizIdx);
+        session.reviewingStage = review || replay;
         session.answered = review;
         session.quizWrongAttempts = 0;
         session.quizHintUsed = review;
@@ -1623,13 +1791,15 @@ const LearnMode = (() => {
         ui.progress.textContent = `퀴즈 ${session.quizIdx + 1} / ${session.quizList.length}`;
         ui.desc.textContent = q.scenario;
         updateChatContext();
-        ui.target.classList.add('hidden'); // blind — 명령이 보이지 않음
+        ui.target.classList.toggle('hidden', !isFollowMode()); // solve는 blind, follow는 canonical 공개
 
         ui.input.value = review ? q.canonical : '';
         ui.input.disabled = review;
         ui.input.classList.remove('correct', 'wrong');
         ui.input.classList.toggle('correct', review);
-        ui.input.placeholder = '배운 명령을 기억해 입력 후 Enter';
+        ui.input.placeholder = isFollowMode()
+            ? '정답 명령을 보고 그대로 입력 후 Enter'
+            : '배운 명령을 기억해 입력 후 Enter';
         if (!review) ui.input.focus();
 
         ui.output.classList.add('hidden');
@@ -1637,11 +1807,13 @@ const LearnMode = (() => {
         ui.feedback.innerHTML = '';
 
         ui.peekBtn.classList.add('hidden');
-        ui.hintBtn.classList.toggle('hidden', review);
+        ui.hintBtn.classList.toggle('hidden', review || isFollowMode());
         ui.hintBtn.disabled = false;
         ui.hintBtn.textContent = '힌트';
-        ui.skipBtn.classList.toggle('hidden', review);
+        ui.skipBtn.classList.toggle('hidden', review || isFollowMode());
         ui.nextBtn.classList.add('hidden');
+
+        if (isFollowMode()) renderQuizTarget();
 
         if (review) {
             quizFeedback('correct', '복습 중', q);
@@ -1675,23 +1847,59 @@ const LearnMode = (() => {
         focusNextAction();
     }
 
+    function syncMissedFromQuizOutcomes() {
+        session.missed = session.quizList.filter((q, idx) => {
+            const outcome = session.quizOutcomes[idx];
+            return outcome === 'dirty' || outcome === 'skip';
+        });
+    }
+
+    function resetQuizAttemptAt(idx) {
+        if (!Array.isArray(session.quizOutcomes) || idx < 0 || idx >= session.quizOutcomes.length) return;
+        const previous = session.quizOutcomes[idx];
+        if (previous === 'correct-clean' || previous === 'dirty') {
+            session.quizCorrect = Math.max(0, session.quizCorrect - 1);
+        }
+        session.quizOutcomes[idx] = null;
+        syncMissedFromQuizOutcomes();
+    }
+
+    function setQuizOutcome(outcome) {
+        const idx = session.quizIdx;
+        const previous = session.quizOutcomes[idx];
+        if (previous === 'correct-clean' || previous === 'dirty') {
+            session.quizCorrect = Math.max(0, session.quizCorrect - 1);
+        }
+        if (outcome === 'correct-clean' || outcome === 'dirty') {
+            session.quizCorrect++;
+        }
+        session.quizOutcomes[idx] = outcome;
+        syncMissedFromQuizOutcomes();
+    }
+
     function checkQuiz() {
         const q = currentQuiz();
         if (StudyCore.isCorrect(ui.input.value, q)) {
             session.answered = true;
-            session.quizCorrect++;
             const dirty = session.quizWrongAttempts > 0 || session.quizHintUsed;
-            StudyStats.record(q.id, dirty ? 'dirty' : 'correct-clean');
-            if (dirty) session.missed.push(q);
+            setQuizOutcome(dirty ? 'dirty' : 'correct-clean');
+            if (!isFollowMode()) {
+                StudyStats.record(q.id, dirty ? 'dirty' : 'correct-clean');
+            } else {
+                session.followCommands++;
+                session.followChars += q.canonical.length;
+                if (session.quizWrongAttempts === 0) session.followClean++;
+            }
 
             if (typeof sfx !== 'undefined') sfx.playSuccess();
             ui.input.disabled = true;
             ui.input.classList.remove('wrong');
             ui.input.classList.add('correct');
-            quizFeedback('correct', '정답!', q);
+            quizFeedback('correct', isFollowMode() ? '따라치기 완료' : '정답!', q);
             showQuizNext();
         } else {
             session.quizWrongAttempts++;
+            if (isFollowMode()) session.followWrongAttempts++;
             session.quizHintOpen = false;
             ui.hintBtn.textContent = '힌트';
             if (typeof sfx !== 'undefined') sfx.playFail();
@@ -1699,17 +1907,23 @@ const LearnMode = (() => {
             void ui.input.offsetWidth;
             ui.input.classList.add('wrong');
 
-            ui.feedback.className = 'scenario-feedback wrong-msg';
-            ui.feedback.innerHTML = '';
-            const msg = document.createElement('div');
-            msg.textContent = `오답입니다. 다시 시도하세요. (오답 ${session.quizWrongAttempts}회)`;
-            ui.feedback.appendChild(msg);
+            if (isFollowMode()) {
+                quizFeedback('wrong-msg', `입력이 다릅니다 · 오답 ${session.quizWrongAttempts}회`, q);
+                renderQuizTarget();
+            } else {
+                ui.feedback.className = 'scenario-feedback wrong-msg';
+                ui.feedback.innerHTML = '';
+                const msg = document.createElement('div');
+                msg.textContent = `오답입니다. 다시 시도하세요. (오답 ${session.quizWrongAttempts}회)`;
+                ui.feedback.appendChild(msg);
+            }
             updateLessonNav();
         }
     }
 
     function showQuizHint() {
         if (session.phase !== 'quiz' || session.answered) return;
+        if (isFollowMode()) return;
         const q = currentQuiz();
         if (!q.hint) return;
 
@@ -1738,8 +1952,8 @@ const LearnMode = (() => {
         if (session.phase !== 'quiz' || session.answered) return;
         const q = currentQuiz();
         session.answered = true;
-        session.missed.push(q);
-        StudyStats.record(q.id, 'skip');
+        setQuizOutcome('skip');
+        if (!isFollowMode()) StudyStats.record(q.id, 'skip');
 
         ui.input.disabled = true;
         quizFeedback('skipped', '건너뜀', q);
@@ -1757,12 +1971,13 @@ const LearnMode = (() => {
                 session.navReturn = {
                     phase: 'step',
                     idx: session.stepIdx,
-                    review: session.answered
+                    review: false,
+                    replay: true
                 };
                 session.stepIdx--;
                 ui.introWrap.classList.add('hidden');
                 ui.workWrap.classList.remove('hidden');
-                renderStep({ review: true });
+                renderStep({ replay: true });
             } else {
                 showIntroPhase();
             }
@@ -1774,23 +1989,25 @@ const LearnMode = (() => {
                 session.navReturn = {
                     phase: 'quiz',
                     idx: session.quizIdx,
-                    review: session.answered
+                    review: false,
+                    replay: true
                 };
                 session.quizIdx--;
                 ui.introWrap.classList.add('hidden');
                 ui.workWrap.classList.remove('hidden');
-                renderQuiz({ review: true });
+                renderQuiz({ replay: true });
             } else if (session.lesson.steps.length > 0) {
                 session.navReturn = {
                     phase: 'quiz',
                     idx: session.quizIdx,
-                    review: session.answered
+                    review: false,
+                    replay: true
                 };
                 session.phase = 'step';
                 session.stepIdx = session.lesson.steps.length - 1;
                 ui.introWrap.classList.add('hidden');
                 ui.workWrap.classList.remove('hidden');
-                renderStep({ review: true });
+                renderStep({ replay: true });
             } else {
                 showIntroPhase();
             }
@@ -1808,7 +2025,7 @@ const LearnMode = (() => {
             session.stepIdx = Math.max(0, Math.min(target.idx, session.lesson.steps.length - 1));
             ui.introWrap.classList.add('hidden');
             ui.workWrap.classList.remove('hidden');
-            renderStep({ review: Boolean(target.review) });
+            renderStep({ review: Boolean(target.review), replay: Boolean(target.replay) });
             return true;
         }
 
@@ -1817,7 +2034,7 @@ const LearnMode = (() => {
             session.quizIdx = Math.max(0, Math.min(target.idx, session.quizList.length - 1));
             ui.introWrap.classList.add('hidden');
             ui.workWrap.classList.remove('hidden');
-            renderQuiz({ review: Boolean(target.review) });
+            renderQuiz({ review: Boolean(target.review), replay: Boolean(target.replay) });
             return true;
         }
 
@@ -1871,7 +2088,7 @@ const LearnMode = (() => {
     function endLesson() {
         session.phase = 'summary';
         const quizTotal = session.quizList.length;
-        const passLine = Math.ceil(quizTotal / 2);
+        const passLine = Math.ceil(quizTotal * QUIZ_PASS_RATE);
         const passed = quizTotal === 0 || session.quizCorrect >= passLine;
 
         if (passed) {
@@ -1882,21 +2099,26 @@ const LearnMode = (() => {
         ui.summary.classList.remove('hidden');
         hideChatPanel();
 
-        ui.summaryTitle.textContent = passed ? 'LESSON COMPLETE' : 'ALMOST THERE';
+        ui.summaryTitle.textContent = passed
+            ? (isFollowMode() ? 'FOLLOW PRACTICE COMPLETE' : 'LESSON COMPLETE')
+            : 'ALMOST THERE';
         ui.summaryTitle.style.color = passed ? 'var(--success-color)' : 'var(--danger-color)';
 
         ui.summaryStats.innerHTML = '';
+        addStat('훈련 방식', isFollowMode() ? '따라치기' : '문제풀이');
         addStat('스텝', `${session.lesson.steps.length} 완료`);
-        addStat('정답 보기', `${session.peekCount}회`);
+        addStat(isFollowMode() ? '클린 입력' : '정답 보기',
+            isFollowMode() ? `${session.followClean} / ${session.followCommands}` : `${session.peekCount}회`);
         addStat('퀴즈', quizTotal === 0 ? '-' : `${session.quizCorrect} / ${quizTotal}`,
             passed ? '--success-color' : '--danger-color');
+        if (isFollowMode()) addStat('WPM', String(followWpm()));
 
         ui.summaryReview.innerHTML = '';
         if (!passed) {
             const note = document.createElement('div');
             note.className = 'review-title';
             note.style.color = 'var(--danger-color)';
-            note.textContent = `퀴즈 ${passLine}개 이상 맞히면 다음 레슨이 열립니다 — 한 번 더!`;
+            note.textContent = `퀴즈 ${passLine}개 이상(80%) 맞히면 다음 레슨이 열립니다 — 한 번 더!`;
             ui.summaryReview.appendChild(note);
         }
         if (session.missed.length > 0) {
@@ -1947,6 +2169,11 @@ const LearnMode = (() => {
         ui.summaryStats.appendChild(item);
     }
 
+    function followWpm() {
+        const elapsedMinutes = Math.max(0.05, (Date.now() - session.followStartedAt) / 60000);
+        return Math.round((session.followChars / 5) / elapsedMinutes);
+    }
+
     function showPicker() {
         ui.card.classList.add('hidden');
         ui.summary.classList.add('hidden');
@@ -1969,5 +2196,23 @@ const LearnMode = (() => {
         LearnProgress.reset();
     }
 
-    return { openPicker, startLesson, quit, progress, nextLesson, lessonsForCategory, isUnlocked, resetProgress };
+    function closeChatPanel() {
+        cacheEls();
+        if (!ui.chatPanel) return;
+        hideChatPanel();
+    }
+
+    return {
+        openPicker,
+        startLesson,
+        quit,
+        progress,
+        nextLesson,
+        lessonsForCategory,
+        isUnlocked,
+        resetProgress,
+        openContextChat,
+        setExternalChatContext,
+        closeChatPanel
+    };
 })();

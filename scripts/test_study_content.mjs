@@ -26,6 +26,9 @@ vm.runInContext(
 );
 
 const { WORD_PACKS, WORD_DESCS, SCENARIO_PACKS, MOCK_LABS, LESSON_TRACKS, StudyCore, StudyStats, LearnMode } = context.__codedrop;
+const learnModeSource = fs.readFileSync('js/learn_mode.js', 'utf8');
+const scenarioModeSource = fs.readFileSync('js/scenario_mode.js', 'utf8');
+const labModeSource = fs.readFileSync('js/lab_mode.js', 'utf8');
 const ids = new Set();
 const itemsById = new Map();
 
@@ -54,6 +57,14 @@ Object.entries(SCENARIO_PACKS).forEach(([key, pack]) => {
         scenarioCount++;
         validateItem(question, 'scenario');
     });
+});
+
+assert(SCENARIO_PACKS.INCIDENTS, 'INCIDENTS scenario pack is missing');
+assert(SCENARIO_PACKS.INCIDENTS.questions.length >= 7, 'INCIDENTS needs at least 7 drills');
+SCENARIO_PACKS.INCIDENTS.questions.forEach(question => {
+    assert(/증상/.test(question.scenario), `${question.id} must describe symptom`);
+    assert(/관찰/.test(question.scenario), `${question.id} must include observation material`);
+    assert(/진단/.test(question.scenario), `${question.id} must include diagnostic action`);
 });
 
 let labStepCount = 0;
@@ -135,6 +146,17 @@ LESSON_TRACKS.forEach(track => {
     });
 });
 assert(lessonCount >= 20, `LESSON_TRACKS needs at least 20 lessons (has ${lessonCount})`);
+
+assert(learnModeSource.includes('MIN_LESSON_QUIZ_COUNT = 5'),
+    'LearnMode must raise lesson quizzes to at least 5');
+assert(learnModeSource.includes('QUIZ_PASS_RATE = 0.8'),
+    'LearnMode must keep the quiz pass line at 80%');
+assert(learnModeSource.includes("practiceMode: 'solve'") && learnModeSource.includes("session.practiceMode === 'follow'"),
+    'LearnMode must support solve/follow practice modes');
+assert(scenarioModeSource.includes('function startGuided') && scenarioModeSource.includes('function startIncidentDrill'),
+    'ScenarioMode must expose guided and incident drill entrypoints');
+assert(labModeSource.includes('function startGuided') && labModeSource.includes("practiceMode === 'follow'"),
+    'LabMode must expose guided follow practice');
 
 [
     'AUTH', 'RBAC', 'SCC_SA', 'RESOURCES', 'WORKLOADS',

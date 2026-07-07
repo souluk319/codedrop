@@ -10,6 +10,8 @@ const server = read('server.js');
 const dashboard = read('js/dashboard.js');
 const stats = read('js/study_stats.js');
 const learn = read('js/learn_mode.js');
+const scenario = read('js/scenario_mode.js');
+const lab = read('js/lab_mode.js');
 const dockerCompose = read('docker-compose.local.yml');
 const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
@@ -72,6 +74,7 @@ assertUniqueIds(index);
 assert(index.includes('rel="icon" type="image/svg+xml" href="/games/codedrop/assets/favicon.svg"'), 'favicon link should point at the subpath-safe CodeDrop icon');
 assert(fs.existsSync(path.join(root, 'assets/favicon.svg')), 'CodeDrop favicon asset file is missing');
 assert(read('assets/favicon.svg').includes('CodeDrop CD favicon'), 'CodeDrop favicon should be the retro CD icon asset');
+assert(server.includes('express.json({ limit: "2mb" })'), 'server JSON body limit should support Pack Maker drafts with source metadata');
 
 function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -123,12 +126,14 @@ const expectedOrder = [
     'js/scenario_packs.js',
     'js/lab_packs.js',
     'js/lesson_packs.js',
+    'js/long_packs.js',
     'js/study_stats.js',
     'js/game.js',
     'js/scenario_mode.js',
     'js/lab_mode.js',
     'js/learn_mode.js',
     'js/dashboard.js',
+    'js/long_mode.js',
     'js/pack_maker.js',
     'js/admin_packs.js',
     'js/keyboard_test.js'
@@ -199,6 +204,7 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'learn-summary',
     'learn-picker-progress',
     'learn-picker-home',
+    'learn-picker-chat',
     'learn-continue-btn',
     'learn-track-list',
     'learn-lesson-title',
@@ -269,6 +275,13 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'pack-maker-chat-bottom',
     'pack-maker-chat-form',
     'pack-maker-input',
+    'pack-maker-example-text',
+    'pack-maker-term-language',
+    'pack-maker-desc-language',
+    'pack-maker-term-ko',
+    'pack-maker-term-en',
+    'pack-maker-desc-ko',
+    'pack-maker-desc-en',
     'pack-maker-send',
     'pack-maker-clear',
     'pack-maker-title',
@@ -329,16 +342,16 @@ assert(index.includes('scaleX(-1) rotate(-12deg)'), 'OCP hat should be mirrored 
 const startScreen = cssBlock('#start-screen');
 assert(startScreen.includes('justify-content: center;'), 'start screen should center the title and menu group by default');
 
-const baseCard = cssBlock('#start-screen .card', block => block.includes('width: 560px'));
-assert(pxValue(baseCard, 'width') === 560, 'standard card should be large enough for balanced controls');
-assert(pxValue(baseCard, 'height') === 700, 'standard card should grow with the Study/Pack Maker menu stack');
-assert(pxValue(baseCard, 'min-height') === 700, 'standard card min-height must protect against clipping the expanded menu');
+const baseCard = cssBlock('#start-screen .card', block => block.includes('width: 840px'));
+assert(pxValue(baseCard, 'width') === 840, 'standard card should match the OCP-grade frame width for the expanded menu');
+assert(pxValue(baseCard, 'height') === 760, 'standard card should grow with the Study/Pack Maker/Long Practice menu stack');
+assert(pxValue(baseCard, 'min-height') === 760, 'standard card min-height must protect against clipping the expanded menu');
 assert(baseCard.includes('max-height: calc(100dvh - 120px);'), 'standard card should stay inside MacBook/desktop viewports');
 
 const ocpCard = cssBlock('body.ocp-edition #start-screen .card');
-assert(pxValue(ocpCard, 'width') === 840, 'OCP card must widen to fit the larger mode menu');
-assert(pxValue(ocpCard, 'height') === 720, 'OCP card must grow into a balanced larger frame');
-assert(pxValue(ocpCard, 'min-height') === 720, 'OCP card min-height must protect against clipping');
+assert(pxValue(ocpCard, 'width') === 840, 'OCP card must match the standard card width so edition switching only changes theme');
+assert(pxValue(ocpCard, 'height') === 760, 'OCP card must match the standard card height so edition switching does not jump');
+assert(pxValue(ocpCard, 'min-height') === 760, 'OCP card min-height must match the standard frame and protect against clipping');
 assert(ocpCard.includes('overflow: hidden;'), 'OCP desktop card should grow instead of relying on inner scroll');
 
 const ocpLoggedIn = cssBlock('body.ocp-edition #logged-in-view');
@@ -358,8 +371,25 @@ assert(!index.includes('font-size: 5rem; text-shadow: 0 0 20px var(--primary-neo
 
 const standardLeaderboard = cssBlock('#leaderboard-preview');
 assert(pxValue(standardLeaderboard, 'width') === 440, 'standard leaderboard should balance the larger menu card width');
-assert(pxValue(standardLeaderboard, 'height') === 700, 'standard leaderboard should align with the enlarged standard menu card');
+assert(pxValue(standardLeaderboard, 'height') === 760, 'standard leaderboard should align with the enlarged standard menu card');
+assert(pxValue(standardLeaderboard, 'min-height') === 760, 'standard leaderboard should protect the aligned desktop frame height');
 assert(standardLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'standard leaderboard should stay aligned without overflowing desktop viewports');
+
+const authContainer = cssBlock('#auth-container');
+assert(authContainer.includes('width: min(660px, 100%);'), 'login card should keep a deliberate console width inside the larger frame');
+assert(authContainer.includes('url("assets/auth-city.svg")'), 'login card should use the dedicated neon city backdrop instead of empty side space');
+assert(!authContainer.includes('rgba(255, 214, 0'), 'login card should not keep the rejected amber treatment');
+const authFrameDecor = cssBlock('#start-screen .card.auth-mode::after');
+assert(authFrameDecor.includes('url("assets/auth-city.svg")'), 'login outer frame gap should include the city backdrop layer');
+assert(authFrameDecor.includes('mask-image'), 'login outer frame city layer should be masked into the gap around the inner auth panel');
+assert(index.includes('class="auth-gap-decor"'), 'login outer frame should include a dedicated gap decoration layer');
+assert(index.includes('.auth-city-wing') && index.includes('.auth-circuit-rail'), 'login gap should use cyber city/circuit decoration instead of empty margins');
+assert(index.includes('clip-path: polygon') && index.includes('mix-blend-mode: screen;'), 'login gap decoration should be shaped and blended, not a flat rectangle');
+const authDecor = cssBlock('#auth-container::before');
+assert(authDecor.includes('repeating-linear-gradient'), 'login city backdrop should retain scanline texture');
+assert(fs.existsSync(path.join(root, 'assets/auth-city.svg')), 'login city backdrop asset must be committed');
+assert(game.includes("querySelector('.card')?.classList.add('auth-mode')"), 'auth view should enable the outer frame city layer');
+assert(game.includes("querySelector('.card')?.classList.remove('auth-mode')"), 'logged-in view should remove the auth-only outer frame city layer');
 
 const modeGrid = cssBlock('body.ocp-edition .mode-grid');
 assert(modeGrid.includes('repeat(2, minmax(0, 1fr))'), 'OCP mode grid should remain a balanced 2x2 grid');
@@ -370,8 +400,9 @@ const modeChoice = cssBlock('body.ocp-edition .mode-choice');
 assert(pxValue(modeChoice, 'min-height') >= 80, 'OCP mode tiles should be large enough to read comfortably');
 
 const ocpLeaderboard = cssBlock('body.ocp-edition #leaderboard-preview');
-assert(pxValue(ocpLeaderboard, 'width') === 340, 'OCP leaderboard should stay smaller than the expanded main card');
-assert(pxValue(ocpLeaderboard, 'height') === 520, 'OCP leaderboard should read as a secondary panel');
+assert(pxValue(ocpLeaderboard, 'width') === 440, 'OCP leaderboard should match the standard leaderboard width for balanced mode switching');
+assert(pxValue(ocpLeaderboard, 'height') === 760, 'OCP leaderboard should match the standard leaderboard height');
+assert(pxValue(ocpLeaderboard, 'min-height') === 760, 'OCP leaderboard min-height should preserve the aligned desktop frame');
 assert(ocpLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'OCP leaderboard should not overflow short desktop viewports');
 
 const learnRow = cssBlock('.learn-lesson-row');
@@ -409,6 +440,22 @@ assert(learn.includes("ui.peekBtn.textContent = session.peeked ? '정답 닫기'
 assert(index.includes('ASK TO KUGNUS SERVER'), 'learn chat should default the assistant title to KUGNUS SERVER');
 assert(index.includes('data-engine="kugnus"') && index.includes('KUGNUS SERVER'), 'learn chat should expose KUGNUS SERVER as the local engine choice');
 assert(index.includes('data-engine="openai"') && index.includes('GPT 5.4 MINI'), 'learn chat should expose GPT 5.4 MINI as an engine choice');
+assert(index.includes('id="scenario-chat"'), 'scenario/exam/incident screens should expose the shared OCP chat button');
+assert(index.includes('id="lab-chat"'), 'mock lab screens should expose the shared OCP chat button');
+assert(index.includes('id="learn-picker-chat"'), 'learn picker route should expose the shared OCP chat button');
+assert(learn.includes('ui.pickerChat.addEventListener') && learn.includes('function openPickerChat(options = {})'), 'learn picker chat button should open the shared learning chat panel');
+assert(learn.includes('openPickerChat({ focus: false });'), 'learn picker should auto-place the shared chat panel without stealing curriculum focus');
+assert(learn.includes('function openContextChat(context = {}, options = {})'), 'shared OCP chat should support non-focus auto placement');
+assert(index.includes('#learn-screen.learn-session-active #learn-picker'), 'learn picker should have a two-panel layout when chat is open');
+assert(scenario.includes('function hasStudyChat()') && scenario.includes('return !!session.opts;'), 'scenario chat must be available for every OCP scenario-style session, including exam');
+assert(!scenario.includes("session.opts && session.opts.mode !== 'exam'"), 'exam mode must not be excluded from OCP study chat');
+assert(scenario.includes("if (session.opts?.mode === 'exam') return '시험 연습';"), 'exam chat context should be labelled as exam practice');
+assert(scenario.includes("openStudyChat({ focus: false });"), 'scenario/exam/incident screens should auto-place the shared chat panel on entry');
+assert(scenario.includes("LearnMode.openContextChat(chatContextForCurrentQuestion(), options)"), 'scenario screens should open the shared LearnMode chat panel');
+assert(scenario.includes("LearnMode.setExternalChatContext(chatContextForCurrentQuestion())"), 'scenario screens should refresh shared chat context per question');
+assert(lab.includes("openStudyChat({ focus: false });"), 'mock lab screens should auto-place the shared chat panel on entry');
+assert(lab.includes("LearnMode.openContextChat(chatContextForCurrentStep(), options)"), 'lab screens should open the shared LearnMode chat panel');
+assert(lab.includes("if (ui.chatBtn) ui.chatBtn.classList.remove('hidden');"), 'lab chat button should stay visible outside guided mode');
 assert(index.includes('data-engine="gemini"') && index.includes('GEMINI 2.5 FLASH'), 'learn chat and Pack Maker should expose Gemini 2.5 Flash as an engine choice');
 assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'learn chat hidden select should default to KUGNUS SERVER');
 assert(learn.includes('LEARN_API_BASE') && learn.includes('`${LEARN_API_BASE}/api/learn-chat/stream`'), 'learn chat should call the base-prefixed streaming server-side LLM proxy');
@@ -424,6 +471,7 @@ assert(learnEngineNative.includes('display: none;'), 'learn chat native engine s
 assert(index.includes('id="learn-chat-engine" aria-label="LLM 엔진 선택" aria-hidden="true" tabindex="-1"'), 'learn chat hidden engine select should not be accessible as the visible control');
 assert(server.includes('app.post("/api/learn-chat"'), 'learn chat proxy route is missing');
 assert(server.includes('app.post("/api/learn-chat/stream"'), 'streaming learn chat proxy route is missing');
+assert(server.includes("조교의 한마디:") && server.includes("6~10줄"), 'learn chat prompt should enforce concise tutor-style answers across all LLM engines');
 assert(server.includes('application/x-ndjson'), 'streaming learn chat should emit NDJSON');
 assert(server.includes('writeNdjson(res, "meta"'), 'streaming learn chat should emit meta events');
 assert(server.includes('writeNdjson(res, "delta"'), 'streaming learn chat should emit delta events');
@@ -438,6 +486,7 @@ assert(learn.includes('if (requestId !== session.chatActiveRequestId) return;'),
 assert(!learn.includes('offerKugnusFallbackIfNeeded().catch'), 'learn chat should not show KUGNUS fallback prompts just by opening the panel');
 assert(learn.includes("ui.chatSend.textContent = busy ? 'STOP' : 'ASK'"), 'ASK button should turn into STOP while streaming');
 assert(index.includes('learn-chat-bottom'), 'learn chat should include a scroll-to-latest button');
+assert(cssBlocks('.learn-chat-bottom').some(block => block.includes('right: 42px;')), 'learn chat NEW button should sit clear of the scrollbar and panel edge');
 assert(learn.includes('renderMarkdownInto'), 'learn chat should render markdown through a safe DOM renderer');
 assert(learn.includes('appendInline'), 'learn chat markdown renderer should build inline nodes safely');
 assert(learn.includes('createAssistantActions'), 'assistant answers should expose copy/retry/regenerate actions');
@@ -488,7 +537,7 @@ assert(server.includes('mergePackMakerSources(wikipediaResults, wikidataResults,
 assert(server.includes('function isLyricsExtractionRequest'), 'Pack Maker should detect lyrics-based extraction requests explicitly');
 assert(server.includes('function hasUserProvidedLyricsText'), 'Pack Maker should require pasted lyric text before lyrics extraction');
 assert(server.includes('LYRICS TEXT REQUIRED'), 'Pack Maker should not hallucinate packs from missing lyric bodies');
-assert(server.includes('가사 전문은 검색 결과만으로 가져오지 않습니다'), 'lyrics guard should explain that search snippets are not the lyric body');
+assert(server.includes('가사에서 단어를 뽑는 요청은 가사 본문이 필요합니다'), 'lyrics guard should explain that search snippets are not the lyric body');
 assert(server.includes('route: "lyrics-text-required"'), 'lyrics guard should return a non-generation route before LLM draft generation');
 assert(server.includes('label: packMakerEngineLabel(engine)'), 'Pack Maker brief/guard routes should not reference an unbuilt LLM target');
 
@@ -656,6 +705,8 @@ assert(game.includes("els.musicWidget.classList.add('island-open')"), 'music wid
 
 assert(server.includes('app.post("/api/pack-maker/chat/stream", authUser'), 'pack maker stream endpoint should require auth');
 assert(server.includes('function extractPackIntent'), 'pack maker should parse realistic natural-language pack requests');
+assert(server.includes('function normalizePackLanguageOverride'), 'pack maker should normalize explicit language overrides from the UI');
+assert(server.includes('termLanguageOverride') && server.includes('descriptionLanguageOverride'), 'pack maker stream should accept term/description language overrides');
 assert(server.includes('function cleanPackTitleCandidate'), 'pack maker should clean extracted pack titles through a dedicated helper');
 assert(server.includes('function isPackGenerationRequest'), 'pack maker should gate vague chat before starting search/generation');
 assert(server.includes('PACK BRIEF REQUIRED'), 'pack maker should answer vague prompts with a brief request instead of generating');
@@ -677,6 +728,26 @@ assert(server.includes('PACK_REPAIR_ATTEMPTS'), 'pack maker should retry/repair 
 assert(server.includes('draftMeetsPackIntent'), 'pack maker should verify draft count/language before success');
 assert(server.includes('function packDomainProfile'), 'pack maker should classify prompt domains before building generation prompts');
 assert(server.includes('"country_names"'), 'pack maker should have a dedicated country-name domain profile');
+assert(server.includes('"us_states"'), 'pack maker should have a dedicated U.S. states domain profile');
+assert(server.includes('"korean_mountains"'), 'pack maker should have a dedicated Korean mountains domain profile');
+assert(server.includes('"art_creators"'), 'pack maker should have a dedicated art creators domain profile');
+assert(server.includes('"kpop_idol_groups"'), 'pack maker should have a dedicated K-pop idol group domain profile');
+assert(server.includes('"kpop_song_theme"'), 'pack maker should have a dedicated K-pop song/theme domain profile');
+assert(server.includes('"genz_slang"'), 'pack maker should have a dedicated Gen Z slang domain profile');
+assert(server.includes('"workplace_it_slang"'), 'pack maker should have a dedicated workplace IT slang domain profile');
+assert(server.includes('"parenting_items"'), 'pack maker should have a dedicated parenting items domain profile');
+assert(server.includes('function classifyPackMakerConversation'), 'pack maker should classify generate/ideate/clarify chat turns before LLM generation');
+assert(server.includes('PACK IDEA CHECK') && server.includes('PACK IDEAS READY'), 'pack maker should have clarification and idea-ready statuses');
+assert(server.includes('function isPackConfirmationResponse'), 'pack maker should let users confirm a suggested pack with a short reply');
+assert(server.includes('대한민국 아이돌 그룹 목록'), 'K-pop idol group packs should use Korean idol group source queries');
+assert(server.includes('BTS, NCT, IVE'), 'K-pop idol group profile should allow official stylized English group names');
+assert(server.includes('멤버 개인명, 솔로 가수명, 곡명, 앨범명, 팬덤명은 제외'), 'K-pop idol group prompt should exclude members, soloists, songs, albums, and fandom names');
+assert(server.includes('function isAllowedKpopGroupTerm'), 'K-pop idol group term filter should keep official English names but reject unrelated CJK hallucinations');
+assert(server.includes('[\\u3400-\\u9fff\\u3040-\\u30ff]'), 'K-pop idol group term filter should reject Han/Japanese character hallucinations');
+assert(server.includes('KPOP_NON_GROUP_TERM_RE'), 'K-pop idol group term filter should reject common solo/individual artist false positives');
+assert(server.includes('KPOP_IDOL_GROUP_TERMS'), 'K-pop idol group profile should have a verified fallback seed list');
+assert(server.includes('function fillKpopGroupDraftItems'), 'K-pop idol group drafts should fill missing slots from verified groups instead of hallucinating');
+assert(server.includes('if (packDomainProfile(intent) === "kpop_idol_groups") return isAllowedKpopGroupTerm(term);'), 'K-pop idol group term filtering should run even when requested language is auto');
 assert(server.includes('packMakerSearchQuery(intent, message)'), 'pack maker search query should be derived from the parsed domain intent');
 assert(server.includes('const mode = body?.mode === "revision" ? "revision" : "new";'), 'pack maker server should distinguish fresh generation from draft revision');
 assert(server.includes('useContext ? sanitizeChatHistory(body?.history) : []'), 'fresh pack maker generation should ignore stale chat history');
@@ -857,8 +928,16 @@ assert(server.includes('function fallbackItemDescription'), 'Pack Maker term swe
 assert(server.includes('function inferPackDescriptionLanguage'), 'Pack Maker should infer item description language separately from term language');
 assert(server.includes('const termScope = source') && server.includes('한줄|한\\s*줄|설명|해설|뜻'), 'Pack Maker term-language parser should ignore description-language clauses');
 assert(server.includes('desc 언어: ${packDescriptionLanguageLabel(intent.descriptionLanguage)}'), 'Pack Maker prompt contract should include description language');
+assert(server.includes('TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS · ${packDescriptionLanguageLabel(intent.descriptionLanguage)} NOTES'), 'Pack Maker status should show both term and description language contracts');
 assert(server.includes('term이 영어여도 desc는 한국어로 뜻과 쓰임을 설명한다'), 'Pack Maker should support English typing terms with Korean explanations');
 assert(server.includes('function normalizeItemDescriptionForIntent'), 'Pack Maker should normalize wrong-language item descriptions server-side');
+assert(index.includes('class="pack-maker-example-rail"'), 'Pack Maker input should advertise multiple prompt examples');
+assert(index.includes('@keyframes packMakerExampleRise'), 'Pack Maker prompt examples should animate upward and fade');
+assert(packMaker.includes('PACK_MAKER_EXAMPLES'), 'Pack Maker client should rotate diverse prompt examples');
+assert(packMaker.includes('젠지들이 쓰는 신조어 팩 만들어줘'), 'Pack Maker prompt examples should include Gen Z slang');
+assert(packMaker.includes('setPackLanguage') && packMaker.includes('syncLanguageToggles'), 'Pack Maker client should manage term/note language toggles');
+assert(packMaker.includes('termLanguageOverride: stateRef.termLanguage'), 'Pack Maker client should send selected term language to the server');
+assert(packMaker.includes('descriptionLanguageOverride: stateRef.descriptionLanguage'), 'Pack Maker client should send selected description language to the server');
 assert(index.includes('#pack-maker-title,') && index.includes('#pack-maker-description') && index.includes('height: 58px;'), 'Pack Maker title and description fields should use matching header heights');
 assert(localEnvExample.includes('OPENAI_MODEL=gpt-5.4-mini'), 'local env example should document the GPT mini fallback model');
 assert(localEnvExample.includes('GEMINI_API_KEY='), 'local env example should document the optional Gemini API key');
@@ -867,6 +946,52 @@ assert(server.includes('Only OpenAI mini models are allowed for learn chat'), 'O
 assert(index.includes('<script src="js/pack_maker.js"></script>'), 'pack maker script tag is missing');
 assert(index.includes('<script src="js/admin_packs.js"></script>'), 'admin pack review script tag is missing');
 assert(index.includes('<script src="js/keyboard_test.js"></script>'), 'keyboard test script tag is missing');
+assert(index.includes('id="long-practice-screen"'), 'long practice screen is missing');
+assert(index.includes('data-standard-mode="LONG"'), 'standard menu should expose LONG PRACTICE mode');
+assert(index.includes('id="pack-maker-long-editor"'), 'Pack Maker long-form editor is missing');
+assert(index.includes('id="pack-maker-long-saved"'), 'Pack Maker long-form save confirmation is missing');
+assert(index.includes('id="pack-maker-open-long"'), 'Pack Maker should offer a direct jump to LONG PRACTICE after saving');
+assert(fs.existsSync(path.join(root, 'js/long_packs.js')), 'long text pack data file is missing');
+assert(fs.existsSync(path.join(root, 'js/long_mode.js')), 'long practice mode file is missing');
+const longPacks = read('js/long_packs.js');
+const longMode = read('js/long_mode.js');
+assert(longPacks.includes('LONG_TEXT_PACKS'), 'long packs should define LONG_TEXT_PACKS');
+assert(longPacks.includes('ko_textbook_poem_practice'), 'long packs should include Korean literary typing practice');
+assert(longPacks.includes('en_ballad_practice_safe'), 'long packs should include safe English lyric-rhythm practice');
+assert(longPacks.includes('ko_keyboard_reviewer_flow'), 'long packs should include a Korean keyboard reviewer passage');
+assert(longPacks.includes('en_keyboard_reviewer_pangram'), 'long packs should include an English keyboard reviewer passage');
+assert(longPacks.includes('mixed_keyboard_reviewer'), 'long packs should include a mixed-language keyboard reviewer passage');
+assert(longPacks.includes('template_lyrics_user_provided'), 'long packs should include one generic user-provided lyric template');
+assert(longPacks.includes('manual_lyrics_user_001'), 'user-provided lyric template should carry a generated provider ID');
+assert(longPacks.includes("preprocess: 'lyrics'"), 'user-provided lyric template should enable lyrics preprocessing');
+assert(!longPacks.includes('template_lyrics_cortis_redred'), 'long packs should not ship song-specific direct-input lyric templates');
+assert(!longPacks.includes("Never mind, I'll find someone like you"), 'copyrighted song lyric text must not be bundled in long packs');
+assert(!longPacks.includes("I'm unstoppable"), 'copyrighted song lyric text must not be bundled in long packs');
+assert(longMode.includes('const LongPractice'), 'long practice mode should expose LongPractice');
+assert(longMode.includes("pack?.type === 'template'"), 'long practice should recognize template packs');
+assert(longMode.includes('function sourceLabel') && longMode.includes('providerId'), 'long practice should surface user-provided provider IDs in pack metadata');
+assert(longMode.includes('PASTE TEXT TO START'), 'template packs should require pasted user text before starting');
+assert(longMode.includes('USER PROVIDED') && longMode.includes('ui.customText?.focus()'), 'template packs should route practice through user-provided text');
+assert(longMode.includes('function cleanLyricsText') && longMode.includes('function isLyricsStopword'), 'long practice should clean lyrics stage markers before typing');
+assert(longMode.includes('function cleanUserProvidedText') && longMode.includes('function normalizePracticePunctuation'), 'long practice should normalize user-provided brackets, spacing, and quote variants before typing');
+assert(longMode.includes('function comparableChar') && longMode.includes('isUnitReadyToComplete'), 'long practice should tolerate same-family punctuation variants and advance after a completed line');
+assert(!longMode.includes(`.replace(/[“”＂"]/g, "'")`), 'long practice should not collapse double quotes into apostrophes');
+assert(longMode.includes('duplicate') && longMode.includes('normalizeText(saved.text) === text'), 'long practice should de-duplicate repeated user-provided long pack saves');
+assert(longMode.includes('function selectPack') && longMode.includes('pendingPackId'), 'long practice should support opening the just-saved user pack directly');
+assert(longMode.includes('open(options = {})') && longMode.includes('options.autoStart') && longMode.includes("window.setTimeout(start, 0)"), 'main LONG PRACTICE should be able to open a selected text pack and start typing immediately');
+assert(longMode.includes('function listPacks()') && longMode.includes('return longState.packs.map'), 'main SELECT TEXT UI should be able to read long practice packs');
+assert(longMode.includes('function splitPracticeUnits'), 'long practice should split passages into sentence-sized typing units');
+assert(longMode.includes('function completeCurrentUnit') && longMode.includes('setCurrentUnit(longState.unitIndex + 1)'), 'long practice should advance to the next unit after a completed line');
+assert(longMode.includes('function countCorrectChars'), 'long practice should count current-line accuracy without double-counting completed lines');
+assert(longMode.includes('function playLongTypingSound') && longMode.includes('window.sfx.playKey'), 'long practice should reuse CodeDrop key sounds while typing');
+assert(game.includes("longPractice: '/long-practice'"), 'app router should include long practice route');
+assert(game.includes('LONG_SELECTOR_PREFIX') && game.includes('longPackGroupsForSelector') && game.includes("t('menu.selectText')"), 'LONG PRACTICE should switch the main pack selector into a SELECT TEXT deck');
+assert(game.includes("window.LongPractice?.open({ packId, autoStart: true })"), 'START LONG PRACTICE should pass the selected text pack and auto-start the trainer');
+assert(packMaker.includes("packKind: 'word'"), 'Pack Maker should track word/long pack type');
+assert(packMaker.includes('saveLongPack'), 'Pack Maker should save user-provided long packs');
+assert(packMaker.includes('longSaved') && packMaker.includes('openLongPracticeFromMaker') && packMaker.includes('lastLongPackId'), 'Pack Maker long-pack save UX should show feedback and open the saved pack in LONG PRACTICE');
+assert(packMaker.includes('function isLongPackIntent') && packMaker.includes('answerLongPackIntent'), 'Pack Maker should route long/lyrics practice requests into direct-input long pack mode');
+assert(packMaker.includes('LONG PACK 직접입력 모드로 전환했습니다'), 'Pack Maker should explain long-pack direct input mode in chat');
 assert(index.includes('id="admin-pack-screen"'), 'admin pack review overlay is missing');
 assert(index.includes('id="admin-pack-close" href="/games/codedrop/"'), 'admin review HOME should be a real home link fallback');
 assert(game.includes("adminPacks: '/admin/packs'"), 'app router should expose /admin/packs route');
@@ -934,6 +1059,8 @@ assert(packMaker.includes('function isObsoleteKugnusRouteEntry'), 'pack maker sh
 assert(packMaker.includes('previous.role === \'user\'') && packMaker.includes("cleaned[cleaned.length - 1] = item"), 'pack maker should collapse orphan consecutive user messages after stale route cleanup');
 assert(packMaker.includes('/\\bProvider:\\s*OLLAMA\\b/i'), 'pack maker should remove obsolete OLLAMA route chat entries');
 assert(packMaker.includes('function isLocalPackGenerationRequest'), 'pack maker should classify obvious non-generation prompts before auth/LLM');
+assert(packMaker.includes('pendingSuggestion') && packMaker.includes('confirmSuggestion'), 'pack maker should remember suggested packs and confirm them on short replies');
+assert(packMaker.includes('function shouldUseRemotePackMaker'), 'pack maker should route ideation/clarification prompts through the server pipeline');
 assert(packMaker.includes('function isDraftRevisionRequest'), 'pack maker should distinguish fresh generation from existing draft revision');
 assert(packMaker.includes('stateRef.submitting'), 'pack maker should block duplicate submits before streaming starts');
 assert(packMaker.includes('stateRef.saving'), 'pack maker should block duplicate save/public-list requests');
@@ -1027,6 +1154,14 @@ const feedbackCanonical = cssBlock('.fb-canonical');
 assert(feedbackCanonical.includes('display: block;'), 'feedback canonical command should be a separate block');
 const feedbackExplain = cssBlock('.fb-explain');
 assert(feedbackExplain.includes('display: block;'), 'feedback explanation should be a separate block');
+const renderCommandTargetBody = (learn.match(/function renderCommandTarget[\s\S]*?\/\/ 초과 입력 표시/) || [''])[0];
+assert(!renderCommandTargetBody.includes('span.textContent = input[i]'), 'follow-mode target must keep canonical text instead of replacing it with mistyped input');
+assert(learn.includes("quizFeedback('wrong-msg'") && learn.includes('if (isFollowMode()) renderQuizTarget();'), 'follow-mode quiz mistakes should keep the canonical command visible and retryable');
+assert(learn.includes('function resetQuizAttemptAt(idx)'), 'learn quiz replay should clear the previous answer/outcome before retry');
+assert(learn.includes('if (replay && !review) resetQuizAttemptAt(session.quizIdx);'), 'learn quiz replay should reset stale answer state on render');
+assert(learn.includes('renderQuiz({ review: Boolean(target.review), replay: Boolean(target.replay) });'), 'returning through previous/next navigation should preserve retry mode instead of restoring the answer sheet');
+assert(scenario.includes("showFeedback('wrong-msg'") && scenario.includes('session.guidedWrongAttempts++'), 'scenario follow-mode mistakes should keep guided feedback instead of closing the input');
+assert(lab.includes("showFeedback('wrong-msg'") && lab.includes('state.guidedWrongAttempts++'), 'lab follow-mode mistakes should keep guided feedback instead of closing the input');
 
 const labCheckItem = cssBlock('.lab-check-item');
 assert(labCheckItem.includes('grid-template-columns: 42px minmax(0, 1fr);'), 'lab checklist needs a stable marker/text grid');
@@ -1147,9 +1282,9 @@ assert(firebaseMigration.includes('/api/pack-maker/chat/stream'), 'Firebase migr
 
 console.log(JSON.stringify({
     ui: 'ok',
-    standardCard: { width: 560, height: 700 },
-    standardLeaderboard: { width: 440, height: 700 },
-    ocpCard: { width: 840, height: 720 },
-    ocpLeaderboard: { width: 340, height: 520 },
+    standardCard: { width: 840, height: 760 },
+    standardLeaderboard: { width: 440, height: 760 },
+    ocpCard: { width: 840, height: 760 },
+    ocpLeaderboard: { width: 440, height: 760 },
     scriptCount: expectedOrder.length
 }, null, 2));

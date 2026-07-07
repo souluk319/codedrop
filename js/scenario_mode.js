@@ -4,6 +4,8 @@
  *
  * 사용:
  *   ScenarioMode.start('AUTH')   — 연습 (카테고리 10문제, 힌트 허용)
+ *   ScenarioMode.startGuided('AUTH') — 따라치기 (정답 공개, 점수 미반영)
+ *   ScenarioMode.startIncidentDrill() — 오류 진단훈련
  *   ScenarioMode.startExam()     — 시험 (전 영역 15문제, 90초, 힌트 없음, 스킵큐)
  *   ScenarioMode.startReview()   — 오답노트 (약점 문제 재출제)
  */
@@ -36,7 +38,11 @@ const ScenarioMode = (() => {
         missed: [],        // 복습 리스트 (스킵/오답 경유)
         results: [],       // 시험: {q, correct}
         timerId: null,
-        timeLeft: 0
+        timeLeft: 0,
+        startedAt: 0,
+        guidedWrongAttempts: 0,
+        guidedClean: 0,
+        guidedChars: 0
     };
 
     const $ = (id) => document.getElementById(id);
@@ -49,6 +55,7 @@ const ScenarioMode = (() => {
         ui.progress = $('scenario-progress');
         ui.score = $('scenario-score');
         ui.timer = $('scenario-timer');
+        ui.chatBtn = $('scenario-chat');
         ui.text = $('scenario-text');
         ui.input = $('scenario-input');
         ui.feedback = $('scenario-feedback');
@@ -82,6 +89,29 @@ const ScenarioMode = (() => {
             bestKeyCategory: category,
             retry: () => start(category)
         });
+    }
+
+    function startGuided(category) {
+        const pack = SCENARIO_PACKS[category];
+        if (!pack) {
+            console.error('Unknown scenario category:', category);
+            return;
+        }
+        startSession({
+            mode: 'guided',
+            practiceMode: 'follow',
+            label: `${pack.label} · 따라치기`,
+            questions: StudyCore.shuffle(pack.questions).slice(0, QUESTIONS_PER_SESSION),
+            hintsAllowed: false,
+            timePerQuestion: null,
+            skipToQueue: false,
+            bestKeyCategory: null,
+            retry: () => startGuided(category)
+        });
+    }
+
+    function startIncidentDrill() {
+        start('INCIDENTS');
     }
 
     function startExam() {
@@ -130,6 +160,10 @@ const ScenarioMode = (() => {
         session.correct = 0;
         session.missed = [];
         session.results = [];
+        session.startedAt = Date.now();
+        session.guidedWrongAttempts = 0;
+        session.guidedClean = 0;
+        session.guidedChars = 0;
 
         ui.summary.classList.add('hidden');
         ui.card.classList.remove('hidden');
@@ -137,10 +171,13 @@ const ScenarioMode = (() => {
 
         bindEvents();
         renderQuestion();
+        openStudyChat({ focus: false });
+        if (ui.input && !ui.input.disabled) ui.input.focus();
     }
 
     function quit() {
         stopTimer();
+        closeStudyChat();
         ui.screen.classList.add('hidden');
         document.getElementById('start-screen').classList.remove('hidden');
         if (typeof fetchLeaderboard === 'function') fetchLeaderboard();
@@ -166,6 +203,7 @@ const ScenarioMode = (() => {
         ui.hintBtn.addEventListener('click', showHint);
         ui.skipBtn.addEventListener('click', skipQuestion);
         ui.nextBtn.addEventListener('click', nextQuestion);
+        if (ui.chatBtn) ui.chatBtn.addEventListener('click', openStudyChat);
         ui.quitBtn.addEventListener('click', quit);
         ui.retryBtn.addEventListener('click', () => session.opts.retry());
         ui.homeBtn.addEventListener('click', quit);
@@ -194,7 +232,11 @@ const ScenarioMode = (() => {
             clearInterval(session.timerId);
             session.timerId = null;
         }
-        if (ui.timer) ui.timer.classList.add('hidden');
+        if (ui.timer) {
+            ui.timer.classList.add('hidden');
+            ui.timer.classList.remove('danger');
+            ui.timer.textContent = '';
+        }
     }
 
     function renderTimer() {
@@ -223,6 +265,57 @@ const ScenarioMode = (() => {
         return session.list[session.idx];
     }
 
+    function isGuidedSession() {
+        return session.opts && session.opts.mode === 'guided';
+    }
+
+    function hasStudyChat() {
+        return !!session.opts;
+    }
+
+    function chatModeLabel() {
+        if (session.opts?.mode === 'exam') return '시험 연습';
+        if (isGuidedSession()) return '따라치기';
+        if (session.opts?.mode === 'review') return '오답 복습';
+        if ((session.opts?.label || '').includes('진단')) return '진단훈련';
+        return '문제풀이';
+    }
+
+    function chatContextForCurrentQuestion() {
+        const q = currentQuestion();
+        const modeLabel = chatModeLabel();
+        const label = session.opts?.label || 'Scenario';
+        return {
+            key: `scenario_${label}_${modeLabel}`,
+            label: `${label} · ${ui.progress?.textContent || '-'} · ${modeLabel}`,
+            lessonTitle: `${label} ${modeLabel}`,
+            trackTitle: 'OCP Scenario',
+            phase: isGuidedSession() ? 'follow' : (session.opts?.mode || 'practice'),
+            progress: ui.progress ? ui.progress.textContent : '',
+            prompt: q ? q.scenario : '',
+            command: q ? q.canonical : '',
+            explanation: q ? q.explain : '',
+            hint: q ? q.hint || '' : '',
+            ownerScreen: ui.screen
+        };
+    }
+
+    function openStudyChat(options = {}) {
+        if (!hasStudyChat() || typeof LearnMode === 'undefined' || typeof LearnMode.openContextChat !== 'function') return;
+        LearnMode.openContextChat(chatContextForCurrentQuestion(), options);
+    }
+
+    function refreshStudyChatContext() {
+        if (!hasStudyChat() || typeof LearnMode === 'undefined' || typeof LearnMode.setExternalChatContext !== 'function') return;
+        LearnMode.setExternalChatContext(chatContextForCurrentQuestion());
+    }
+
+    function closeStudyChat() {
+        if (typeof LearnMode !== 'undefined' && typeof LearnMode.closeChatPanel === 'function') {
+            LearnMode.closeChatPanel();
+        }
+    }
+
     function totalInRound() {
         return session.list.length;
     }
@@ -234,6 +327,7 @@ const ScenarioMode = (() => {
         session.answered = false;
 
         const isExam = session.opts.mode === 'exam';
+        const isGuided = isGuidedSession();
         const badge = session.phase === 'deferred'
             ? `복습 라운드 (${session.list.length}문제)`
             : session.opts.label;
@@ -245,23 +339,29 @@ const ScenarioMode = (() => {
         ui.input.value = '';
         ui.input.disabled = false;
         ui.input.classList.remove('correct', 'wrong');
+        ui.input.placeholder = isGuided ? '정답 명령을 보고 그대로 입력 후 Enter' : '';
         ui.input.focus();
 
         ui.feedback.className = 'scenario-feedback hidden';
         ui.feedback.innerHTML = '';
 
         ui.hintBtn.disabled = false;
-        ui.hintBtn.classList.toggle('hidden', !session.opts.hintsAllowed);
-        ui.skipBtn.classList.remove('hidden');
+        ui.hintBtn.classList.toggle('hidden', !session.opts.hintsAllowed || isGuided);
+        ui.skipBtn.classList.toggle('hidden', isGuided);
         ui.skipBtn.textContent = (isExam && session.phase === 'main') ? '나중에 풀기' : '건너뛰기';
         ui.nextBtn.classList.add('hidden');
+        if (ui.chatBtn) ui.chatBtn.classList.toggle('hidden', !hasStudyChat());
 
         startTimer();
+        if (isGuided) showGuide(q);
+        refreshStudyChatContext();
     }
 
     function renderScore() {
         if (session.opts.mode === 'exam') {
             ui.score.textContent = `정답 ${session.correct}`;
+        } else if (session.opts.mode === 'guided') {
+            ui.score.textContent = `FOLLOW ${session.correct}`;
         } else {
             ui.score.textContent = `SCORE ${session.score}`;
         }
@@ -281,13 +381,19 @@ const ScenarioMode = (() => {
             session.correct++;
 
             const dirty = session.wrongAttempts > 0 || session.hintUsed;
-            StudyStats.record(q.id, dirty ? 'dirty' : 'correct-clean');
-            if (dirty) session.missed.push(q);
+            if (session.opts.mode !== 'guided') {
+                StudyStats.record(q.id, dirty ? 'dirty' : 'correct-clean');
+                if (dirty) session.missed.push(q);
+            }
 
             let title;
             if (session.opts.mode === 'exam') {
                 session.results.push({ q, correct: true });
                 title = '정답!';
+            } else if (session.opts.mode === 'guided') {
+                session.guidedChars += q.canonical.length;
+                if (session.wrongAttempts === 0) session.guidedClean++;
+                title = '따라치기 완료';
             } else {
                 const pts = questionPoints();
                 session.score += pts;
@@ -304,20 +410,40 @@ const ScenarioMode = (() => {
             showNextControls();
         } else {
             session.wrongAttempts++;
+            if (session.opts.mode === 'guided') session.guidedWrongAttempts++;
             if (typeof sfx !== 'undefined') sfx.playFail();
 
             ui.input.classList.remove('wrong');
             void ui.input.offsetWidth; // reflow로 shake 재시작
             ui.input.classList.add('wrong');
 
-            ui.feedback.className = 'scenario-feedback wrong-msg';
-            ui.feedback.innerHTML = '';
-            const msg = document.createElement('div');
-            msg.textContent = session.opts.mode === 'exam'
-                ? `오답입니다. 시간 내에 다시 시도하세요. (오답 ${session.wrongAttempts}회)`
-                : `오답입니다. 다시 시도하세요. (오답 ${session.wrongAttempts}회 — 현재 문제 배점 ${questionPoints()}점)`;
-            ui.feedback.appendChild(msg);
+            if (session.opts.mode === 'guided') {
+                showFeedback('wrong-msg', `입력이 다릅니다 · 오답 ${session.wrongAttempts}회`, q);
+            } else {
+                ui.feedback.className = 'scenario-feedback wrong-msg';
+                ui.feedback.innerHTML = '';
+                const msg = document.createElement('div');
+                msg.textContent = session.opts.mode === 'exam'
+                    ? `오답입니다. 시간 내에 다시 시도하세요. (오답 ${session.wrongAttempts}회)`
+                    : `오답입니다. 다시 시도하세요. (오답 ${session.wrongAttempts}회 — 현재 문제 배점 ${questionPoints()}점)`;
+                ui.feedback.appendChild(msg);
+            }
         }
+    }
+
+    function showGuide(q) {
+        ui.feedback.className = 'scenario-feedback hint-msg';
+        ui.feedback.innerHTML = '';
+        const title = document.createElement('div');
+        title.className = 'fb-title';
+        title.textContent = '따라치기';
+        const cmd = document.createElement('div');
+        cmd.className = 'fb-canonical';
+        cmd.textContent = q.canonical;
+        const why = document.createElement('div');
+        why.className = 'fb-explain';
+        why.textContent = q.hint || q.explain;
+        ui.feedback.append(title, cmd, why);
     }
 
     function showHint() {
@@ -336,6 +462,7 @@ const ScenarioMode = (() => {
 
     function skipQuestion() {
         if (session.answered) return;
+        if (session.opts.mode === 'guided') return;
         const q = currentQuestion();
         stopTimer();
 
@@ -430,11 +557,14 @@ const ScenarioMode = (() => {
 
     function endSession() {
         stopTimer();
+        closeStudyChat();
         ui.card.classList.add('hidden');
         ui.summary.classList.remove('hidden');
 
         if (session.opts.mode === 'exam') {
             renderExamSummary();
+        } else if (session.opts.mode === 'guided') {
+            renderGuidedSummary();
         } else {
             renderPracticeSummary();
         }
@@ -510,6 +640,29 @@ const ScenarioMode = (() => {
         }
 
         renderMissedReview('건너뛴 문제 없음 — 완주!');
+    }
+
+    function renderGuidedSummary() {
+        ui.summaryTitle.textContent = 'GUIDED REPORT';
+        ui.summaryTitle.style.color = 'var(--success-color)';
+
+        ui.summaryStats.innerHTML = '';
+        addStat('훈련 방식', '따라치기');
+        addStat('완료', `${session.correct} / ${session.list.length}`);
+        addStat('클린 입력', `${session.guidedClean} / ${session.correct}`);
+        addStat('WPM', String(guidedWpm()));
+        addStat('점수 반영', '없음');
+
+        ui.summaryReview.innerHTML = '';
+        const note = document.createElement('div');
+        note.className = 'review-title';
+        note.textContent = '따라치기 기록은 시험 점수와 공식 랭킹에 반영되지 않습니다.';
+        ui.summaryReview.appendChild(note);
+    }
+
+    function guidedWpm() {
+        const elapsedMinutes = Math.max(0.05, (Date.now() - session.startedAt) / 60000);
+        return Math.round((session.guidedChars / 5) / elapsedMinutes);
     }
 
     function renderExamSummary() {
@@ -630,5 +783,5 @@ const ScenarioMode = (() => {
         });
     }
 
-    return { start, startExam, startReview, quit };
+    return { start, startGuided, startIncidentDrill, startExam, startReview, quit };
 })();

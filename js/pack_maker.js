@@ -27,7 +27,14 @@ const PackMaker = (() => {
         autoStick: true,
         internalScroll: false,
         engine: null,
-        authNoticeShown: false
+        authNoticeShown: false,
+        termLanguage: 'korean',
+        descriptionLanguage: 'korean',
+        exampleIndex: 0,
+        exampleTimer: null,
+        pendingSuggestion: null,
+        packKind: 'word',
+        lastLongPackId: ''
     };
 
     const ui = {};
@@ -78,6 +85,9 @@ const PackMaker = (() => {
             message,
             engine: ui.engine.value,
             mode,
+            confirmSuggestion: context.confirmSuggestion || null,
+            termLanguageOverride: stateRef.termLanguage,
+            descriptionLanguageOverride: stateRef.descriptionLanguage,
             history: mode === 'revision' ? (context.history || []) : [],
             draft: mode === 'revision' ? (context.draft || emptyDraft()) : emptyDraft()
         };
@@ -137,6 +147,31 @@ const PackMaker = (() => {
         openai: 'GPT 5.4 MINI'
     };
 
+    const PACK_MAKER_EXAMPLES = {
+        ko: [
+            'K-pop 그룹 이름 50개 팩 만들어줘',
+            '미국의 주 이름 50개 팩 만들어줘',
+            '국가 이름 50개 팩 만들어줘',
+            '젠지들이 쓰는 신조어 팩 만들어줘',
+            '우리나라 산 이름 50개 팩 만들어줘',
+            '예술 작가 이름 50개 팩 만들어줘',
+            '자동차 정비 부품 용어 50개 팩 만들어줘',
+            '병원 행정 용어 50개 팩 만들어줘',
+            '웹개발 CSS 속성 50개 팩 만들어줘'
+        ],
+        en: [
+            'Make a 50-item K-pop group pack',
+            'Make a 50-item US state names pack',
+            'Make a 50-item country names pack',
+            'Make a 50-item Gen Z slang pack',
+            'Make a 50-item Korean mountain names pack',
+            'Make a 50-item art creators pack',
+            'Make a 50-item auto repair parts pack',
+            'Make a 50-item hospital administration terms pack',
+            'Make a 50-item CSS properties pack'
+        ]
+    };
+
     function normalizeEngineValue(value) {
         return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'kugnus';
     }
@@ -147,6 +182,65 @@ const PackMaker = (() => {
 
     function engineLabel() {
         return ENGINE_LABELS[normalizeEngineValue(ui.engine && ui.engine.value)] || ENGINE_LABELS.kugnus;
+    }
+
+    function currentAppLanguage() {
+        return document.body && document.body.dataset.appLang === 'ko' ? 'ko' : 'en';
+    }
+
+    function normalizePackLanguage(value) {
+        return value === 'english' ? 'english' : 'korean';
+    }
+
+    function packLanguageShortLabel(value) {
+        return normalizePackLanguage(value) === 'english' ? 'EN' : 'KO';
+    }
+
+    function syncLanguageToggles() {
+        if (!ui.langButtons) return;
+        ui.langButtons.forEach(button => {
+            const target = button.dataset.packLangTarget;
+            const value = normalizePackLanguage(button.dataset.packLangValue);
+            const selected = target === 'term'
+                ? stateRef.termLanguage === value
+                : stateRef.descriptionLanguage === value;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
+    }
+
+    function setPackLanguage(target, value) {
+        const language = normalizePackLanguage(value);
+        if (target === 'term') stateRef.termLanguage = language;
+        if (target === 'description') stateRef.descriptionLanguage = language;
+        syncLanguageToggles();
+        if (!stateRef.busy && !stateRef.submitting) {
+            renderStatus(`TERMS ${packLanguageShortLabel(stateRef.termLanguage)} · NOTES ${packLanguageShortLabel(stateRef.descriptionLanguage)}`);
+        }
+    }
+
+    function updateExampleText() {
+        if (!ui.exampleText) return;
+        const examples = PACK_MAKER_EXAMPLES[currentAppLanguage()] || PACK_MAKER_EXAMPLES.en;
+        const text = examples[stateRef.exampleIndex % examples.length];
+        stateRef.exampleIndex = (stateRef.exampleIndex + 1) % examples.length;
+        ui.exampleText.textContent = text;
+        ui.exampleText.style.animation = 'none';
+        void ui.exampleText.offsetWidth;
+        ui.exampleText.style.animation = '';
+    }
+
+    function startExampleRotator() {
+        stopExampleRotator();
+        updateExampleText();
+        stateRef.exampleTimer = window.setInterval(updateExampleText, 4200);
+    }
+
+    function stopExampleRotator() {
+        if (stateRef.exampleTimer) {
+            window.clearInterval(stateRef.exampleTimer);
+            stateRef.exampleTimer = null;
+        }
     }
 
     function routeDisplayLabel(route) {
@@ -206,6 +300,42 @@ const PackMaker = (() => {
         const hasTermHint = /(?:단어|용어|고유명사|명령어|커맨드|부품|키워드|어휘|\bterms?\b|\bitems?\b|\bwords?\b|\bvocab(?:ulary)?\b|\bglossary\b|\bcommands?\b)/i.test(text);
         const hasCount = /(\d{1,3})\s*(?:개|단어|용어|terms?|items?|words?)/i.test(text);
         return hasCreateVerb && (hasPackWord || hasTermHint || hasCount);
+    }
+
+    function isPackConfirmationResponse(message) {
+        const compact = compactPrompt(message).toLowerCase();
+        return /^(응|ㅇㅇ|어|그래|좋아|좋음|그렇게해줘|그걸로|그걸로해줘|진행|가자|해줘|만들어줘|ok|okay|yes|yep|go|makeit|makeitplease)$/i.test(compact);
+    }
+
+    function isPackIdeaOrClarifyRequest(message) {
+        const text = escapeText(message);
+        if (!text) return false;
+        return /(아이디어|추천|뭐\s*만들|무슨\s*팩|팩\s*뭐|입사|취직|말귀|못\s*알아듣|육아|육아템|신조어|젠지|gen\s*z|z세대|판교|it\s*회사|회사\s*용어|업무\s*용어|리스트|알고\s*싶|배우고\s*싶|시작했는데|필요해)/i.test(text);
+    }
+
+    function isLongPackIntent(message) {
+        const text = escapeText(message).toLowerCase();
+        if (!text) return false;
+        const asksWordPack = /(단어|용어|고유명사|terms?|words?|vocab|단문)/i.test(text);
+        const asksLongPack = /(장문|긴\s*글|긴글|문단|산문|essay|paragraph|long\s*pack|long\s*practice|가사\s*장문|lyrics?\s*practice|붙여넣|paste\s*text)/i.test(text);
+        return asksLongPack && (!asksWordPack || /(장문|긴\s*글|long|paragraph|붙여넣|paste)/i.test(text));
+    }
+
+    function inferLongPackTitle(message) {
+        const text = escapeText(message);
+        const quoted = text.match(/["'“”‘’]([^"'“”‘’]{2,50})["'“”‘’]/);
+        if (quoted?.[1]) return `${quoted[1].trim()} 직접입력`;
+        if (/(젠지|gen\s*z|z세대|신조어)/i.test(text)) return '신조어 장문팩';
+        const named = text.match(/([가-힣A-Za-z0-9 ._-]{2,40})(?:\s*)(?:장문\s*타자\s*연습팩|장문\s*연습팩|장문팩|장문 팩|긴글팩|긴 글 팩|가사팩|가사 팩|long pack)/i);
+        if (named?.[1]) return `${named[1].trim()} 직접입력`;
+        if (/(가사|lyrics?)/i.test(text)) return '가사 직접입력 팩';
+        return '사용자 장문 팩';
+    }
+
+    function shouldUseRemotePackMaker(message) {
+        if (isLocalPackGenerationRequest(message) || isDraftRevisionRequest(message)) return true;
+        if (stateRef.pendingSuggestion && isPackConfirmationResponse(message)) return true;
+        return isPackIdeaOrClarifyRequest(message);
     }
 
     function isDraftRevisionRequest(message) {
@@ -948,6 +1078,7 @@ const PackMaker = (() => {
     function clearChatHistory() {
         if (stateRef.busy) stopChat();
         stateRef.chat = [];
+        stateRef.pendingSuggestion = null;
         persistChatHistory();
         renderChatHistory();
         renderStatus(state.userToken ? engineStatus('READY') : t('packMaker.guestPreview'));
@@ -1385,7 +1516,21 @@ const PackMaker = (() => {
 
     async function sendChatText(message) {
         if (stateRef.busy || stateRef.submitting) return;
-        if (!isLocalPackGenerationRequest(message)) {
+        if (stateRef.packKind !== 'long' && isLongPackIntent(message)) {
+            answerLongPackIntent(message);
+            return;
+        }
+        if (stateRef.packKind === 'long') {
+            ui.input.value = '';
+            appendChat('user', message);
+            appendChat('assistant',
+                'LONG PACK은 사용자가 직접 붙여넣은 긴 글을 장문 연습팩으로 저장하는 모드입니다.\n\n1. 오른쪽 제목에 팩 이름을 적으세요.\n2. LONG TEXT 칸에 연습할 긴 글을 붙여넣으세요.\n3. SAVE LONG PACK을 누르면 LONG PRACTICE에서 바로 선택할 수 있습니다.\n\n저작권 있는 가사는 기본 제공/검색 생성하지 않고, 사용자 직접입력 텍스트로만 저장합니다.',
+                { question: message }
+            );
+            renderStatus('LONG PACK DIRECT INPUT');
+            return;
+        }
+        if (!shouldUseRemotePackMaker(message)) {
             await answerLocalBrief(message);
             return;
         }
@@ -1404,7 +1549,10 @@ const PackMaker = (() => {
             }
 
             await offerKugnusFallbackIfNeeded();
-            const mode = isDraftRevisionRequest(message) ? 'revision' : 'new';
+            const confirmSuggestion = stateRef.pendingSuggestion && isPackConfirmationResponse(message)
+                ? stateRef.pendingSuggestion
+                : null;
+            const mode = confirmSuggestion ? 'new' : (isDraftRevisionRequest(message) ? 'revision' : 'new');
             const draftForRequest = mode === 'revision' ? collectDraftFromEditor() : emptyDraft();
             const history = mode === 'revision'
                 ? stateRef.chat
@@ -1416,6 +1564,7 @@ const PackMaker = (() => {
             ui.input.value = '';
             if (mode === 'new') {
                 stateRef.draft = emptyDraft();
+                if (!confirmSuggestion) stateRef.pendingSuggestion = null;
                 renderDraft({ updateStatus: false });
                 renderStatus('PREPARING NEW PACK');
             }
@@ -1432,7 +1581,7 @@ const PackMaker = (() => {
             stateRef.abort = new AbortController();
             setBusy(true);
 
-            const res = await fetchPackMakerStream(message, { mode, history, draft: draftForRequest });
+            const res = await fetchPackMakerStream(message, { mode, history, draft: draftForRequest, confirmSuggestion });
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
@@ -1466,8 +1615,15 @@ const PackMaker = (() => {
                 }
                 if (evt.event === 'draft') {
                     stateRef.draft = normalizeDraft(evt.draft);
+                    stateRef.pendingSuggestion = null;
                     renderDraft();
                     if (finalStatus) renderStatus(finalStatus, finalStatusDanger);
+                    return;
+                }
+                if (evt.event === 'done') {
+                    if (evt.suggestion) {
+                        stateRef.pendingSuggestion = evt.suggestion;
+                    }
                     return;
                 }
                 if (evt.event === 'error') throw new Error(evt.error || 'Pack Maker failed');
@@ -1513,7 +1669,106 @@ const PackMaker = (() => {
         }
     }
 
+    function setPackKind(kind) {
+        stateRef.packKind = kind === 'long' ? 'long' : 'word';
+        const isLong = stateRef.packKind === 'long';
+        ui.wordMode?.classList.toggle('active', !isLong);
+        ui.longMode?.classList.toggle('active', isLong);
+        ui.tableWrap?.classList.toggle('hidden', isLong);
+        ui.footer?.classList.toggle('hidden', isLong);
+        ui.longEditor?.classList.toggle('hidden', !isLong);
+        ui.longSaved?.classList.add('hidden');
+        if (ui.saveLong) {
+            ui.saveLong.disabled = false;
+            ui.saveLong.textContent = 'SAVE LONG PACK';
+        }
+        if (ui.input) {
+            ui.input.placeholder = isLong
+                ? '예: 내가 붙여넣은 긴 글을 장문 연습팩으로 저장하고 싶어'
+                : '예: K-pop 그룹 이름 50개 팩 만들어줘';
+        }
+        renderStatus(isLong ? 'LONG PACK DIRECT INPUT' : `${stateRef.draft.items.length}/120 ITEMS`);
+    }
+
+    function saveLongPack() {
+        const title = escapeText(ui.title?.value || 'User Long Pack').slice(0, 60) || 'User Long Pack';
+        const text = String(ui.longText?.value || '').trim();
+        if (!text || text.length < 20) {
+            renderStatus('LONG TEXT REQUIRED', true);
+            window.sfx?.playFail?.();
+            return;
+        }
+
+        if (!window.LongPractice || typeof window.LongPractice.saveUserPack !== 'function') {
+            renderStatus('LONG PRACTICE NOT READY', true);
+            return;
+        }
+
+        if (stateRef.saving) return;
+        stateRef.saving = true;
+        ui.longSaved?.classList.add('hidden');
+        ui.saveLong.disabled = true;
+        ui.saveLong.textContent = 'SAVING';
+        const id = window.LongPractice.saveUserPack({
+            title,
+            label: title,
+            text,
+            tags: ['user-provided', 'long-form']
+        });
+        stateRef.lastLongPackId = id || '';
+        renderStatus(id ? 'LONG PACK SAVED' : 'LONG PACK SAVE FAILED', !id);
+        if (ui.longSaved && id) {
+            ui.longSaved.textContent = `SAVED: ${title} · ${text.length} chars · LONG PRACTICE에서 바로 선택됩니다.`;
+            ui.longSaved.classList.remove('hidden');
+        }
+        if (id) window.sfx?.playSuccess?.();
+        else window.sfx?.playFail?.();
+        ui.saveLong.textContent = id ? 'SAVED' : 'SAVE LONG PACK';
+        window.setTimeout(() => {
+            stateRef.saving = false;
+            ui.saveLong.disabled = false;
+            ui.saveLong.textContent = 'SAVE LONG PACK';
+        }, 900);
+    }
+
+    function answerLongPackIntent(message) {
+        ui.input.value = '';
+        setPackKind('long');
+        if (ui.title && !ui.title.value.trim()) {
+            ui.title.value = inferLongPackTitle(message);
+        }
+        appendChat('user', message);
+        appendChat('assistant',
+            'LONG PACK 직접입력 모드로 전환했습니다.\n\n오른쪽 LONG TEXT 칸에 연습할 긴 글을 붙여넣고 SAVE LONG PACK을 누르면 LONG PRACTICE에서 바로 쓸 수 있습니다.\n\n가사나 사용자가 보유한 텍스트는 검색해서 가져오지 않고, 사용자가 직접 붙여넣은 내용만 USER PROVIDED 팩으로 저장합니다.',
+            { question: message }
+        );
+        renderStatus('LONG PACK DIRECT INPUT');
+        ui.longText?.focus();
+    }
+
+    function openLongPracticeFromMaker() {
+        const id = stateRef.lastLongPackId;
+        if (id && window.LongPractice?.selectPack) {
+            window.LongPractice.selectPack(id, true);
+        }
+        if (ui.screen) ui.screen.classList.add('hidden');
+        if (window.CodeDropRouter?.navigate) {
+            window.CodeDropRouter.navigate('longPractice');
+            window.CodeDropRouter.apply?.('longPractice');
+        } else {
+            window.LongPractice?.open?.();
+        }
+        if (id && window.LongPractice?.selectPack) {
+            window.LongPractice.selectPack(id, true);
+        }
+    }
+
     async function savePack(submitForReview = false) {
+        if (stateRef.packKind === 'long') {
+            saveLongPack();
+            return;
+        }
+
         if (stateRef.saving) return;
         if (!await ensureRemoteAuth()) {
             return;
@@ -1588,21 +1843,34 @@ const PackMaker = (() => {
         ui.route = $('pack-maker-route');
         ui.form = $('pack-maker-chat-form');
         ui.input = $('pack-maker-input');
+        ui.exampleText = $('pack-maker-example-text');
         ui.send = $('pack-maker-send');
         ui.clear = $('pack-maker-clear');
+        ui.wordMode = $('pack-maker-word-mode');
+        ui.longMode = $('pack-maker-long-mode');
         ui.chatLog = $('pack-maker-chat-log');
         ui.chatBottom = $('pack-maker-chat-bottom');
         ui.status = $('pack-maker-status');
         ui.title = $('pack-maker-title');
         ui.description = $('pack-maker-description');
         ui.reviewAlerts = $('pack-maker-review-alerts');
+        ui.tableWrap = document.querySelector('.pack-maker-table-wrap');
+        ui.footer = document.querySelector('.pack-maker-footer');
+        ui.longEditor = $('pack-maker-long-editor');
+        ui.longText = $('pack-maker-long-text');
+        ui.longSaved = $('pack-maker-long-saved');
+        ui.saveLong = $('pack-maker-save-long');
+        ui.openLong = $('pack-maker-open-long');
         ui.itemBody = $('pack-maker-items-body');
         ui.addItem = $('pack-maker-add-item');
         ui.save = $('pack-maker-save');
         ui.submit = $('pack-maker-submit');
+        ui.langButtons = Array.from(document.querySelectorAll('[data-pack-lang-target][data-pack-lang-value]'));
 
         if (!ui.screen || !ui.openBtn) return;
         setEngine(preferredEngine());
+        syncLanguageToggles();
+        startExampleRotator();
         ui.openBtn.addEventListener('click', open);
         ui.closeBtn.addEventListener('click', close);
         ui.form.addEventListener('submit', sendChat);
@@ -1612,6 +1880,11 @@ const PackMaker = (() => {
                 e.preventDefault();
                 submitChatForm();
             }
+        });
+        ui.langButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setPackLanguage(button.dataset.packLangTarget, button.dataset.packLangValue);
+            });
         });
         ui.engine.addEventListener('change', () => {
             setEngine(ui.engine.value);
@@ -1644,6 +1917,10 @@ const PackMaker = (() => {
             addItemRow({}, ui.itemBody.children.length);
             renderStatus('UNSAVED DRAFT');
         });
+        ui.wordMode?.addEventListener('click', () => setPackKind('word'));
+        ui.longMode?.addEventListener('click', () => setPackKind('long'));
+        ui.saveLong?.addEventListener('click', saveLongPack);
+        ui.openLong?.addEventListener('click', openLongPracticeFromMaker);
         ui.save.addEventListener('click', () => savePack(false));
         ui.submit.addEventListener('click', () => savePack(true));
         if (ui.clear) ui.clear.addEventListener('click', clearChatHistory);
@@ -1656,6 +1933,7 @@ const PackMaker = (() => {
                 renderStatus(t('packMaker.guestPreview'));
             }
             renderReviewAlerts();
+            updateExampleText();
             if (!stateRef.busy) renderChatHistory();
         });
 
@@ -1669,6 +1947,7 @@ const PackMaker = (() => {
         loadDraftFromStorage();
         loadChatHistory();
         renderDraft();
+        setPackKind(stateRef.packKind);
         renderChatHistory();
         renderReviewAlerts();
         refreshPacks();

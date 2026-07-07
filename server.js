@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import https from "https";
-import { resolve4 } from "dns/promises";
+import { Resolver, resolve4 } from "dns/promises";
 dotenv.config({ path: [".env.local", ".env"], quiet: true });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -107,7 +107,7 @@ app.use(cors({
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type", "Authorization"]
 }));
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use((req, res, next) => {
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -242,6 +242,22 @@ const PACK_MAKER_BATCH_SIZE = 25;
 const PACK_MAKER_BATCH_TIMEOUT_MS = Math.max(10_000, Math.min(Number(process.env.PACK_MAKER_BATCH_TIMEOUT_MS) || 180_000, 180_000));
 const PACK_MAKER_TEMPERATURE = Math.max(0.1, Math.min(Number(process.env.PACK_MAKER_TEMPERATURE) || 0.65, 1.2));
 const PACK_MAKER_SWEEP_TEMPERATURE = Math.max(PACK_MAKER_TEMPERATURE, Math.min(Number(process.env.PACK_MAKER_SWEEP_TEMPERATURE) || 0.85, 1.3));
+const KPOP_NON_GROUP_TERM_RE = /^(?:조PD|조피디|JYP|박진영|싸이|PSY|아이유|IU|보아|BoA|비|Rain|청하|현아|선미|태연|태민|지코|ZICO|지드래곤|G-?DRAGON|GD|에일리|Ailee|크러쉬|Crush|헤이즈|Heize|딘|DEAN)$/i;
+const KPOP_IDOL_GROUP_TERMS = [
+    "H.O.T.", "S.E.S.", "Fin.K.L", "god", "신화", "클릭비", "코요태", "플라이 투 더 스카이",
+    "동방신기", "TVXQ", "Super Junior", "BIGBANG", "Wonder Girls", "소녀시대", "Girls' Generation",
+    "KARA", "SHINee", "2PM", "2AM", "2NE1", "티아라", "f(x)", "BEAST", "Highlight",
+    "INFINITE", "SISTAR", "miss A", "Apink", "B1A4", "EXID", "BTOB", "VIXX", "EXO", "AOA",
+    "BTS", "방탄소년단", "Red Velvet", "레드벨벳", "MAMAMOO", "마마무", "GOT7", "WINNER",
+    "iKON", "TWICE", "트와이스", "SEVENTEEN", "세븐틴", "GFRIEND", "여자친구", "MONSTA X",
+    "BLACKPINK", "블랙핑크", "NCT", "ASTRO", "PENTAGON", "Stray Kids", "스트레이 키즈",
+    "(G)I-DLE", "아이들", "IZ*ONE", "ITZY", "ATEEZ", "TXT", "TOMORROW X TOGETHER",
+    "aespa", "에스파", "ENHYPEN", "IVE", "아이브", "LE SSERAFIM", "르세라핌", "NewJeans",
+    "뉴진스", "NMIXX", "RIIZE", "ZEROBASEONE", "BOYNEXTDOOR", "BABYMONSTER", "TWS", "ILLIT",
+    "KISS OF LIFE", "tripleS", "Kep1er", "THE BOYZ", "LOONA", "이달의 소녀", "Dreamcatcher",
+    "드림캐쳐", "WJSN", "우주소녀", "Oh My Girl", "오마이걸", "Lovelyz", "TREASURE", "CRAVITY",
+    "STAYC", "fromis_9", "프로미스나인", "NCT DREAM", "NCT 127", "NCT WISH"
+];
 const REVIEW_EMAIL_TIMEOUT_MS = Math.max(3000, Math.min(Number(process.env.REVIEW_EMAIL_TIMEOUT_MS) || 10_000, 30_000));
 const PACK_ADMIN_NICKNAMES = new Set(
     (process.env.PACK_ADMIN_NICKNAMES || "")
@@ -320,7 +336,13 @@ const LEARN_CHAT_SYSTEM_PROMPT = [
     "항상 한국어로 답하고, 시험장에서 바로 쓸 수 있는 명령 중심으로 짧고 정확하게 설명한다.",
     "정답만 던지기보다 왜 이 명령을 쓰는지, 자주 틀리는 플래그, 검증 명령을 함께 알려준다.",
     "사용자가 현재 퀴즈를 풀고 있으면 먼저 힌트와 사고 방향을 주고, 사용자가 명시적으로 정답을 원할 때만 완성 명령을 제시한다.",
-    "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다."
+    "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다.",
+    "응답은 원칙적으로 6~10줄 안에서 끝낸다. 장황한 개론, 인사말, 면책 문구, 불필요한 Markdown 장식은 쓰지 않는다.",
+    "항상 아래 답변 골격을 따른다:",
+    "1) 핵심: 사용자의 질문에 대한 결론을 1~2문장으로 말한다.",
+    "2) 명령: 필요한 경우 바로 따라 칠 명령어를 코드블록 1개 이하로 제시한다.",
+    "3) 확인: 결과를 검증할 oc/kubectl 명령이나 관찰 포인트를 1~2개 말한다.",
+    "4) 조교의 한마디: 마지막 줄은 반드시 '조교의 한마디:'로 시작하고, 시험장에서 기억할 핵심 습관을 한 문장으로 짚는다."
 ].join(" ");
 
 const PACK_MAKER_SYSTEM_PROMPT = [
@@ -613,7 +635,7 @@ function httpsTextRequestWithLookup(urlString, { method = "GET", headers = {}, b
 
 async function httpsTextRequestWithResolve4(urlString, options = {}) {
     const url = new URL(urlString);
-    const addresses = await resolve4(url.hostname);
+    const addresses = await resolveGatewayAddresses(url.hostname);
     if (!addresses.length) throw new Error(`DNS resolve4 returned no addresses for ${url.hostname}`);
 
     let lastError;
@@ -625,6 +647,42 @@ async function httpsTextRequestWithResolve4(urlString, options = {}) {
         }
     }
     throw lastError || new Error(`KUGNUS gateway DNS fallback failed for ${url.hostname}`);
+}
+
+async function resolveGatewayAddresses(hostname) {
+    const attempts = [
+        { label: "system", run: () => resolve4(hostname) },
+        {
+            label: "cloudflare",
+            run: () => {
+                const resolver = new Resolver();
+                resolver.setServers(["1.1.1.1", "1.0.0.1"]);
+                return resolver.resolve4(hostname);
+            }
+        },
+        {
+            label: "google",
+            run: () => {
+                const resolver = new Resolver();
+                resolver.setServers(["8.8.8.8", "8.8.4.4"]);
+                return resolver.resolve4(hostname);
+            }
+        }
+    ];
+
+    const errors = [];
+    for (const attempt of attempts) {
+        try {
+            const addresses = await attempt.run();
+            if (Array.isArray(addresses) && addresses.length) return addresses;
+        } catch (err) {
+            errors.push(`${attempt.label}:${err.code || err.message}`);
+        }
+    }
+
+    const err = new Error(`KUGNUS gateway DNS fallback failed for ${hostname} (${errors.join(", ")})`);
+    err.code = "KUGNUS_DNS_FALLBACK_FAILED";
+    throw err;
 }
 
 async function fetchLlmText(target, url, options = {}) {
@@ -994,16 +1052,19 @@ function clampPackTargetCount(value) {
 }
 
 function cleanPackTitleCandidate(value) {
-    return sanitizePackText(String(value || "")
+    const cleaned = sanitizePackText(String(value || "")
         .replace(/\d{1,3}\s*(?:개(?:만)?|단어|용어|terms?|items?|words?)\s*(?:로|으로)?/gi, " ")
         .replace(/(?:^|\s)(?:로|으로)(?=\s|팩|$)/g, " ")
         .replace(/(?:로|으로)\s*(?=팩)/g, " ")
         .replace(/^.*(?:뽑아서|뽑아|만들어|생성해서|제작해서|작성해서)\s*/i, "")
+        .replace(/^.*(?:기반으로|기반|관련해서|관련)\s*/i, "")
         .replace(/^(?:만|만큼|정도)\s*/i, "")
         .replace(/^(?:한글|한국어|한국말|영어|영문|english)\s*(?:로\s*된|로된|로)?\s*/i, "")
         .replace(/^(?:단어|용어)\s*/i, "")
         .replace(/\s{2,}/g, " ")
         .trim(), MAX_PACK_TITLE_LEN);
+    if (/^(?:팩|단어\s*팩|용어\s*팩|키워드\s*팩|data\s*pack)$/i.test(cleaned)) return "";
+    return cleaned;
 }
 
 function extractPackTitle(message) {
@@ -1025,6 +1086,38 @@ function extractPackTitle(message) {
     const candidates = [...text.matchAll(/([가-힣A-Za-z0-9_-]+(?:\s+[가-힣A-Za-z0-9_-]+){0,3}\s*팩)/g)];
     const fallback = candidates.at(-1);
     return fallback ? cleanPackTitleCandidate(fallback[1]) : "";
+}
+
+function inferPackTitleFallback(message, topic) {
+    const text = `${message || ""} ${topic || ""}`;
+    if (/(미국.{0,12}주|미국의\s*주|u\.?s\.?\s*states?|united\s*states\s*states?)/i.test(text)) {
+        return "미국 주 이름 팩";
+    }
+    if (/((우리나라|한국|대한민국).{0,18}(산|명산|mountain)|korean\s*mountains?)/i.test(text)) {
+        return "우리나라 산 이름 팩";
+    }
+    if (/(예술\s*작가|미술\s*작가|화가|조각가|아티스트|artist|artists|painters?|sculptors?)/i.test(text)) {
+        return "예술 작가 이름 팩";
+    }
+    if (/(국가|국명|나라|세계\s*나라|country|countries|nation|nations)/i.test(text)) {
+        return "국가 이름 팩";
+    }
+    if (/(국내\s*아이돌|한국\s*아이돌|아이돌\s*그룹|케이팝\s*그룹|k[-\s]?pop\s*(?:idol\s*)?groups?)/i.test(text)) {
+        return /걸그룹/i.test(text) ? "걸그룹 팩" : (/보이그룹/i.test(text) ? "보이그룹 팩" : "아이돌 그룹 팩");
+    }
+    if (/(젠지|z세대|gen\s*z|신조어|유행어|밈|slang|meme)/i.test(text)) {
+        return "젠지 신조어 팩";
+    }
+    if (/(판교|it\s*회사|스타트업|개발팀|업무\s*용어|회사\s*용어|말귀|사투리)/i.test(text)) {
+        return "판교사투리 팩";
+    }
+    if (/(육아템|육아|신생아|출산|아기|수유|기저귀|parenting|baby)/i.test(text)) {
+        return "육아템 팩";
+    }
+    if (/(코르티스|cortis|redred)/i.test(text) && /(노래|곡|싱글|앨범|분위기|테마|theme|song|single|album)/i.test(text)) {
+        return "REDRED 테마 팩";
+    }
+    return "";
 }
 
 function inferPackTermLanguage(message) {
@@ -1056,15 +1149,43 @@ function inferPackDescriptionLanguage(message) {
     return "korean";
 }
 
-function extractPackIntent(message) {
+function normalizePackLanguageOverride(value) {
+    if (value === "korean" || value === "english") return value;
+    return "";
+}
+
+function isPackConfirmationResponse(message) {
+    const compact = String(message || "").replace(/\s+/g, "").trim().toLowerCase();
+    return /^(응|ㅇㅇ|어|그래|좋아|좋음|그렇게해줘|그걸로|그걸로해줘|진행|가자|해줘|만들어줘|ok|okay|yes|yep|go|makeit|makeitplease)$/i.test(compact);
+}
+
+function sanitizePendingPackSuggestion(value, options = {}) {
+    if (!value || typeof value !== "object") return null;
+    const title = sanitizePackText(value.title, MAX_PACK_TITLE_LEN);
+    const topic = sanitizePackText(value.topic, 180);
+    if (!title && !topic) return null;
+    return {
+        requestedCount: clampPackTargetCount(value.requestedCount || value.count || 50),
+        termLanguage: normalizePackLanguageOverride(options.termLanguageOverride) || normalizePackLanguageOverride(value.termLanguage) || "korean",
+        descriptionLanguage: normalizePackLanguageOverride(options.descriptionLanguageOverride) || normalizePackLanguageOverride(value.descriptionLanguage) || "korean",
+        title: title || inferPackTitleFallback(topic, topic) || "추천 팩",
+        topic: topic || title || "추천 도메인 용어"
+    };
+}
+
+function extractPackIntent(message, options = {}) {
     const text = sanitizePackText(message, MAX_CHAT_MESSAGE_LEN);
+    const confirmedSuggestion = sanitizePendingPackSuggestion(options.confirmSuggestion, options);
+    if (confirmedSuggestion && isPackConfirmationResponse(text)) {
+        return confirmedSuggestion;
+    }
+
     const countMatch =
         text.match(/(\d{1,3})\s*(?:개|단어|용어|terms?|items?|words?)/i) ||
         text.match(/(?:정확히|총|단어|용어|terms?|items?|words?)\s*(\d{1,3})/i);
     const requestedCount = clampPackTargetCount(countMatch ? countMatch[1] : DEFAULT_PACK_TARGET_COUNT);
-    const termLanguage = inferPackTermLanguage(text);
-    const descriptionLanguage = inferPackDescriptionLanguage(text);
-    const title = extractPackTitle(text);
+    const termLanguage = normalizePackLanguageOverride(options.termLanguageOverride) || inferPackTermLanguage(text);
+    const descriptionLanguage = normalizePackLanguageOverride(options.descriptionLanguageOverride) || inferPackDescriptionLanguage(text);
     const topic = sanitizePackText(text
         .replace(/(?:팩\s*)?(?:초안|만들어줘|만들|생성|제작|작성|뽑아줘|뽑아서|부탁).*$/i, "")
         .replace(/\d{1,3}\s*(?:개|단어|용어|terms?|items?|words?)/gi, "")
@@ -1073,6 +1194,7 @@ function extractPackIntent(message) {
         .replace(/(?:로|으로)\s*$/g, "")
         .replace(/\s+/g, " ")
         .trim(), 160) || text;
+    const title = extractPackTitle(text) || inferPackTitleFallback(text, topic);
 
     return { requestedCount, termLanguage, descriptionLanguage, title, topic };
 }
@@ -1127,6 +1249,127 @@ function packMakerBriefResponse(message) {
     ].join("\n");
 }
 
+function isPackIdeaPrompt(message) {
+    const text = String(message || "");
+    return /(아이디어|추천|뭐\s*만들|무슨\s*팩|팩\s*뭐|입사|취직|말귀|못\s*알아듣|판교|it\s*회사|회사\s*용어|업무\s*용어|일상대화|상황)/i.test(text);
+}
+
+function isPackClarifyPrompt(message) {
+    const text = String(message || "");
+    const hasSoftNeed = /(알고\s*싶|리스트|시작했는데|배우고\s*싶|필요해|궁금|정리하고\s*싶|챙겨야|준비)/i.test(text);
+    const hasDomain = /(육아|육아템|신생아|출산|아기|젠지|z세대|gen\s*z|신조어|유행어|밈|slang|it\s*회사|판교|업무\s*용어)/i.test(text);
+    return hasSoftNeed && hasDomain;
+}
+
+function suggestedPackForMessage(message, intent) {
+    const profile = packDomainProfile(intent);
+    const base = {
+        requestedCount: 50,
+        termLanguage: "korean",
+        descriptionLanguage: "korean"
+    };
+
+    if (profile === "workplace_it_slang") {
+        return {
+            ...base,
+            title: "판교사투리 팩",
+            topic: "IT 회사와 스타트업에서 자주 쓰는 업무 용어와 판교식 표현"
+        };
+    }
+
+    if (profile === "parenting_items") {
+        return {
+            ...base,
+            title: "육아템 팩",
+            topic: "초보 부모가 알아두면 좋은 육아템과 신생아 육아용품"
+        };
+    }
+
+    if (profile === "genz_slang") {
+        return {
+            ...base,
+            title: "젠지 신조어 팩",
+            topic: "Z세대와 온라인 문화에서 자주 쓰이는 신조어와 밈 표현"
+        };
+    }
+
+    const title = intent.title || inferPackTitleFallback(message, intent.topic) || "도메인 용어 팩";
+    return {
+        ...base,
+        title,
+        topic: sanitizePackText(packTopicSignal(intent) || intent.topic || message || title, 180)
+    };
+}
+
+function packMakerIdeationResponse(message, intent) {
+    const suggestion = suggestedPackForMessage(message, intent);
+    const profile = packDomainProfile(suggestion);
+    let answer;
+
+    if (profile === "workplace_it_slang") {
+        answer = [
+            "그 상황이면 바로 `판교사투리 팩`이 좋겠습니다.",
+            "",
+            "IT 회사에서 말귀가 안 잡힐 때는 업무 영어식 표현, 개발팀 협업 용어, 회의 액션 아이템을 먼저 외우는 게 체감이 큽니다.",
+            "",
+            "원하면 `판교사투리 팩`으로 50개 한글 제시어와 한글 설명을 만들어드릴게요. 좋으면 `응`이라고 답해주세요."
+        ].join("\n");
+    } else {
+        answer = [
+            `좋습니다. 지금 말한 상황은 \`${suggestion.title}\`으로 만들면 잘 맞습니다.`,
+            "",
+            `초안은 ${suggestion.requestedCount}개 한글 제시어와 한글 설명으로 만들 수 있습니다.`,
+            "",
+            "이 방향으로 만들까요? 좋으면 `응`이라고 답해주세요. 더 좁히고 싶으면 분야를 한 문장만 더 말해주세요."
+        ].join("\n");
+    }
+
+    return { answer, suggestion };
+}
+
+function packMakerClarifyResponse(message, intent) {
+    const suggestion = suggestedPackForMessage(message, intent);
+    const profile = packDomainProfile(suggestion);
+    let answer;
+
+    if (profile === "parenting_items") {
+        answer = [
+            "육아는 템빨이라는 말이 있죠.",
+            "",
+            "`육아템 팩`으로 초보 부모가 자주 접하는 아이템 50개를 뽑아볼까요?",
+            "제시어와 한줄설명은 둘 다 한글로 맞춰두겠습니다.",
+            "",
+            "좋으면 `응`이라고 답해주세요. 수유/수면/외출처럼 범위를 좁혀도 됩니다."
+        ].join("\n");
+    } else if (profile === "genz_slang") {
+        answer = [
+            "`젠지 신조어 팩`을 말하는 걸까요?",
+            "",
+            "Z세대 신조어, 밈 표현, SNS 줄임말을 50개 정도로 묶을 수 있습니다.",
+            "맞으면 `응`이라고 답해주세요. 특정 플랫폼이나 커뮤니티 말투로 좁혀도 됩니다."
+        ].join("\n");
+    } else {
+        answer = [
+            "팩으로 만들 수 있습니다. 다만 초안을 정확히 만들려면 한 번만 확인할게요.",
+            "",
+            `\`${suggestion.title}\`으로 ${suggestion.requestedCount}개 한글 제시어와 한글 설명을 만들까요?`,
+            "좋으면 `응`이라고 답해주세요. 언어/개수를 바꾸고 싶으면 같이 말해주세요."
+        ].join("\n");
+    }
+
+    return { answer, suggestion };
+}
+
+function classifyPackMakerConversation(message, intent, options = {}) {
+    if (sanitizePendingPackSuggestion(options.confirmSuggestion, options) && isPackConfirmationResponse(message)) {
+        return "generate";
+    }
+    if (isPackGenerationRequest(message, intent)) return "generate";
+    if (isPackIdeaPrompt(message)) return "ideate";
+    if (isPackClarifyPrompt(message)) return "clarify";
+    return "brief";
+}
+
 function packMakerEngineLabel(engine) {
     if (engine === "openai") return "GPT 5.4 mini";
     if (engine === "gemini") return geminiDisplayLabel(envFirst(GEMINI_MODEL_ENV_NAMES) || "gemini-2.5-flash");
@@ -1157,13 +1400,13 @@ function packMakerLyricsRequiredResponse(message) {
     const korean = /[가-힣]/.test(message || "");
     if (korean) {
         return [
-            "가사 전문은 검색 결과만으로 가져오지 않습니다.",
+            "가사에서 단어를 뽑는 요청은 가사 본문이 필요합니다.",
             "",
-            "DuckDuckGo 검색은 연결되어 있고 REDRED 가사 페이지도 찾을 수 있지만, 현재 Pack Maker가 받은 것은 제목/스니펫/URL이지 실제 가사 본문이 아닙니다. 이 상태에서 '가사에서 단어 50개'를 만들면 모델이 없는 본문을 상상하게 됩니다.",
+            "DuckDuckGo/Wikipedia 검색은 연결되어 있지만 Pack Maker가 받는 것은 제목, 스니펫, URL이지 실제 가사 전문이 아닙니다. 이 상태에서 'REDRED 가사에서 단어 50개'를 만들면 모델이 없는 가사를 상상하게 됩니다.",
             "",
             "정확하게 만들려면 둘 중 하나로 요청해 주세요.",
             "- 가사를 직접 붙여넣고: `가사: ...` 뒤에 본문을 넣은 다음 단어팩을 요청",
-            "- 또는 `REDRED 노래 해석/분위기 기반으로 단어 50개 팩 만들어줘`처럼 가사 전문 추출이 아닌 테마팩으로 요청"
+            "- 또는 `CORTIS REDRED 노래 분위기 기반으로 단어 50개 팩 만들어줘`처럼 가사 전문 추출이 아닌 테마팩으로 요청"
         ].join("\n");
     }
 
@@ -1204,24 +1447,86 @@ function packDomainText(intent) {
 
 function packDomainProfile(intent) {
     const topic = packDomainText(intent);
+    if (/(미국.{0,12}주|미국의\s*주|미국\s*주\s*이름|u\.?s\.?\s*states?|united\s*states\s*states?|state\s*names?)/i.test(topic)) {
+        return "us_states";
+    }
+    if (/((우리나라|한국|대한민국).{0,18}(산|명산|mountain)|korean\s*mountains?)/i.test(topic)) {
+        return "korean_mountains";
+    }
+    if (/(예술\s*작가|미술\s*작가|화가|조각가|아티스트|artist|artists|painters?|sculptors?)/i.test(topic)) {
+        return "art_creators";
+    }
     if (/(국가|국명|나라|세계\s*나라|country|countries|nation|nations|state\s*names?)/i.test(topic)) {
         return "country_names";
     }
     if (/(자동차|정비|차량|부품|카\s*파츠|car|auto|vehicle|parts)/i.test(topic)) {
         return "car_repair";
     }
+    if (/(국내\s*아이돌|한국\s*아이돌|아이돌\s*그룹|보이그룹|걸그룹|케이팝\s*그룹|k[-\s]?pop\s*(?:idol\s*)?groups?|south korean idol groups?|korean boy groups?|korean girl groups?)/i.test(topic)) {
+        return "kpop_idol_groups";
+    }
+    if (/(젠지|z세대|gen\s*z|mz|신조어|유행어|밈|slang|meme)/i.test(topic)) {
+        return "genz_slang";
+    }
+    if (/(판교|it\s*회사|스타트업|개발팀|업무\s*용어|회사\s*용어|말귀|사투리|협업|워크플로우|workplace\s*slang|office\s*slang)/i.test(topic)) {
+        return "workplace_it_slang";
+    }
+    if (/(육아템|육아|신생아|출산|아기|수유|기저귀|유모차|parenting|baby\s*items?|newborn)/i.test(topic)) {
+        return "parenting_items";
+    }
+    if (/(코르티스|cortis|redred|케이팝|k[-\s]?pop).{0,30}(노래|곡|싱글|앨범|분위기|테마|theme|song|single|album)/i.test(topic)) {
+        return "kpop_song_theme";
+    }
     return "generic";
 }
 
 function packDomainLabel(intent) {
     const profile = packDomainProfile(intent);
+    if (profile === "us_states") return "us_states";
+    if (profile === "korean_mountains") return "korean_mountains";
+    if (profile === "art_creators") return "art_creators";
     if (profile === "country_names") return "country_names";
     if (profile === "car_repair") return "car_repair";
+    if (profile === "kpop_idol_groups") return "kpop_idol_groups";
+    if (profile === "genz_slang") return "genz_slang";
+    if (profile === "workplace_it_slang") return "workplace_it_slang";
+    if (profile === "parenting_items") return "parenting_items";
+    if (profile === "kpop_song_theme") return "kpop_song_theme";
     return "generic";
 }
 
 function packMakerFocusGroups(intent) {
     const profile = packDomainProfile(intent);
+    if (profile === "us_states") {
+        return [
+            "미국 50개 주의 공식 영어 주 이름",
+            "서부, 중서부, 남부, 북동부 지역별 주 이름",
+            "한국어 사용자가 헷갈리기 쉬운 주 이름",
+            "주 이름과 도시/카운티/국가명을 섞지 않는 기준",
+            "약어가 아니라 전체 주 이름",
+            "미국 지리 학습용 기본 주 이름"
+        ];
+    }
+    if (profile === "korean_mountains") {
+        return [
+            "대한민국의 대표 명산과 국립공원 산 이름",
+            "서울/수도권, 강원, 충청, 전라, 경상, 제주 지역 산 이름",
+            "등산 지도와 관광 안내에서 자주 보는 산 이름",
+            "한라산, 지리산처럼 널리 알려진 고유명사",
+            "봉우리/능선보다 산 이름 중심",
+            "한글 표기로 외울 수 있는 국내 산 이름"
+        ];
+    }
+    if (profile === "art_creators") {
+        return [
+            "서양 미술사 대표 화가와 조각가",
+            "한국 근현대 미술 작가",
+            "현대미술, 사진, 디자인, 설치미술 작가",
+            "작품명보다 창작자 이름 중심",
+            "영문/한글 표기 혼동이 쉬운 작가명",
+            "입문자가 먼저 접하는 예술가 이름"
+        ];
+    }
     if (profile === "country_names") {
         return [
             "동아시아, 동남아시아, 남아시아 국가명",
@@ -1240,6 +1545,56 @@ function packMakerFocusGroups(intent) {
             "변속기, 구동계, 차축, 클러치, 디퍼런셜 부품",
             "외장, 차체 패널, 유리, 와이퍼, 실내 조작 부품",
             "소모품, 필터, 호스, 벨트, 가스켓, 정비 현장 교체 부품"
+        ];
+    }
+    if (profile === "kpop_idol_groups") {
+        return [
+            "1세대와 2세대 대표 국내 아이돌 그룹",
+            "3세대 대표 국내 보이그룹과 걸그룹",
+            "4세대와 5세대 국내 아이돌 그룹",
+            "대형 기획사와 중소 기획사 대표 그룹",
+            "혼성 그룹, 밴드형 아이돌, 프로젝트 그룹",
+            "해체 여부와 관계없이 K-pop 맥락에서 널리 알려진 그룹명"
+        ];
+    }
+    if (profile === "genz_slang") {
+        return [
+            "Z세대와 온라인 커뮤니티에서 자주 보이는 신조어",
+            "SNS, 숏폼, 밈 문화에서 쓰이는 짧은 표현",
+            "게임, 팬덤, 댓글 문화에서 쓰이는 줄임말",
+            "요즘 대화에서 뜻을 모르면 맥락을 놓치기 쉬운 표현",
+            "비속어보다 학습용으로 설명 가능한 표현",
+            "비슷한 뜻이 반복되지 않도록 다양한 용례"
+        ];
+    }
+    if (profile === "workplace_it_slang") {
+        return [
+            "IT 회사와 스타트업 회의에서 자주 듣는 업무 표현",
+            "기획, 개발, 디자인, PM 협업에서 쓰이는 용어",
+            "판교식 줄임말, 영어식 업무 표현, 회의 액션 아이템",
+            "스프린트, 백로그, 배포, QA, 일정 조율 관련 표현",
+            "입사 초기에 말귀를 잡는 데 필요한 현장 용어",
+            "회사 밖 일상어와 의미가 달라지는 업무 표현"
+        ];
+    }
+    if (profile === "parenting_items") {
+        return [
+            "신생아 수유, 기저귀, 목욕, 수면에 필요한 육아템",
+            "외출, 이동, 안전, 위생 관련 육아용품",
+            "초보 부모가 이름을 먼저 익히면 좋은 물건",
+            "소모품과 장비형 아이템을 골고루 섞은 목록",
+            "출산 준비물 체크리스트에 자주 나오는 물품",
+            "실사용 맥락을 설명하기 좋은 짧은 제품명"
+        ];
+    }
+    if (profile === "kpop_song_theme") {
+        return [
+            "곡 제목, 아티스트, 장르, 무대 분위기",
+            "퍼포먼스, 리듬, 후렴, 비트, 사운드 질감",
+            "뮤직비디오, 콘셉트, 색감, 이미지",
+            "팬덤이 말하는 감정 키워드와 해석 용어",
+            "댄스, 보컬, 랩, 프로덕션 관련 짧은 음악 용어",
+            "가사 원문 없이도 설명 가능한 비가사 테마 키워드"
         ];
     }
     return [
@@ -1263,33 +1618,73 @@ function packMakerDomainHint(intent) {
 function packMakerLineExample(intent) {
     const profile = packDomainProfile(intent);
     if (intent.termLanguage === "english") {
+        if (profile === "us_states") return "예: California | 미국 서부에 있는 주 이름입니다.";
+        if (profile === "korean_mountains") return "예: Hallasan | 제주도에 있는 대표적인 산 이름입니다.";
+        if (profile === "art_creators") return "예: Vincent van Gogh | 후기 인상주의를 대표하는 예술가 이름입니다.";
         if (profile === "country_names") return "예: South Korea | 동아시아에 있는 국가명입니다.";
         if (profile === "car_repair") return "예: brake pad | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.";
+        if (profile === "kpop_idol_groups") return "예: BTS | 대한민국의 대표적인 K-pop 보이그룹명입니다.";
+        if (profile === "genz_slang") return "예: rizz | 매력이나 플러팅 능력을 뜻하는 Gen Z slang입니다.";
+        if (profile === "workplace_it_slang") return "예: backlog | 아직 처리하지 않은 작업 목록을 뜻하는 업무 용어입니다.";
+        if (profile === "parenting_items") return "예: stroller | 아기를 태우고 이동할 때 쓰는 유모차입니다.";
+        if (profile === "kpop_song_theme") return "예: chorus | 곡에서 반복되어 인상을 남기는 후렴 구간입니다.";
         return "예: cache | 자주 쓰는 데이터를 임시로 저장해 접근 속도를 높이는 개념입니다.";
     }
+    if (profile === "us_states") return "예: 캘리포니아 | 미국 서부에 있는 주 이름입니다.";
+    if (profile === "korean_mountains") return "예: 한라산 | 제주도에 있는 대표적인 산 이름입니다.";
+    if (profile === "art_creators") return "예: 백남준 | 비디오 아트로 널리 알려진 예술가 이름입니다.";
     if (profile === "country_names") return "예: 대한민국 | 동아시아에 있는 국가명입니다.";
     if (profile === "car_repair") return "예: 브레이크 패드 | 제동 시 디스크와 마찰해 차량을 멈추는 소모품입니다.";
+    if (profile === "kpop_idol_groups") return "예: 소녀시대 | 대한민국의 대표적인 K-pop 걸그룹명입니다.";
+    if (profile === "genz_slang") return "예: 꾸안꾸 | 꾸민 듯 안 꾸민 듯한 스타일을 뜻하는 신조어입니다.";
+    if (profile === "workplace_it_slang") return "예: 얼라인 | 팀 사이의 방향과 이해를 맞추는 업무 표현입니다.";
+    if (profile === "parenting_items") return "예: 젖병소독기 | 젖병과 수유 도구를 위생적으로 관리하는 육아템입니다.";
+    if (profile === "kpop_song_theme") return "예: 후렴 | 곡에서 반복되어 인상을 남기는 핵심 구간입니다.";
     return "예: 핵심 용어 | 사용자가 요청한 도메인에서 자주 등장하는 한줄 설명입니다.";
 }
 
 function packMakerExpansionInstruction(intent) {
     const profile = packDomainProfile(intent);
+    if (profile === "us_states") return "금지 목록이 많을수록 미국 지역을 넓혀 아직 쓰지 않은 주 이름을 추가한다. 도시명, 카운티명, 국가명은 제외한다.";
+    if (profile === "korean_mountains") return "금지 목록이 많을수록 지역을 넓혀 아직 쓰지 않은 국내 산 이름을 추가한다. 둘레길, 절, 도시명은 제외한다.";
+    if (profile === "art_creators") return "금지 목록이 많을수록 시대, 국가, 매체를 넓혀 아직 쓰지 않은 예술가 이름을 추가한다. 작품명과 미술 사조명은 제외한다.";
     if (profile === "country_names") return "금지 목록이 많을수록 대륙과 지역을 넓혀 아직 쓰지 않은 공식 국가명을 추가한다.";
     if (profile === "car_repair") return "금지 목록이 많을수록 더 구체적인 하위 부품명, 센서명, 소모품명, 외장/전장/하체 부품명으로 확장한다.";
+    if (profile === "kpop_idol_groups") return "금지 목록이 많을수록 세대, 성별, 기획사, 활동 시기를 넓혀 아직 쓰지 않은 국내 아이돌 그룹명을 추가한다. 멤버 개인명, 솔로 가수명, 곡명, 팬덤명은 제외한다.";
+    if (profile === "genz_slang") return "금지 목록이 많을수록 SNS, 밈, 게임, 팬덤, 댓글 문화로 범위를 넓혀 아직 쓰지 않은 신조어를 추가한다.";
+    if (profile === "workplace_it_slang") return "금지 목록이 많을수록 회의, 개발, PM, 디자인, 배포, 일정, 협업 범주로 넓혀 아직 쓰지 않은 업무 표현을 추가한다.";
+    if (profile === "parenting_items") return "금지 목록이 많을수록 수유, 수면, 외출, 안전, 위생, 놀이, 소모품 범주로 넓혀 아직 쓰지 않은 육아템을 추가한다.";
+    if (profile === "kpop_song_theme") return "금지 목록이 많을수록 가사 원문을 추측하지 말고 곡의 공개 정보, 장르, 무대, 사운드, 감정, 퍼포먼스 관련 키워드로 확장한다.";
     return "금지 목록이 많을수록 같은 도메인 안에서 더 구체적인 하위 개념, 약어, 도구, 절차, 제품명으로 확장한다.";
 }
 
 function packMakerTermShapeInstruction(intent) {
     const profile = packDomainProfile(intent);
-    if (profile === "country_names") return "term은 공식 국가명 또는 널리 쓰이는 한글 국가명만 쓴다.";
+    if (profile === "us_states") return intent.termLanguage === "english" ? "term은 미국 주의 공식 영어 전체 이름만 쓴다. 주 약어, 도시명, 카운티명은 제외한다." : "term은 미국 주의 널리 쓰이는 한글 표기만 쓴다. 도시명, 카운티명은 제외한다.";
+    if (profile === "korean_mountains") return intent.termLanguage === "english" ? "term은 국내 산 이름의 영문 표기만 쓴다." : "term은 대한민국 산 이름의 한글 표기만 쓴다.";
+    if (profile === "art_creators") return intent.termLanguage === "english" ? "term은 예술가의 널리 쓰이는 영문 이름만 쓴다. 작품명은 제외한다." : "term은 예술가의 널리 쓰이는 한글 이름만 쓴다. 작품명은 제외한다.";
+    if (profile === "country_names") return intent.termLanguage === "english" ? "term은 공식 영어 국가명 또는 널리 쓰이는 영어 국가명만 쓴다." : "term은 공식 국가명 또는 널리 쓰이는 한글 국가명만 쓴다.";
     if (profile === "car_repair") return "term은 짧은 명사/부품명/현장 용어만 쓴다.";
+    if (profile === "kpop_idol_groups") return "term은 국내 아이돌 그룹명만 쓴다. 멤버 개인명, 솔로 가수명, 곡명, 앨범명, 팬덤명은 제외한다. BTS, NCT, IVE처럼 공식 표기가 영문/약어인 그룹명은 그대로 허용한다.";
+    if (profile === "genz_slang") return "term은 짧은 신조어, 줄임말, 밈 표현만 쓴다. 긴 문장이나 설명문은 제외한다.";
+    if (profile === "workplace_it_slang") return "term은 IT 회사 업무 대화에서 쓰는 짧은 용어/줄임말/표현만 쓴다. 긴 문장은 제외한다.";
+    if (profile === "parenting_items") return "term은 짧은 육아용품명이나 육아템 이름만 쓴다. 긴 설명형 문장은 제외한다.";
+    if (profile === "kpop_song_theme") return "term은 가사 원문 문구가 아니라 곡/무대/음악 해석에 쓰는 짧은 명사형 키워드만 쓴다.";
     return "term은 짧은 명사형 도메인 용어만 쓴다.";
 }
 
 function packMakerSearchQuery(intent, message) {
     const profile = packDomainProfile(intent);
+    if (profile === "us_states") return "미국 주 이름 공식 목록 US state names list";
+    if (profile === "korean_mountains") return "대한민국 산 이름 목록 한국 명산";
+    if (profile === "art_creators") return "예술 작가 이름 목록 화가 조각가 artists list";
     if (profile === "country_names") return "국가 이름 한글 공식 목록 country names official list";
     if (profile === "car_repair") return "자동차 정비 부품 용어 auto repair parts glossary";
+    if (profile === "kpop_idol_groups") return "대한민국 아이돌 그룹 목록 K-pop idol groups list";
+    if (profile === "genz_slang") return "Z세대 신조어 유행어 밈 용어 Gen Z slang list";
+    if (profile === "workplace_it_slang") return "판교 사투리 IT 회사 업무 용어 스타트업 용어";
+    if (profile === "parenting_items") return "육아템 리스트 신생아 육아용품 출산 준비물";
+    if (profile === "kpop_song_theme") return `${intent.topic || message} CORTIS REDRED song theme review K-pop`;
     return `${intent.topic || message} glossary key terms official docs`;
 }
 
@@ -1328,6 +1723,51 @@ function packMakerSourceQueries(intent, message) {
             ]);
     }
 
+    if (profile === "us_states") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "official list of U.S. states",
+                "United States state names list",
+                "50 states names official list"
+            ]
+            : [
+                "미국 50개 주 이름 목록",
+                "미국 주 한글 이름",
+                "미국의 주 목록",
+                "미국 주 이름 공식 목록"
+            ]);
+    }
+
+    if (profile === "korean_mountains") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "mountains of South Korea list",
+                "Korean mountains names list",
+                "national parks mountains South Korea"
+            ]
+            : [
+                "대한민국 산 목록",
+                "한국 명산 목록",
+                "국립공원 산 이름",
+                "우리나라 산 이름"
+            ]);
+    }
+
+    if (profile === "art_creators") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "famous artists list painters sculptors",
+                "art history artists names list",
+                "modern artists names list"
+            ]
+            : [
+                "예술가 이름 목록",
+                "유명 화가 조각가 목록",
+                "한국 미술 작가 목록",
+                "세계 미술사 작가 이름"
+            ]);
+    }
+
     if (profile === "car_repair") {
         return uniquePackQueries(wantsEnglishTerms
             ? [
@@ -1341,6 +1781,75 @@ function packMakerSourceQueries(intent, message) {
                 "자동차 엔진 브레이크 서스펜션 부품",
                 "차량 정비 용어"
             ]);
+    }
+
+    if (profile === "kpop_idol_groups") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "K-pop idol groups list",
+                "South Korean idol groups list",
+                "Korean boy groups girl groups list"
+            ]
+            : [
+                "대한민국 아이돌 그룹 목록",
+                "한국 아이돌 그룹 목록",
+                "K-pop 아이돌 그룹 목록",
+                "국내 보이그룹 걸그룹 목록"
+            ]);
+    }
+
+    if (profile === "genz_slang") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "Gen Z slang list",
+                "popular internet slang terms",
+                "social media slang glossary"
+            ]
+            : [
+                "Z세대 신조어 목록",
+                "요즘 신조어 유행어 모음",
+                "SNS 밈 용어 목록",
+                "온라인 커뮤니티 신조어"
+            ]);
+    }
+
+    if (profile === "workplace_it_slang") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "startup workplace terminology glossary",
+                "software team agile terms glossary",
+                "IT company business slang terms"
+            ]
+            : [
+                "판교 사투리 IT 회사 용어",
+                "스타트업 업무 용어 모음",
+                "개발팀 협업 용어",
+                "회사 업무 영어식 표현"
+            ]);
+    }
+
+    if (profile === "parenting_items") {
+        return uniquePackQueries(wantsEnglishTerms
+            ? [
+                "newborn baby items checklist",
+                "parenting essentials list",
+                "baby gear glossary"
+            ]
+            : [
+                "육아템 리스트",
+                "신생아 육아용품 체크리스트",
+                "출산 준비물 목록",
+                "아기 외출 수유 목욕 용품"
+            ]);
+    }
+
+    if (profile === "kpop_song_theme") {
+        return uniquePackQueries([
+            `${topic} 곡 정보`,
+            `${topic} 노래 리뷰`,
+            `${topic} K-pop song theme`,
+            `${topic} artist profile`
+        ]);
     }
 
     return uniquePackQueries([
@@ -1382,8 +1891,44 @@ function isLikelyLanguageMismatch(term, language) {
     return false;
 }
 
+function packProfileAllowsStylizedEnglishTerms(intent) {
+    return packDomainProfile(intent) === "kpop_idol_groups";
+}
+
+function normalizeKpopGroupKey(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/[\s.'’!()+/_-]+/g, "");
+}
+
+function isKnownKpopGroupTerm(term) {
+    const key = normalizeKpopGroupKey(term);
+    return KPOP_IDOL_GROUP_TERMS.some(group => normalizeKpopGroupKey(group) === key);
+}
+
+function isAllowedKpopGroupTerm(term) {
+    const value = String(term || "").trim();
+    if (!value) return false;
+    if (KPOP_NON_GROUP_TERM_RE.test(value)) return false;
+    if (/[\u3400-\u9fff\u3040-\u30ff]/.test(value)) return false;
+    if (!(/[가-힣]/.test(value) || /^[A-Za-z0-9 .&'’+!()/_-]+$/.test(value))) return false;
+    return isKnownKpopGroupTerm(value);
+}
+
+function isPackTermAllowedForIntent(term, intent) {
+    if (packDomainProfile(intent) === "kpop_idol_groups") return isAllowedKpopGroupTerm(term);
+    if (intent.termLanguage === "auto") return Boolean(term);
+    if (intent.termLanguage === "korean" && packProfileAllowsStylizedEnglishTerms(intent)) {
+        return isAllowedKpopGroupTerm(term);
+    }
+    if (intent.termLanguage === "korean") return /[가-힣]/.test(term);
+    if (intent.termLanguage === "english") return !/[가-힣]/.test(term);
+    return Boolean(term);
+}
+
 function draftLanguageMismatchCount(draft, intent) {
     if (intent.termLanguage === "auto") return 0;
+    if (intent.termLanguage === "korean" && packProfileAllowsStylizedEnglishTerms(intent)) return 0;
     return draft.items.filter(item => isLikelyLanguageMismatch(item.term, intent.termLanguage)).length;
 }
 
@@ -1425,14 +1970,41 @@ function normalizeItemDescriptionForIntent(description, term, intent) {
     return fallbackItemDescription(term, intent);
 }
 
+function fillKpopGroupDraftItems(items, intent, fallbackSources = []) {
+    if (packDomainProfile(intent) !== "kpop_idol_groups") return items;
+    const target = clampPackTargetCount(intent.requestedCount);
+    const seen = new Set(items.map(item => normalizeKpopGroupKey(item.term)));
+    const filled = [...items];
+    const fallback = fallbackSources.map(sanitizePackSource).filter(Boolean).slice(0, MAX_PACK_SOURCES);
+
+    for (const term of KPOP_IDOL_GROUP_TERMS) {
+        if (filled.length >= target) break;
+        const key = normalizeKpopGroupKey(term);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        filled.push({
+            term,
+            desc: fallbackItemDescription(term, intent),
+            sources: fallback
+        });
+    }
+
+    return filled;
+}
+
 function normalizeDraftForIntent(value, intent, fallbackSources = []) {
     const draft = normalizeDraftFromLlm(value, fallbackSources);
     const title = intent.title || draft.title;
     const safeTitle = sanitizePackText(title, MAX_PACK_TITLE_LEN) || "Generated Data Pack";
+    const filteredItems = fillKpopGroupDraftItems(
+        draft.items.filter(item => isPackTermAllowedForIntent(item.term, intent)),
+        intent,
+        fallbackSources
+    );
     return {
         title: safeTitle,
         description: cleanDescriptionForIntent(draft.description, intent, safeTitle),
-        items: draft.items.slice(0, intent.requestedCount).map(item => ({
+        items: filteredItems.slice(0, intent.requestedCount).map(item => ({
             ...item,
             desc: normalizeItemDescriptionForIntent(item.desc, item.term, intent)
         }))
@@ -1710,17 +2282,49 @@ function splitPackMakerCandidateLines(answer) {
 function fallbackItemDescription(term, intent) {
     if (intent.descriptionLanguage === "english") {
         const profile = packDomainProfile(intent);
+        if (profile === "us_states") return `${term} is a U.S. state name for this typing pack.`;
+        if (profile === "korean_mountains") return `${term} is a South Korean mountain name for this typing pack.`;
+        if (profile === "art_creators") return `${term} is an artist or creator name for this typing pack.`;
         if (profile === "country_names") return `${term} is a country or region name for this typing pack.`;
         if (profile === "car_repair") return `${term} is a car repair part or maintenance term.`;
+        if (profile === "kpop_idol_groups") return `${term} is a South Korean idol group name for this typing pack.`;
+        if (profile === "genz_slang") return `${term} is a Gen Z or internet slang term for this typing pack.`;
+        if (profile === "workplace_it_slang") return `${term} is a workplace or IT-company expression for this typing pack.`;
+        if (profile === "parenting_items") return `${term} is a parenting item or baby-care product for this typing pack.`;
+        if (profile === "kpop_song_theme") return `${term} is a short theme keyword related to the requested K-pop song.`;
         return `${term} is a key term in the requested domain.`;
     }
 
     const profile = packDomainProfile(intent);
+    if (profile === "us_states") {
+        return `${term}는 미국 주 이름 학습팩에서 외울 수 있는 지명입니다.`;
+    }
+    if (profile === "korean_mountains") {
+        return `${term}는 우리나라 산 이름 학습팩에서 외울 수 있는 고유명사입니다.`;
+    }
+    if (profile === "art_creators") {
+        return `${term}는 예술 작가 이름 학습팩에서 외울 수 있는 창작자명입니다.`;
+    }
     if (profile === "country_names") {
         return `${term}는 국가명 학습팩에서 외울 수 있는 나라 이름입니다.`;
     }
     if (profile === "car_repair") {
         return `${term} 관련 점검이나 교체에서 자주 등장하는 자동차 정비 부품입니다.`;
+    }
+    if (profile === "kpop_idol_groups") {
+        return `${term}는 국내 아이돌 그룹 팩에서 외울 수 있는 K-pop 그룹명입니다.`;
+    }
+    if (profile === "genz_slang") {
+        return `${term}는 Z세대와 온라인 문화에서 자주 쓰이는 신조어입니다.`;
+    }
+    if (profile === "workplace_it_slang") {
+        return `${term}는 IT 회사와 스타트업 업무 대화에서 자주 쓰이는 표현입니다.`;
+    }
+    if (profile === "parenting_items") {
+        return `${term}는 육아 상황에서 자주 쓰이는 아이템이나 용품 이름입니다.`;
+    }
+    if (profile === "kpop_song_theme") {
+        return `${term}는 요청한 K-pop 곡의 분위기나 해석을 설명할 때 쓰는 키워드입니다.`;
     }
     return `${term} 관련 도메인에서 자주 등장하는 핵심 용어입니다.`;
 }
@@ -1742,8 +2346,7 @@ function draftFromPackMakerLines(answer, intent, count, fallbackSources = []) {
         const term = sanitizePackText(parts.shift(), MAX_PACK_TERM_LEN);
         const desc = sanitizePackText(parts.join(" ").trim(), MAX_PACK_ITEM_DESC_LEN) || fallbackItemDescription(term, intent);
         if (!term || !desc) continue;
-        if (intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
-        if (intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
+        if (!isPackTermAllowedForIntent(term, intent)) continue;
 
         const key = term.toLowerCase();
         if (seen.has(key)) continue;
@@ -1809,8 +2412,7 @@ async function generatePackMakerTermSweepDraft(target, payload, draft, searchRes
             MAX_PACK_TERM_LEN
         );
         if (!term) continue;
-        if (payload.intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
-        if (payload.intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
+        if (!isPackTermAllowedForIntent(term, payload.intent)) continue;
         const key = term.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
@@ -1867,8 +2469,7 @@ async function generatePackMakerMicroSweepDraft(target, payload, draft, searchRe
             MAX_PACK_TERM_LEN
         );
         if (!term) continue;
-        if (payload.intent.termLanguage === "korean" && !/[가-힣]/.test(term)) continue;
-        if (payload.intent.termLanguage === "english" && /[가-힣]/.test(term)) continue;
+        if (!isPackTermAllowedForIntent(term, payload.intent)) continue;
         const key = term.toLowerCase();
         if (seen.has(key)) continue;
         seen.add(key);
@@ -2497,8 +3098,16 @@ function packMakerSourceLanguage(intent) {
 
 function packMakerWikipediaQuery(intent, message) {
     const profile = packDomainProfile(intent);
+    if (profile === "us_states") return "미국의 주";
+    if (profile === "korean_mountains") return "대한민국의 산 목록";
+    if (profile === "art_creators") return "예술가 목록";
     if (profile === "country_names") return "국가 목록";
     if (profile === "car_repair") return "자동차 부품";
+    if (profile === "kpop_idol_groups") return "대한민국의 아이돌 그룹 목록";
+    if (profile === "genz_slang") return "신조어";
+    if (profile === "workplace_it_slang") return "비즈니스 용어";
+    if (profile === "parenting_items") return "육아";
+    if (profile === "kpop_song_theme") return sanitizeChatText(`${intent?.topic || message || "K-pop"} 노래`, 80);
     return sanitizeChatText(intent?.topic || message || "용어", 80);
 }
 
@@ -2543,11 +3152,67 @@ function isPackMakerSourceRelevant(intent, source) {
         return titleLooksLikeList || /(country names|countries of the world|list of countries|sovereign states|iso 3166|un member states)/i.test(text);
     }
 
+    if (profile === "us_states") {
+        if (/(country names|sovereign state|nation|국가명|유엔|회원국|자동차|정비|부품|아이돌|k[-\s]?pop|lyrics?)/i.test(text)) {
+            return false;
+        }
+        return /(미국.{0,16}주|미국의 주|50개 주|주 이름|u\.?s\.?\s*states?|united states state|state names|50 states)/i.test(text);
+    }
+
+    if (profile === "korean_mountains") {
+        if (/(country names|sovereign state|국가명|미국.{0,12}주|자동차|정비|부품|아이돌|lyrics?)/i.test(text)) {
+            return false;
+        }
+        return /(산 목록|명산|국립공원|등산|mountains? of south korea|korean mountains?|한라산|지리산|설악산)/i.test(text);
+    }
+
+    if (profile === "art_creators") {
+        if (/(country names|국가명|미국.{0,12}주|자동차|정비|부품|아이돌|lyrics?)/i.test(text)) {
+            return false;
+        }
+        return /(예술가|미술가|화가|조각가|작가|artists?|painters?|sculptors?|art history|contemporary art)/i.test(text);
+    }
+
     if (profile === "car_repair") {
         if (/(country|countries|국가명|유엔|회원국|wikipedia:\s*국가|sovereign state)/i.test(text)) {
             return false;
         }
         return /(자동차|차량|정비|부품|엔진|브레이크|서스펜션|센서|automotive|vehicle|car|repair|parts|engine|brake|suspension)/i.test(text);
+    }
+
+    if (profile === "kpop_idol_groups") {
+        if (/(자동차|차량|정비|부품|국가명|유엔|회원국|lyrics?|가사|song lyrics|album review)/i.test(text)) {
+            return false;
+        }
+        return /(아이돌|케이팝|k[-\s]?pop|보이그룹|걸그룹|boy group|girl group|idol group|south korean music group|korean pop)/i.test(text);
+    }
+
+    if (profile === "genz_slang") {
+        if (/(자동차|정비|부품|국가명|유엔|회원국|육아|출산|baby|parenting)/i.test(text)) {
+            return false;
+        }
+        return /(신조어|유행어|밈|z세대|젠지|mz|인터넷\s*용어|slang|meme|gen\s*z|social media)/i.test(text);
+    }
+
+    if (profile === "workplace_it_slang") {
+        if (/(자동차|정비|부품|국가명|유엔|회원국|육아|출산|baby|parenting|lyrics?)/i.test(text)) {
+            return false;
+        }
+        return /(판교|스타트업|it\s*회사|업무\s*용어|비즈니스\s*용어|협업|개발팀|agile|scrum|startup|workplace|business jargon)/i.test(text);
+    }
+
+    if (profile === "parenting_items") {
+        if (/(자동차|정비|부품|국가명|유엔|회원국|lyrics?|가사|it\s*회사|판교)/i.test(text)) {
+            return false;
+        }
+        return /(육아|육아템|신생아|출산|아기|기저귀|수유|유모차|parenting|baby|newborn|baby gear)/i.test(text);
+    }
+
+    if (profile === "kpop_song_theme") {
+        if (/(자동차|차량|정비|부품|국가명|유엔|회원국)/i.test(text)) {
+            return false;
+        }
+        return /(코르티스|cortis|redred|케이팝|k[-\s]?pop|song|single|album|music|review|artist|idol|노래|곡|싱글|앨범|뮤직|리뷰)/i.test(text);
     }
 
     return true;
@@ -3410,7 +4075,8 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
     if (typeof res.flushHeaders === "function") res.flushHeaders();
 
     try {
-        const intent = extractPackIntent(message);
+        const intent = extractPackIntent(message, req.body || {});
+        const conversationMode = classifyPackMakerConversation(message, intent, req.body || {});
         if (isLyricsExtractionRequest(message) && !hasUserProvidedLyricsText(message)) {
             const answer = packMakerLyricsRequiredResponse(message);
             finished = true;
@@ -3429,7 +4095,26 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
             return;
         }
 
-        if (!isPackGenerationRequest(message, intent)) {
+        if (conversationMode === "ideate" || conversationMode === "clarify") {
+            const result = conversationMode === "ideate"
+                ? packMakerIdeationResponse(message, intent)
+                : packMakerClarifyResponse(message, intent);
+            finished = true;
+            writeNdjson(res, "meta", {
+                engine,
+                route: conversationMode,
+                label: packMakerEngineLabel(engine)
+            });
+            writeNdjson(res, "status", {
+                text: conversationMode === "ideate" ? "PACK IDEAS READY" : "PACK IDEA CHECK"
+            });
+            writeNdjson(res, "delta", { text: result.answer });
+            writeNdjson(res, "done", { answer: result.answer, suggestion: result.suggestion });
+            if (!res.writableEnded && !res.destroyed) res.end();
+            return;
+        }
+
+        if (conversationMode === "brief") {
             const answer = packMakerBriefResponse(message);
             finished = true;
             writeNdjson(res, "meta", {
@@ -3454,7 +4139,7 @@ app.post("/api/pack-maker/chat/stream", authUser, rateLimit("pack-maker-chat", 2
         });
 
         writeNdjson(res, "status", {
-            text: `TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS`
+            text: `TARGET ${intent.requestedCount} ${packLanguageLabel(intent.termLanguage)} TERMS · ${packDescriptionLanguageLabel(intent.descriptionLanguage)} NOTES`
         });
 
         const searchResults = await collectPackMakerSources(intent, message);

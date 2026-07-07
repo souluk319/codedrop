@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-label="CodeDrop neon city backdrop">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#061a22"/>
+      <stop offset="0.46" stop-color="#02080c"/>
+      <stop offset="1" stop-color="#000000"/>
+    </linearGradient>
+    <linearGradient id="haze" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#00f3ff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#00f3ff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ff0055" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="620" fill="url(#sky)"/>
+  <rect y="206" width="1200" height="180" fill="url(#haze)" opacity="0.34"/>
+
+  <g opacity="0.34" stroke="#00f3ff" stroke-width="1">
+    <path d="M0 410h1200"/>
+    <path d="M0 455h1200"/>
+    <path d="M0 505h1200"/>
+    <path d="M0 565h1200"/>
+    <path d="M140 620 420 360"/>
+    <path d="M1060 620 780 360"/>
+    <path d="M300 620 510 360"/>
+    <path d="M900 620 690 360"/>
+  </g>
+
+  <g fill="#02080d">
+    <rect x="70" y="178" width="90" height="230"/>
+    <rect x="174" y="132" width="134" height="276"/>
+    <rect x="336" y="198" width="90" height="210"/>
+    <rect x="458" y="92" width="128" height="316"/>
+    <rect x="612" y="164" width="118" height="244"/>
+    <rect x="758" y="74" width="150" height="334"/>
+    <rect x="936" y="150" width="112" height="258"/>
+    <rect x="1070" y="208" width="86" height="200"/>
+  </g>
+
+  <g opacity="0.78">
+    <rect x="188" y="160" width="76" height="10" fill="#00f3ff" filter="url(#glow)"/>
+    <rect x="196" y="190" width="98" height="8" fill="#ff0055" filter="url(#glow)"/>
+    <rect x="484" y="126" width="52" height="176" fill="#00f3ff" opacity="0.26"/>
+    <rect x="546" y="118" width="10" height="212" fill="#ff0055" filter="url(#glow)"/>
+    <rect x="786" y="108" width="38" height="214" fill="#ff0055" opacity="0.62" filter="url(#glow)"/>
+    <rect x="844" y="126" width="46" height="10" fill="#00f3ff" filter="url(#glow)"/>
+    <rect x="958" y="186" width="60" height="8" fill="#00f3ff" filter="url(#glow)"/>
+    <rect x="958" y="220" width="82" height="6" fill="#ff0055" filter="url(#glow)"/>
+  </g>
+
+  <g opacity="0.28" fill="#00f3ff">
+    <rect x="95" y="210" width="10" height="7"/>
+    <rect x="120" y="244" width="10" height="7"/>
+    <rect x="211" y="236" width="10" height="7"/>
+    <rect x="244" y="278" width="10" height="7"/>
+    <rect x="508" y="352" width="10" height="7"/>
+    <rect x="648" y="210" width="10" height="7"/>
+    <rect x="682" y="268" width="10" height="7"/>
+    <rect x="792" y="354" width="10" height="7"/>
+    <rect x="1000" y="286" width="10" height="7"/>
+  </g>
+
+  <g fill="none" stroke-linecap="round" opacity="0.52">
+    <path d="M80 472 C240 440, 360 450, 540 392" stroke="#00f3ff" stroke-width="3" filter="url(#glow)"/>
+    <path d="M706 392 C842 430, 976 438, 1140 472" stroke="#ff0055" stroke-width="3" filter="url(#glow)"/>
+  </g>
+
+  <rect width="1200" height="620" fill="#000" opacity="0.18"/>
+</svg>
