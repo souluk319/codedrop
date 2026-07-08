@@ -63,7 +63,7 @@ const LONG_TEXT_PACKS = [
     {
         id: 'ko_textbook_poem_practice',
         group: 'Korean',
-        title: '교과서 시 감상 연습',
+        title: '시 감상 장문 연습',
         label: 'Textbook Poem Practice',
         source: 'ORIGINAL EDUCATIONAL STYLE',
         tags: ['korean', 'textbook-style', 'poetry-practice'],
@@ -76,14 +76,30 @@ const LONG_TEXT_PACKS = [
     {
         id: 'ko_aegukga_safe_practice',
         group: 'Korean',
-        title: '애국가 테마 연습문',
-        label: 'Patriotic Theme Practice',
-        source: 'ORIGINAL THEME',
-        tags: ['korean', 'theme', 'public'],
-        text: `하늘과 바다와 산을 떠올리며 또박또박 문장을 입력합니다.
-나라를 사랑한다는 마음은 거창한 구호보다 매일의 성실함에서 자랍니다.
-함께 부르는 노래처럼 키보드의 리듬도 일정해야 합니다.
-정확한 입력은 작은 약속을 지키는 연습이고, 꾸준한 반복은 실력을 만드는 가장 단단한 길입니다.`
+        title: '애국가 따라쓰기',
+        label: 'Aegukga Practice',
+        source: 'PUBLIC NATIONAL ANTHEM',
+        tags: ['korean', 'anthem', 'public'],
+        preprocess: 'structured',
+        text: `동해 물과 백두산이 마르고 닳도록
+하느님이 보우하사 우리나라 만세
+무궁화 삼천리 화려 강산
+대한 사람 대한으로 길이 보전하세
+
+남산 위에 저 소나무 철갑을 두른 듯
+바람 서리 불변함은 우리 기상일세
+무궁화 삼천리 화려 강산
+대한 사람 대한으로 길이 보전하세
+
+가을 하늘 공활한데 높고 구름 없이
+밝은 달은 우리 가슴 일편단심일세
+무궁화 삼천리 화려 강산
+대한 사람 대한으로 길이 보전하세
+
+이 기상과 이 맘으로 충성을 다하여
+괴로우나 즐거우나 나라 사랑하세
+무궁화 삼천리 화려 강산
+대한 사람 대한으로 길이 보전하세`
     },
     {
         id: 'ko_keyboard_reviewer_flow',
@@ -185,6 +201,7 @@ Good operations work is calm, repeatable, and easy to explain.`
         title: 'Power Pop Practice',
         label: 'Power Pop Practice',
         source: 'ORIGINAL',
+        showInSelector: false,
         tags: ['english', 'music-style', 'practice'],
         text: `I keep moving when the lights get loud.
 Every step becomes a signal, every breath becomes a beat.
@@ -198,6 +215,7 @@ Confidence grows when the pattern stops feeling strange.`
         title: 'Ballad Rhythm Practice',
         label: 'Ballad Rhythm Practice',
         source: 'ORIGINAL',
+        showInSelector: false,
         tags: ['english', 'music-style', 'ballad-practice'],
         text: `Soft lines need steady fingers.
 Hold the pause, type the space, and let the next word arrive without panic.
@@ -211,6 +229,7 @@ When the final line lands, check whether the rhythm stayed even from start to fi
         title: 'K-pop Stage Practice',
         label: 'K-pop Style Practice',
         source: 'ORIGINAL',
+        showInSelector: false,
         tags: ['mixed', 'korean', 'english', 'stage'],
         text: `오늘의 stage는 neon light 아래에서 시작된다.
 Count the beat, keep the line, and move like the keyboard is part of the song.
@@ -238,6 +257,7 @@ Korean, English, numbers 2026, symbols [], {}, (), and terminal-style commands s
         title: 'Idol Intro Practice',
         label: 'Idol Intro Practice',
         source: 'ORIGINAL',
+        showInSelector: false,
         tags: ['mixed', 'korean', 'english', 'idol-style'],
         text: `첫 verse는 Korean으로 시작하고 hook은 English로 살짝 방향을 튼다.
 Say my name, check the timing, and keep your hands on the home row.
@@ -249,8 +269,8 @@ This pack is for mixed-language typing flow, not copied song lyrics.
         id: 'template_lyrics_user_provided',
         group: 'User Templates',
         type: 'template',
-        title: '노래 가사 직접입력',
-        label: 'Lyrics · USER PROVIDED',
+        title: '가사/장문 직접입력',
+        label: 'Lyrics or Text · USER PROVIDED',
         source: 'USER PROVIDED',
         providerId: 'manual_lyrics_user_001',
         tags: ['mixed', 'lyrics-template', 'user-provided', 'song'],

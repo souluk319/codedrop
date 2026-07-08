@@ -36,9 +36,9 @@ const I18N_TEXT = {
         'menu.studyTime': 'STUDY TIME',
         'menu.studyTimePlaceholder': 'MINUTES (blank = infinite)',
         'menu.selectPack': 'SELECT PACK',
-        'menu.selectText': 'SELECT TEXT',
+        'menu.selectText': 'SELECT TEXT PACK',
         'menu.selectCartridge': 'SELECT CARTRIDGE',
-        'menu.selectTextCartridge': 'SELECT TEXT DECK',
+        'menu.selectTextCartridge': 'SELECT TEXT PACK',
         'menu.close': 'CLOSE',
         'menu.deletePackHint': 'DROP MY PACK TO DELETE',
         'menu.startCodedrop': 'START CODEDROP',
@@ -193,9 +193,9 @@ const I18N_TEXT = {
         'menu.studyTime': '학습 시간',
         'menu.studyTimePlaceholder': '분 단위 · 비우면 무한',
         'menu.selectPack': '팩 선택',
-        'menu.selectText': '연습문 선택',
+        'menu.selectText': '문장팩 선택',
         'menu.selectCartridge': '카트리지 선택',
-        'menu.selectTextCartridge': '장문 덱 선택',
+        'menu.selectTextCartridge': '문장팩 선택',
         'menu.close': '닫기',
         'menu.deletePackHint': '내 팩을 끌어와 삭제',
         'menu.startCodedrop': 'START CODEDROP',
@@ -1144,6 +1144,64 @@ const sfx = {
 };
 window.sfx = sfx;
 
+const CodeDropTypingSfx = {
+    bound: false,
+    lastByTarget: new WeakMap(),
+    lastLoose: { key: '', at: 0 },
+    isAudibleKey(event) {
+        if (!event || event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return false;
+        if (event.key === 'Process') return false;
+        return event.key === 'Enter'
+            || event.key === 'Backspace'
+            || event.key === 'Delete'
+            || event.key === ' '
+            || String(event.key || '').length === 1;
+    },
+    isEditableTarget(target) {
+        if (!target || !(target instanceof Element)) return false;
+        const editable = target.closest('textarea, input, [contenteditable="true"]');
+        if (!editable) return false;
+        if (editable.matches('[disabled], [readonly]')) return false;
+        if (editable instanceof HTMLInputElement) {
+            const type = String(editable.type || 'text').toLowerCase();
+            return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(type);
+        }
+        return true;
+    },
+    play(eventOrKey, options = {}) {
+        const event = eventOrKey && typeof eventOrKey === 'object' && 'key' in eventOrKey ? eventOrKey : null;
+        const key = event ? event.key : eventOrKey;
+        if (event && !this.isAudibleKey(event)) return false;
+        if (event && options.force !== true && !this.isEditableTarget(event.target)) return false;
+
+        const now = Date.now();
+        const signature = `${key || 'a'}:${event?.code || ''}`;
+        if (event?.target && typeof event.target === 'object') {
+            const last = this.lastByTarget.get(event.target);
+            if (last && last.signature === signature && now - last.at < 45) return false;
+            this.lastByTarget.set(event.target, { signature, at: now });
+        } else if (this.lastLoose.key === signature && now - this.lastLoose.at < 45) {
+            return false;
+        } else {
+            this.lastLoose = { key: signature, at: now };
+        }
+
+        if (!window.sfx || typeof window.sfx.playKey !== 'function') return false;
+        window.sfx.playKey(key === ' ' ? ' ' : (key || 'a'));
+        return true;
+    },
+    bindGlobal() {
+        if (this.bound) return;
+        this.bound = true;
+        document.addEventListener('keydown', (event) => {
+            if (!this.isEditableTarget(event.target)) return;
+            this.play(event, { source: 'global' });
+        }, true);
+    }
+};
+window.CodeDropTypingSfx = CodeDropTypingSfx;
+CodeDropTypingSfx.bindGlobal();
+
 // --- Game Logic ---
 
 function renderLeaderboardMessage(message, color = '#666') {
@@ -1175,8 +1233,8 @@ let standardMode = 'DROP';
 let selectedLongPackId = '';
 const LONG_SELECTOR_PREFIX = 'LONG__';
 const LONG_SELECTOR_FEATURED_IDS = [
-    'template_lyrics_user_provided',
     'ko_keyboard_reviewer_flow',
+    'ko_aegukga_safe_practice',
     'en_keyboard_reviewer_pangram',
     'mixed_keyboard_reviewer',
     'ko_focus_flow',
@@ -1201,10 +1259,11 @@ function longPackIdFromValue(value) {
 }
 
 function longPackListForSelector() {
+    const keepVisiblePack = pack => pack?.showInSelector !== false || pack?.type === 'template' || isUserProvidedLongPack(pack);
     if (window.LongPractice && typeof window.LongPractice.listPacks === 'function') {
-        return window.LongPractice.listPacks();
+        return window.LongPractice.listPacks().filter(keepVisiblePack);
     }
-    return Array.isArray(window.LONG_TEXT_PACKS) ? window.LONG_TEXT_PACKS.slice() : [];
+    return Array.isArray(window.LONG_TEXT_PACKS) ? window.LONG_TEXT_PACKS.filter(keepVisiblePack) : [];
 }
 
 function customPackStyle(seed = '') {
@@ -1217,11 +1276,20 @@ function customPackStyle(seed = '') {
     return styles[Math.abs(hash) % styles.length];
 }
 
+function isUserProvidedLongPack(pack) {
+    if (!pack || pack.type === 'template') return false;
+    const source = String(pack.source || '').toUpperCase();
+    const tags = Array.isArray(pack.tags) ? pack.tags.join(' ').toLowerCase() : '';
+    return source.includes('USER PROVIDED')
+        || source.includes('MY PACK')
+        || (source.includes('PUBLIC PACK') && tags.includes('user-provided'));
+}
+
 function longPackStyle(pack) {
     const group = String(pack?.group || '').toLowerCase();
     const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ').toLowerCase() : '';
     if (pack?.type === 'template') return 'custom-blue';
-    if (pack?.source === 'USER PROVIDED') return customPackStyle(`${pack.id}:${pack.title || pack.label || ''}`);
+    if (isUserProvidedLongPack(pack)) return customPackStyle(`${pack.id}:${pack.title || pack.label || ''}`);
     if (group.includes('korean') || tags.includes('korean')) return 'vocab';
     if (group.includes('english') || tags.includes('english')) return 'js';
     if (group.includes('mixed') || tags.includes('mixed')) return 'http';
@@ -1230,7 +1298,7 @@ function longPackStyle(pack) {
 
 function longPackChip(pack) {
     if (pack?.type === 'template') return 'PASTE';
-    if (pack?.source === 'USER PROVIDED') return 'USER';
+    if (isUserProvidedLongPack(pack)) return 'USER';
     const group = String(pack?.group || '').toLowerCase();
     const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ').toLowerCase() : '';
     if (group.includes('korean') || tags.includes('korean')) return 'KOR';
@@ -1252,7 +1320,7 @@ function packMetaFromLongPack(pack) {
         };
     }
     const title = pack.title || pack.label || pack.id || 'Long Text';
-    const userProvided = pack.source === 'USER PROVIDED' && pack.type !== 'template';
+    const userProvided = isUserProvidedLongPack(pack);
     return {
         value: longPackValue(pack.id),
         title,
@@ -1260,7 +1328,7 @@ function packMetaFromLongPack(pack) {
         style: longPackStyle(pack),
         group: userProvided
             ? longSelectorText('My Text Packs', '내 장문팩')
-            : pack.group || longSelectorText('Practice Texts', '추천 연습문'),
+            : pack.group || longSelectorText('Practice Texts', '추천 문장팩'),
         longPackId: pack.id,
         deletable: false
     };
@@ -1276,14 +1344,16 @@ function ensureSelectedLongPackId() {
 }
 
 function longPackDefaultId(packs = longPackListForSelector()) {
-    const saved = packs.find(pack => pack.source === 'USER PROVIDED' && pack.type !== 'template');
+    const saved = packs.find(isUserProvidedLongPack);
     if (saved) return saved.id;
-    const template = packs.find(pack => pack.id === 'template_lyrics_user_provided');
-    if (template) return template.id;
     const featured = LONG_SELECTOR_FEATURED_IDS
         .map(id => packs.find(pack => pack.id === id))
         .find(Boolean);
-    return featured?.id || packs[0]?.id || '__custom__';
+    if (featured) return featured.id;
+    const official = packs.find(pack => pack.type !== 'template');
+    if (official) return official.id;
+    const template = packs.find(pack => pack.id === 'template_lyrics_user_provided');
+    return template?.id || '__custom__';
 }
 
 function longPackMetaForValue(value) {
@@ -1357,22 +1427,21 @@ function longPackGroupsForSelector() {
     const packs = longPackListForSelector();
     const byId = new Map(packs.map(pack => [pack.id, pack]));
     const savedItems = packs
-        .filter(pack => pack.source === 'USER PROVIDED' && pack.type !== 'template')
+        .filter(isUserProvidedLongPack)
         .map(packMetaFromLongPack);
     const inputItems = [];
     const lyricTemplate = byId.get('template_lyrics_user_provided');
     if (lyricTemplate) inputItems.push(packMetaFromLongPack(lyricTemplate));
-    inputItems.push(packMetaFromLongPack(null));
+    if (!lyricTemplate) inputItems.push(packMetaFromLongPack(null));
     const featuredItems = LONG_SELECTOR_FEATURED_IDS
         .map(id => byId.get(id))
         .filter(Boolean)
-        .filter(pack => pack.id !== 'template_lyrics_user_provided')
         .map(packMetaFromLongPack);
 
     return [
         savedItems.length ? { label: longSelectorText('My Text Packs', '내 장문팩'), items: savedItems } : null,
-        { label: longSelectorText('Direct Input', '직접 입력'), items: inputItems },
-        featuredItems.length ? { label: longSelectorText('Recommended Practice', '추천 연습문'), items: featuredItems } : null
+        featuredItems.length ? { label: longSelectorText('Recommended Practice', '추천 문장팩'), items: featuredItems } : null,
+        { label: longSelectorText('Direct Input', '직접 입력'), items: inputItems }
     ].filter(Boolean);
 }
 
@@ -2395,7 +2464,7 @@ function handleKeydown(e) {
         return;
     }
 
-    sfx.playKey(e.key);
+    CodeDropTypingSfx.play(e, { source: 'drop', force: true });
 
     if (e.key === 'Enter') {
         e.preventDefault();

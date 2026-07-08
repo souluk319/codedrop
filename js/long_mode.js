@@ -7,13 +7,16 @@ const LongPractice = (() => {
     const CUSTOM_STORAGE_KEY = 'codedrop_long_text_packs_v1';
     const longState = {
         packs: [],
+        remotePacks: [],
         fullText: '',
         units: [],
         unitIndex: 0,
         completedChars: 0,
         completedCorrect: 0,
         target: '',
+        displayTarget: '',
         source: '',
+        unitOptions: {},
         startedAt: 0,
         completed: false,
         pendingPackId: '',
@@ -57,6 +60,58 @@ const LongPractice = (() => {
         localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(packs.slice(0, 40)));
     }
 
+    function currentLanguage() {
+        try {
+            return localStorage.getItem('codedrop_language') === 'en' ? 'en' : 'ko';
+        } catch (error) {
+            return 'ko';
+        }
+    }
+
+    function normalizedTagList(tags = []) {
+        const source = Array.isArray(tags) ? tags : String(tags || '').split(/[,\s]+/);
+        const seen = new Set();
+        return source
+            .map(tag => String(tag || '').trim())
+            .filter(Boolean)
+            .filter(tag => {
+                const key = tag.toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+    }
+
+    function hasNormalizedTag(tags, target) {
+        const key = String(target || '').toLowerCase();
+        return normalizedTagList(tags).some(tag => tag.toLowerCase() === key);
+    }
+
+    function textForLanguage(en, ko) {
+        return currentLanguage() === 'en' ? en : ko;
+    }
+
+    function isPlayableLongPack(pack) {
+        if (!pack) return false;
+        if (isTemplatePack(pack)) return true;
+        return String(pack.text || '').trim().length >= 20;
+    }
+
+    function isVisibleLongPack(pack) {
+        return Boolean(pack && pack.showInSelector !== false && isPlayableLongPack(pack));
+    }
+
+    function selectGroupLabel(group) {
+        const key = String(group || '').trim().toLowerCase();
+        if (key === 'korean') return textForLanguage('Korean Sentence Packs', '한국어 문장팩');
+        if (key === 'english') return textForLanguage('English Sentence Packs', '영어 문장팩');
+        if (key === 'mixed') return textForLanguage('Mixed Sentence Packs', '한영 문장팩');
+        if (key === 'user templates') return textForLanguage('Direct Input', '직접 입력');
+        if (key === 'user' || key === 'my packs') return textForLanguage('My Text Packs', '내 장문팩');
+        if (key === 'public packs') return textForLanguage('Public Text Packs', '공개 장문팩');
+        return group || textForLanguage('Sentence Packs', '문장팩');
+    }
+
     function normalizeText(text) {
         return String(text || '')
             .replace(/\r\n?/g, '\n')
@@ -73,14 +128,30 @@ const LongPractice = (() => {
             .replace(/…/g, '...');
     }
 
-    function isLyricsStopword(text) {
-        const token = String(text || '')
+    function normalizeLyricsStopwordToken(text) {
+        return String(text || '')
             .trim()
-            .replace(/[#[\](){}【】（）［］｛｝·ㆍ.。!！?？:：-]/g, ' ')
+            .replace(/[#[\](){}【】（）［］｛｝·ㆍ.。!！?？]/g, ' ')
+            .replace(/[_-]+/g, ' ')
             .replace(/\s+/g, ' ')
             .toLowerCase();
-        if (!token) return true;
-        return /^(?:intro|outro|verse|pre chorus|post chorus|chorus|hook|bridge|refrain|interlude|repeat|instrumental|ad lib|adlib|rap|dance break|break|x\s*\d+|\d+\s*x|후렴|벌스|버스|인트로|아웃트로|브릿지|브리지|코러스|훅|반복|간주|전주|후주|랩|댄스 브레이크)(?:\s*\d+)?$/i.test(token);
+    }
+
+    function isLyricsStopword(text) {
+        const raw = String(text || '').trim();
+        if (!raw) return true;
+
+        const candidates = [
+            raw,
+            raw.split(/[:：]/)[0]
+        ].map(normalizeLyricsStopwordToken);
+
+        return candidates.some(token => {
+            if (!token) return false;
+            const compact = token.replace(/\s+/g, '');
+            return /^(?:intro|outro|verse|prechorus|postchorus|chorus|hook|bridge|refrain|interlude|repeat|instrumental|adlib|rap|dancebreak|break|x\d+|\d+x)(?:\d+)?$/i.test(compact) ||
+                /^(?:후렴|벌스|버스|인트로|아웃트로|브릿지|브리지|코러스|훅|반복|간주|전주|후주|랩|댄스브레이크)(?:\d+)?$/i.test(compact);
+        });
     }
 
     function trimBracketShell(text) {
@@ -110,7 +181,6 @@ const LongPractice = (() => {
                 });
 
                 return next
-                    .replace(/^\s*(?:intro|outro|verse|pre[-\s]?chorus|post[-\s]?chorus|chorus|hook|bridge|refrain|interlude|후렴|벌스|인트로|아웃트로|브릿지|브리지|코러스|훅)\s*\d*\s*[:：-]\s*/i, '')
                     .replace(/[ \t]{2,}/g, ' ')
                     .trim();
             })
@@ -154,6 +224,9 @@ const LongPractice = (() => {
         if (pack?.preprocess === 'lyrics') {
             return cleanLyricsText(text);
         }
+        if (pack?.preprocess === 'structured') {
+            return cleanUserProvidedText(text);
+        }
         if (options.userProvided || isUserProvidedPack(pack)) {
             return cleanUserProvidedText(text);
         }
@@ -162,14 +235,58 @@ const LongPractice = (() => {
 
     function isUserProvidedPack(pack) {
         if (!pack) return false;
-        const tags = Array.isArray(pack.tags) ? pack.tags : [];
+        const tags = normalizedTagList(pack.tags);
+        const source = String(pack.source || '').toUpperCase();
         return (
             pack.preprocess === 'user-provided' ||
-            pack.source === 'USER PROVIDED' ||
-            tags.includes('user-provided') ||
+            source.includes('USER PROVIDED') ||
+            source.includes('MY PACK') ||
+            (source.includes('PUBLIC PACK') && hasNormalizedTag(tags, 'user-provided')) ||
+            hasNormalizedTag(tags, 'user-provided') ||
             String(pack.providerId || '').startsWith('manual_') ||
             String(pack.id || '').startsWith('user_')
         );
+    }
+
+    function inferUserPackPreprocess(pack) {
+        if (pack?.preprocess === 'lyrics' || pack?.preprocess === 'structured' || pack?.preprocess === 'user-provided') {
+            return pack.preprocess;
+        }
+        const tags = normalizedTagList(pack?.tags);
+        const haystack = `${pack?.id || ''} ${pack?.title || ''} ${pack?.label || ''} ${pack?.source || ''} ${tags.join(' ')}`;
+        if (/lyrics?|가사|song|노래|k-?pop|red\s*-?\s*red|verse|chorus|hook|bridge|pre\s*-?\s*chorus/i.test(haystack)) {
+            return 'lyrics';
+        }
+        return 'user-provided';
+    }
+
+    function normalizeSavedUserPack(pack, group = 'User') {
+        if (!pack) return pack;
+        const tags = normalizedTagList(pack.tags);
+        if (!hasNormalizedTag(tags, 'user-provided')) tags.unshift('user-provided');
+        const preprocess = inferUserPackPreprocess({ ...pack, tags });
+        if (preprocess === 'lyrics' && !hasNormalizedTag(tags, 'lyrics')) tags.push('lyrics');
+        return {
+            ...pack,
+            group: pack.group || group,
+            source: pack.source || 'USER PROVIDED',
+            providerId: pack.providerId || pack.userId || `manual_${String(pack.id || Date.now()).replace(/^user_/, '')}`,
+            tags: tags.slice(0, 10),
+            preprocess
+        };
+    }
+
+    function hydratePracticePack(pack) {
+        if (!pack || isTemplatePack(pack) || !pack.text) return pack;
+        const shouldClean = pack.preprocess === 'lyrics'
+            || pack.preprocess === 'structured'
+            || pack.preprocess === 'user-provided'
+            || isUserProvidedPack(pack);
+        if (!shouldClean) return pack;
+        return {
+            ...pack,
+            text: preprocessPracticeText(pack.text, pack, { userProvided: isUserProvidedPack(pack) })
+        };
     }
 
     function comparableChar(char) {
@@ -181,12 +298,119 @@ const LongPractice = (() => {
     }
 
     function sanitizeUnitInput(value) {
-        return String(value || '').replace(/\r?\n/g, ' ');
+        return normalizePracticePunctuation(value)
+            .replace(/\r\n?/g, '\n')
+            .replace(/[ \t]*\n+[ \t]*/g, ' ')
+            .replace(/[ \t]{2,}/g, ' ');
     }
 
-    function splitPracticeUnits(text) {
+    function typingTargetFromDisplay(text) {
+        return normalizePracticePunctuation(text)
+            .replace(/[ \t]*\n+[ \t]*/g, ' ')
+            .replace(/[ \t]{2,}/g, ' ')
+            .trim();
+    }
+
+    function displayLineBreakPositions(text) {
+        const positions = [];
+        let index = 0;
+        for (const char of Array.from(String(text || ''))) {
+            if (char === '\n') {
+                positions.push(index);
+                index += 1;
+            } else {
+                index += 1;
+            }
+        }
+        return positions;
+    }
+
+    function displayTargetLines() {
+        return String(longState.displayTarget || '').split('\n').filter(line => line.length > 0);
+    }
+
+    function currentLineProgress(input = ui.input?.value || '') {
+        const targetLines = displayTargetLines();
+        if (targetLines.length <= 1) {
+            return {
+                hasNextLine: false,
+                typedEnough: isUnitReadyToComplete(input),
+                lineIndex: 0
+            };
+        }
+
+        const typedLines = String(input || '').replace(/\r\n?/g, '\n').split('\n');
+        const lineIndex = Math.min(Math.max(typedLines.length - 1, 0), targetLines.length - 1);
+        const typedLine = normalizePracticePunctuation(typedLines[lineIndex] || '');
+        const targetLine = typingTargetFromDisplay(targetLines[lineIndex] || '');
+        return {
+            hasNextLine: lineIndex < targetLines.length - 1,
+            typedEnough: typedLine.length >= targetLine.length,
+            lineIndex
+        };
+    }
+
+    function isAtDisplayLineBreak(input = ui.input?.value || '') {
+        const progress = currentLineProgress(input);
+        return progress.hasNextLine && progress.typedEnough;
+    }
+
+    function insertLongInputText(text) {
+        if (!ui.input) return;
+        const start = Number.isFinite(ui.input.selectionStart) ? ui.input.selectionStart : ui.input.value.length;
+        const end = Number.isFinite(ui.input.selectionEnd) ? ui.input.selectionEnd : start;
+        ui.input.setRangeText(text, start, end, 'end');
+        handleInput({
+            inputType: text === '\n' ? 'insertLineBreak' : 'insertText',
+            data: text
+        });
+    }
+
+    function isLineStructuredText(normalized) {
+        const lines = normalized.split('\n').map(line => line.trim()).filter(Boolean);
+        if (lines.length < 4) return false;
+        const shortLineCount = lines.filter(line => line.length <= 90).length;
+        return /\n\s*\n/.test(normalized) || shortLineCount / lines.length >= 0.75;
+    }
+
+    function hasMultiplePracticeLines(normalized) {
+        return normalized.split('\n').map(line => line.trim()).filter(Boolean).length >= 2;
+    }
+
+    function splitLineStructuredUnits(normalized) {
+        const units = [];
+        const sections = normalized
+            .split(/\n\s*\n+/)
+            .map(section => section.split('\n').map(line => line.trim()).filter(Boolean))
+            .filter(lines => lines.length > 0);
+
+        sections.forEach(lines => {
+            const chunkSize = lines.length <= 4 ? lines.length : 4;
+            for (let index = 0; index < lines.length; index += chunkSize) {
+                const chunk = lines.slice(index, index + chunkSize);
+                if (chunk.length) units.push(chunk.join('\n'));
+            }
+        });
+
+        return units.filter(unit => typingTargetFromDisplay(unit).length > 0);
+    }
+
+    function shouldPreserveLineStructure(pack, usesCustomText = false) {
+        if (pack?.preprocess === 'lyrics' || pack?.preprocess === 'structured') return true;
+        if (pack?.preprocess === 'user-provided' || isUserProvidedPack(pack)) return true;
+        if (!usesCustomText) return false;
+        const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ') : '';
+        return /lyrics?|가사|song|verse|user-provided/i.test(`${pack?.id || ''} ${pack?.title || ''} ${tags}`);
+    }
+
+    function splitPracticeUnits(text, options = {}) {
         const normalized = normalizeText(text);
         if (!normalized) return [];
+
+        if (options.preserveLineStructure && (isLineStructuredText(normalized) || hasMultiplePracticeLines(normalized))) {
+            const structured = splitLineStructuredUnits(normalized);
+            if (structured.length > 0) return structured;
+        }
 
         const roughUnits = normalized
             .split(/\n+/)
@@ -247,8 +471,45 @@ const LongPractice = (() => {
         const builtIn = Array.isArray(window.LONG_TEXT_PACKS) ? window.LONG_TEXT_PACKS : [];
         longState.packs = [
             ...builtIn,
-            ...userPacks().map(pack => ({ ...pack, group: 'User', source: 'USER PROVIDED' }))
-        ];
+            ...longState.remotePacks.map(pack => normalizeSavedUserPack(pack, pack.group || 'My Packs')),
+            ...userPacks().map(pack => normalizeSavedUserPack(pack, 'User'))
+        ].map(hydratePracticePack).filter(isPlayableLongPack);
+    }
+
+    function isRemoteLongPack(pack) {
+        return pack && (pack.kind === 'long' || pack.packKind === 'long') && String(pack.text || '').trim().length > 0;
+    }
+
+    function mapRemoteLongPack(pack, group) {
+        const id = `remote_${pack.id}`;
+        return {
+            id,
+            remoteId: pack.id,
+            title: pack.title || 'Long Practice Pack',
+            label: pack.title || 'Long Practice Pack',
+            text: pack.text || '',
+            tags: Array.isArray(pack.tags) ? pack.tags : [],
+            source: group === 'Public Packs' ? 'PUBLIC PACK' : 'MY PACK',
+            providerId: pack.ownerNickname || `pack_${pack.id}`,
+            preprocess: pack.preprocess || 'user-provided',
+            group
+        };
+    }
+
+    function setRemotePacks(mine = [], publicPacks = []) {
+        const seen = new Set();
+        const next = [];
+        const add = (pack, group) => {
+            if (!isRemoteLongPack(pack)) return;
+            const key = String(pack.id);
+            if (seen.has(key)) return;
+            seen.add(key);
+            next.push(mapRemoteLongPack(pack, group));
+        };
+        mine.forEach(pack => add(pack, 'My Packs'));
+        publicPacks.forEach(pack => add(pack, 'Public Packs'));
+        longState.remotePacks = next;
+        populatePackSelect();
     }
 
     function populatePackSelect() {
@@ -257,8 +518,9 @@ const LongPractice = (() => {
         buildPackList();
         ui.packSelect.innerHTML = '';
 
+        const visiblePacks = longState.packs.filter(isVisibleLongPack);
         const groups = new Map();
-        longState.packs.forEach(pack => {
+        visiblePacks.forEach(pack => {
             const group = pack.group || 'Practice';
             if (!groups.has(group)) groups.set(group, []);
             groups.get(group).push(pack);
@@ -266,7 +528,7 @@ const LongPractice = (() => {
 
         groups.forEach((packs, group) => {
             const optgroup = document.createElement('optgroup');
-            optgroup.label = group;
+            optgroup.label = selectGroupLabel(group);
             packs.forEach(pack => {
                 const option = document.createElement('option');
                 option.value = pack.id;
@@ -276,10 +538,13 @@ const LongPractice = (() => {
             ui.packSelect.appendChild(optgroup);
         });
 
-        const customOption = document.createElement('option');
-        customOption.value = '__custom__';
-        customOption.textContent = '직접 붙여넣기 / User-provided text';
-        ui.packSelect.appendChild(customOption);
+        const hasDirectInputTemplate = visiblePacks.some(pack => isTemplatePack(pack));
+        if (!hasDirectInputTemplate) {
+            const customOption = document.createElement('option');
+            customOption.value = '__custom__';
+            customOption.textContent = textForLanguage('Paste your own text', '직접 붙여넣기');
+            ui.packSelect.appendChild(customOption);
+        }
 
         const hasDesiredValue = Array.from(ui.packSelect.options).some(option => option.value === desiredValue);
         if (desiredValue && hasDesiredValue) {
@@ -288,7 +553,8 @@ const LongPractice = (() => {
     }
 
     function selectedPack() {
-        return longState.packs.find(pack => pack.id === ui.packSelect?.value) || null;
+        const pack = longState.packs.find(candidate => candidate.id === ui.packSelect?.value) || null;
+        return pack ? hydratePracticePack(pack) : null;
     }
 
     function updatePackMeta() {
@@ -312,10 +578,12 @@ const LongPractice = (() => {
         const usesCustomText = ui.packSelect?.value === '__custom__';
         longState.fullText = usesCustomText || isTemplatePack(pack) ? '' : preprocessPracticeText(pack?.text || '', pack);
         longState.units = [];
+        longState.unitOptions = { preserveLineStructure: shouldPreserveLineStructure(pack, usesCustomText || isTemplatePack(pack)) };
         longState.unitIndex = 0;
         longState.completedChars = 0;
         longState.completedCorrect = 0;
         longState.target = '';
+        longState.displayTarget = '';
         longState.source = isTemplatePack(pack) ? 'USER PROVIDED' : sourceLabel(pack);
         longState.startedAt = 0;
         longState.completed = false;
@@ -357,21 +625,41 @@ const LongPractice = (() => {
     function renderPassage(input = '') {
         if (!ui.passage) return;
         const fragment = document.createDocumentFragment();
-        const target = longState.target || '';
+        const displayTarget = longState.displayTarget || longState.target || '';
+        const target = longState.target || typingTargetFromDisplay(displayTarget);
         const typed = sanitizeUnitInput(input);
+        let typedIndex = 0;
 
-        for (let index = 0; index < target.length; index += 1) {
+        for (const char of Array.from(displayTarget)) {
+            if (char === '\n') {
+                const spacer = document.createElement('span');
+                const expected = ' ';
+                if (typedIndex < typed.length) {
+                    spacer.className = `long-char line-space ${comparableChar(typed[typedIndex]) === expected ? 'ok' : 'miss'}`;
+                } else if (typedIndex === typed.length) {
+                    spacer.className = 'long-char line-space cursor';
+                } else {
+                    spacer.className = 'long-char line-space';
+                }
+                spacer.textContent = ' ';
+                fragment.appendChild(spacer);
+                fragment.appendChild(document.createElement('br'));
+                typedIndex += 1;
+                continue;
+            }
+
             const span = document.createElement('span');
-            const char = target[index];
+            const expected = target[typedIndex] || char;
             span.textContent = char;
-            if (index < typed.length) {
-                span.className = `long-char ${comparableChar(typed[index]) === comparableChar(char) ? 'ok' : 'miss'}`;
-            } else if (index === typed.length) {
+            if (typedIndex < typed.length) {
+                span.className = `long-char ${comparableChar(typed[typedIndex]) === comparableChar(expected) ? 'ok' : 'miss'}`;
+            } else if (typedIndex === typed.length) {
                 span.className = 'long-char cursor';
             } else {
                 span.className = 'long-char';
             }
             fragment.appendChild(span);
+            typedIndex += 1;
         }
 
         ui.passage.replaceChildren(fragment);
@@ -406,8 +694,8 @@ const LongPractice = (() => {
     function updateStats() {
         const input = ui.input?.value || '';
         const stats = calculateStats(input);
-        const totalLength = longState.units.reduce((sum, unit) => sum + unit.length, 0) || longState.target.length;
-        const progress = Math.min(longState.completedChars + input.length, totalLength);
+        const totalLength = longState.units.reduce((sum, unit) => sum + typingTargetFromDisplay(unit).length, 0) || longState.target.length;
+        const progress = Math.min(longState.completedChars + sanitizeUnitInput(input).length, totalLength);
         if (ui.progress) ui.progress.textContent = `${progress}/${totalLength}`;
         if (ui.accuracy) ui.accuracy.textContent = `${stats.accuracy}%`;
         if (ui.wpm) ui.wpm.textContent = String(Number.isFinite(stats.wpm) ? stats.wpm : 0);
@@ -419,7 +707,8 @@ const LongPractice = (() => {
 
     function setCurrentUnit(index) {
         longState.unitIndex = Math.max(0, Math.min(index, longState.units.length - 1));
-        longState.target = longState.units[longState.unitIndex] || '';
+        longState.displayTarget = longState.units[longState.unitIndex] || '';
+        longState.target = typingTargetFromDisplay(longState.displayTarget);
         longState.completed = false;
         if (ui.input) {
             ui.input.value = '';
@@ -434,7 +723,8 @@ const LongPractice = (() => {
         if (longState.completed) return;
 
         const currentTarget = longState.target || '';
-        const value = sanitizeUnitInput(ui.input?.value || '');
+        const rawValue = ui.input?.value || '';
+        const value = sanitizeUnitInput(rawValue);
         const correct = countCorrectChars(value, currentTarget);
         longState.completed = true;
         longState.completedChars += currentTarget.length;
@@ -443,7 +733,7 @@ const LongPractice = (() => {
             ui.input.value = '';
             ui.input.disabled = true;
         }
-        renderPassage(currentTarget);
+        renderPassage(rawValue || currentTarget);
         updateStats();
         if (typeof window.sfx !== 'undefined') window.sfx.playSuccess?.();
 
@@ -468,6 +758,9 @@ const LongPractice = (() => {
         const customText = preprocessPracticeText(rawCustomText, pack, { userProvided: true });
         const usesCustomText = ui.packSelect?.value === '__custom__' || isTemplatePack(pack);
         const text = usesCustomText ? customText : preprocessPracticeText(pack?.text || customText, pack);
+        const unitOptions = {
+            preserveLineStructure: shouldPreserveLineStructure(pack, usesCustomText)
+        };
 
         if (isTemplatePack(pack) && !customText) {
             setStatus('이 템플릿은 직접 붙여넣은 텍스트가 있어야 시작할 수 있습니다.', true);
@@ -482,11 +775,13 @@ const LongPractice = (() => {
         }
 
         longState.fullText = text;
-        longState.units = splitPracticeUnits(text);
+        longState.unitOptions = unitOptions;
+        longState.units = splitPracticeUnits(text, unitOptions);
         longState.unitIndex = 0;
         longState.completedChars = 0;
         longState.completedCorrect = 0;
-        longState.target = longState.units[0] || text;
+        longState.displayTarget = longState.units[0] || text;
+        longState.target = typingTargetFromDisplay(longState.displayTarget);
         longState.source = usesCustomText
             ? (pack?.preprocess === 'lyrics' ? 'USER PROVIDED · LYRICS CLEAN' : 'USER PROVIDED')
             : sourceLabel(pack);
@@ -511,10 +806,11 @@ const LongPractice = (() => {
         longState.completedCorrect = 0;
         longState.unitIndex = 0;
         if (longState.fullText && !longState.units.length) {
-            longState.units = splitPracticeUnits(longState.fullText);
+            longState.units = splitPracticeUnits(longState.fullText, longState.unitOptions);
         }
         if (longState.units.length) {
-            longState.target = longState.units[0];
+            longState.displayTarget = longState.units[0];
+            longState.target = typingTargetFromDisplay(longState.displayTarget);
         }
         if (ui.input) {
             ui.input.value = '';
@@ -530,7 +826,13 @@ const LongPractice = (() => {
         return key === 'Enter' || key === 'Backspace' || key === ' ' || String(key || '').length === 1;
     }
 
-    function playLongTypingSound(key = 'a') {
+    function playLongTypingSound(eventOrKey = 'a') {
+        if (window.CodeDropTypingSfx?.play) {
+            window.CodeDropTypingSfx.play(eventOrKey, { source: 'long', force: true });
+            longState.lastKeySoundAt = Date.now();
+            return;
+        }
+        const key = eventOrKey && typeof eventOrKey === 'object' ? eventOrKey.key : eventOrKey;
         if (!window.sfx || typeof window.sfx.playKey !== 'function') return;
         window.sfx.playKey(key);
         longState.lastKeySoundAt = Date.now();
@@ -542,20 +844,29 @@ const LongPractice = (() => {
         if (event.key === 'Process' || event.isComposing) return;
         if (event.key === 'Enter') {
             event.preventDefault();
-            playLongTypingSound(event.key);
-            setStatus('제시어를 끝까지 입력하면 자동으로 다음 제시어로 넘어갑니다.');
+            playLongTypingSound(event);
+            const value = ui.input?.value || '';
+            const lineProgress = currentLineProgress(value);
+            const atDisplayLineBreak = isAtDisplayLineBreak(value);
+            if (isUnitReadyToComplete(value) || (!atDisplayLineBreak && !lineProgress.hasNextLine && lineProgress.typedEnough)) {
+                completeCurrentUnit();
+                return;
+            }
+            if (atDisplayLineBreak) {
+                insertLongInputText('\n');
+                setStatus('NEXT LINE');
+                return;
+            }
+            setStatus('현재 줄을 끝까지 입력하면 Enter로 다음 줄로 이동합니다.');
             return;
         }
         if (!isAudibleKey(event.key)) return;
-        playLongTypingSound(event.key);
+        playLongTypingSound(event);
     }
 
     function handleInput(event) {
         if (!longState.target) return;
-        const value = sanitizeUnitInput(ui.input.value);
-        if (ui.input.value !== value) {
-            ui.input.value = value;
-        }
+        const value = ui.input?.value || '';
         if (!longState.startedAt) longState.startedAt = Date.now();
         if (event && event.inputType !== 'insertFromPaste' && Date.now() - longState.lastKeySoundAt > 35) {
             const key = event.inputType?.startsWith('delete') ? 'Backspace' : (event.data === ' ' ? ' ' : 'a');
@@ -605,17 +916,21 @@ const LongPractice = (() => {
     }
 
     function saveUserPack(pack) {
-        const text = preprocessPracticeText(pack?.text, pack, { userProvided: true });
+        const normalizedPack = normalizeSavedUserPack(pack || {}, 'User');
+        const text = preprocessPracticeText(normalizedPack.text, normalizedPack, { userProvided: true });
         if (!text) return null;
-        const title = String(pack.title || 'User Long Pack').slice(0, 60) || 'User Long Pack';
-        const label = String(pack.label || pack.title || title).slice(0, 80) || title;
+        const title = String(normalizedPack.title || 'User Long Pack').slice(0, 60) || 'User Long Pack';
+        const label = String(normalizedPack.label || normalizedPack.title || title).slice(0, 80) || title;
         const existing = userPacks();
         const duplicate = existing.find(saved =>
             normalizeText(saved.text) === text &&
             String(saved.title || '').trim().toLowerCase() === title.trim().toLowerCase()
         );
         if (duplicate?.id) {
-            const next = [duplicate, ...existing.filter(saved => saved.id !== duplicate.id)];
+            const next = [
+                normalizeSavedUserPack({ ...duplicate, text }, 'User'),
+                ...existing.filter(saved => saved.id !== duplicate.id)
+            ];
             saveUserPacks(next);
             longState.pendingPackId = duplicate.id;
             populatePackSelect();
@@ -631,10 +946,10 @@ const LongPractice = (() => {
             title,
             label,
             text,
-            tags: Array.isArray(pack.tags) ? pack.tags.slice(0, 8) : ['user-provided'],
+            tags: normalizedPack.tags,
             source: 'USER PROVIDED',
             providerId,
-            preprocess: pack.preprocess || 'user-provided'
+            preprocess: normalizedPack.preprocess
         }, ...existing];
         saveUserPacks(next);
         longState.pendingPackId = id;
@@ -678,6 +993,7 @@ const LongPractice = (() => {
         close,
         selectPack,
         saveUserPack,
+        setRemotePacks,
         refresh: populatePackSelect,
         listPacks
     };

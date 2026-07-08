@@ -98,11 +98,28 @@ const LabMode = (() => {
     }
 
     let eventsBound = false;
+    function isStudyAudibleKey(event) {
+        if (!event || event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return false;
+        if (event.key === 'Process') return false;
+        return event.key === 'Enter' || event.key === 'Backspace' || event.key === ' ' || String(event.key || '').length === 1;
+    }
+
+    function playStudyTypingSound(event) {
+        if (!isStudyAudibleKey(event)) return;
+        if (window.CodeDropTypingSfx?.play) {
+            window.CodeDropTypingSfx.play(event, { source: 'lab', force: true });
+            return;
+        }
+        if (!window.sfx || typeof window.sfx.playKey !== 'function') return;
+        window.sfx.playKey(event.key || 'a');
+    }
+
     function bindEvents() {
         if (eventsBound) return;
         eventsBound = true;
 
         ui.input.addEventListener('keydown', (e) => {
+            if (!ui.input.disabled) playStudyTypingSound(e);
             if (e.key !== 'Enter') return;
             e.stopPropagation();
             if (state.answered) {
