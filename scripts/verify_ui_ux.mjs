@@ -1034,6 +1034,7 @@ assert(longMode.includes('function setRemotePacks') && longMode.includes('remote
 assert(server.includes('pack_kind = ?, text_content = ?, preprocess = ?, tags_json = ?'), 'server should persist long pack type, text, preprocess, and tags');
 assert(server.includes('payload.packKind === "long"') && server.includes('DELETE FROM custom_pack_items WHERE pack_id = ?'), 'server should store long packs without word item rows');
 assert(server.includes('Long practice packs do not use DROP scores') && server.includes('Long practice packs do not use DROP leaderboards'), 'long practice packs should not use DROP score or leaderboard endpoints');
+assert((server.match(/await ensureCustomPackTables\(\);/g) || []).length === 1 && server.includes('async function ensureCustomPackSchema()'), 'pack APIs should ensure migrated custom pack schema, not only table existence');
 assert(packMaker.includes('function isLongPackIntent') && packMaker.includes('answerLongPackIntent'), 'Pack Maker should route long/lyrics practice requests into direct-input long pack mode');
 assert(packMaker.includes('LONG PACK 직접입력 모드로 전환했습니다'), 'Pack Maker should explain long-pack direct input mode in chat');
 assert(index.includes('id="admin-pack-screen"'), 'admin pack review overlay is missing');

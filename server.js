@@ -271,6 +271,7 @@ const PACK_ADMIN_NICKNAMES = new Set(
         .filter(Boolean)
 );
 let customPackTablesReady = null;
+let customPackSchemaReady = null;
 let databaseSchemaReady = null;
 
 function envFirst(names) {
@@ -2971,23 +2972,7 @@ async function ensureDatabaseSchema() {
             await ensureTableColumn("leaderboard", "wpm", "`wpm` INT NOT NULL DEFAULT 0");
             await ensureTableColumn("leaderboard", "accuracy", "`accuracy` INT NOT NULL DEFAULT 0");
             await ensureTableColumn("leaderboard", "pack", "`pack` VARCHAR(32) NOT NULL DEFAULT 'python'");
-            await ensureCustomPackTables();
-            await ensureTableColumn("custom_packs", "description", "`description` VARCHAR(240) DEFAULT ''");
-            await ensureTableColumn("custom_packs", "status", "`status` VARCHAR(16) NOT NULL DEFAULT 'draft'");
-            await ensureTableColumn("custom_packs", "review_reason", "`review_reason` VARCHAR(240) DEFAULT ''");
-            await ensureTableColumn("custom_packs", "pack_kind", "`pack_kind` VARCHAR(16) NOT NULL DEFAULT 'word'");
-            await ensureTableColumn("custom_packs", "text_content", "`text_content` MEDIUMTEXT NULL");
-            await ensureTableColumn("custom_packs", "preprocess", "`preprocess` VARCHAR(32) DEFAULT ''");
-            await ensureTableColumn("custom_packs", "tags_json", "`tags_json` TEXT NULL");
-            await ensureTableColumn("custom_packs", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-            await ensureTableColumn("custom_packs", "updated_at", "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-            await ensureTableColumn("custom_pack_items", "sources_json", "`sources_json` TEXT NULL");
-            await ensureTableColumn("custom_pack_items", "sort_order", "`sort_order` INT NOT NULL DEFAULT 0");
-            await ensureTableColumn("custom_pack_items", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-            await ensureTableColumn("custom_pack_scores", "wpm", "`wpm` INT NOT NULL DEFAULT 0");
-            await ensureTableColumn("custom_pack_scores", "accuracy", "`accuracy` INT NOT NULL DEFAULT 0");
-            await ensureTableColumn("custom_pack_scores", "difficulty", "`difficulty` VARCHAR(16) NOT NULL DEFAULT 'normal'");
-            await ensureTableColumn("custom_pack_scores", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            await ensureCustomPackSchema();
         })().catch(err => {
             databaseSchemaReady = null;
             if (recoverableSchemaError(err)) {
@@ -3063,6 +3048,35 @@ async function ensureCustomPackTables() {
     }
 
     return customPackTablesReady;
+}
+
+async function ensureCustomPackSchema() {
+    if (!customPackSchemaReady) {
+        customPackSchemaReady = (async () => {
+            await ensureCustomPackTables();
+            await ensureTableColumn("custom_packs", "description", "`description` VARCHAR(240) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "status", "`status` VARCHAR(16) NOT NULL DEFAULT 'draft'");
+            await ensureTableColumn("custom_packs", "review_reason", "`review_reason` VARCHAR(240) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "pack_kind", "`pack_kind` VARCHAR(16) NOT NULL DEFAULT 'word'");
+            await ensureTableColumn("custom_packs", "text_content", "`text_content` MEDIUMTEXT NULL");
+            await ensureTableColumn("custom_packs", "preprocess", "`preprocess` VARCHAR(32) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "tags_json", "`tags_json` TEXT NULL");
+            await ensureTableColumn("custom_packs", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            await ensureTableColumn("custom_packs", "updated_at", "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            await ensureTableColumn("custom_pack_items", "sources_json", "`sources_json` TEXT NULL");
+            await ensureTableColumn("custom_pack_items", "sort_order", "`sort_order` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("custom_pack_items", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+            await ensureTableColumn("custom_pack_scores", "wpm", "`wpm` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("custom_pack_scores", "accuracy", "`accuracy` INT NOT NULL DEFAULT 0");
+            await ensureTableColumn("custom_pack_scores", "difficulty", "`difficulty` VARCHAR(16) NOT NULL DEFAULT 'normal'");
+            await ensureTableColumn("custom_pack_scores", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        })().catch(err => {
+            customPackSchemaReady = null;
+            throw err;
+        });
+    }
+
+    return customPackSchemaReady;
 }
 
 function packRowVisibleToUser(row, user) {
@@ -4309,7 +4323,7 @@ app.get("/api/packs", authUser, rateLimit("packs-list", 80, 60_000, req => req.u
     }
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         const params = [];
         let where;
         if (scope === "mine") {
@@ -4348,7 +4362,7 @@ app.get("/api/packs/:id", authUser, rateLimit("packs-detail", 120, 60_000, req =
     }
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         const row = await fetchPackRow(id);
         if (!row || !packRowVisibleToUser(row, req.user)) {
             return res.status(404).json({ error: "Pack not found" });
@@ -4368,7 +4382,7 @@ app.get("/api/admin/packs", authUser, rateLimit("admin-packs", 80, 60_000, req =
     if (!PACK_STATUSES.has(status)) return res.status(400).json({ error: "Invalid pack status" });
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         const [rows] = await db.query(`
             SELECT p.*, u.nickname AS owner_nickname,
                 CASE
@@ -4411,7 +4425,7 @@ app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.
     const tagsJson = JSON.stringify(payload.tags || []);
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         await connection.beginTransaction();
 
         let id = payload.id;
@@ -4477,7 +4491,7 @@ app.delete("/api/packs/:id", authUser, rateLimit("packs-delete", 20, 60_000, req
         return res.status(err.status || 400).json({ error: err.message });
     }
 
-    await ensureCustomPackTables();
+    await ensureCustomPackSchema();
     const connection = await db.getConnection();
 
     try {
@@ -4526,7 +4540,7 @@ app.post("/api/packs/:id/review", authUser, rateLimit("packs-review", 20, 60_000
     const reason = sanitizePackText(req.body?.reason, 240);
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         const [result] = await db.query(
             "UPDATE custom_packs SET status = ?, review_reason = ? WHERE id = ?",
             [status, reason, id]
@@ -4558,7 +4572,7 @@ app.post("/api/packs/:id/submit-score", authUser, rateLimit("pack-score", 60, 60
     }
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         const row = await fetchPackRow(id);
         if (!row || !packRowVisibleToUser(row, req.user)) return res.status(404).json({ error: "Pack not found" });
         if (sanitizePackKind(row.pack_kind) === "long") {
@@ -4589,7 +4603,7 @@ app.get("/api/packs/:id/leaderboard", authUser, rateLimit("pack-leaderboard", 12
     if (difficulty === false) return res.status(400).json({ error: "Invalid leaderboard filter" });
 
     try {
-        await ensureCustomPackTables();
+        await ensureCustomPackSchema();
         const row = await fetchPackRow(id);
         if (!row || !packRowVisibleToUser(row, req.user)) return res.status(404).json({ error: "Pack not found" });
         if (sanitizePackKind(row.pack_kind) === "long") {
@@ -4667,7 +4681,7 @@ app.post("/withdraw", authUser, rateLimit("withdraw", 8, 60_000, req => req.user
     const { password } = req.body;
     if (!password) return res.status(400).json({ error: "Missing fields" });
 
-    await ensureCustomPackTables();
+    await ensureCustomPackSchema();
     const connection = await db.getConnection();
 
     try {
