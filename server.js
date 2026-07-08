@@ -130,6 +130,9 @@ function sendIndexHtml(res) {
     const indexPath = path.join(__dirname, "index.html");
     sendNoStoreFile(res, indexPath, (err) => {
         if (err) {
+            if (err.code === "EPIPE" || err.code === "ECONNABORTED" || res.headersSent || res.writableEnded) {
+                return;
+            }
             console.error("Error serving index.html:", err);
             res.status(500).send("Error loading game: " + err.message);
         }
@@ -233,6 +236,8 @@ const MAX_PACK_ITEMS = 120;
 const MAX_PACK_TERM_LEN = 80;
 const MAX_PACK_ITEM_DESC_LEN = 180;
 const MAX_PACK_SOURCES = 3;
+const MIN_LONG_PACK_TEXT_LEN = 20;
+const MAX_LONG_PACK_TEXT_LEN = 60_000;
 const DEFAULT_PACK_TARGET_COUNT = 30;
 const PACK_REPAIR_ATTEMPTS = 2;
 const PACK_FINAL_FILL_ATTEMPTS = 2;
@@ -834,8 +839,16 @@ function reviewEmailPreviewItems(items) {
 function renderPackReviewEmail({ pack, items, user, openUrl, approveUrl, rejectUrl }) {
     const safeTitle = escapeHtml(pack.title);
     const safeUser = escapeHtml(user.nickname);
-    const sourceCount = items.reduce((sum, item) => sum + (Array.isArray(item.sources) ? item.sources.length : 0), 0);
-    const missingSources = items.filter(item => !Array.isArray(item.sources) || item.sources.length === 0).length;
+    const packKind = sanitizePackKind(pack.pack_kind || pack.kind || pack.packKind);
+    const isLongPack = packKind === "long";
+    const sourceCount = isLongPack ? 1 : items.reduce((sum, item) => sum + (Array.isArray(item.sources) ? item.sources.length : 0), 0);
+    const missingSources = isLongPack ? 0 : items.filter(item => !Array.isArray(item.sources) || item.sources.length === 0).length;
+    const longPreview = escapeHtml(sanitizeLongPackText(pack.text_content || pack.text || "").slice(0, 1800));
+    const previewBlock = isLongPack
+        ? `<div style="border:1px solid rgba(0,243,255,.35);background:#050507;padding:14px;color:#d8e2ed;font-family:monospace;white-space:pre-wrap;line-height:1.65;max-height:340px;overflow:auto;">${longPreview || "No long text preview"}</div>`
+        : `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid rgba(0,243,255,.35);background:#050507;">
+                    ${reviewEmailPreviewItems(items)}
+                </table>`;
 
     return `<!doctype html>
 <html>
@@ -853,13 +866,12 @@ function renderPackReviewEmail({ pack, items, user, openUrl, approveUrl, rejectU
                 <h2 style="margin:18px 0 8px;color:#ffffff;font-size:24px;">${safeTitle}</h2>
                 <p style="margin:0 0 20px;color:#aeb5c2;font-family:monospace;line-height:1.6;">
                     작성자: <strong style="color:#00f3ff;">${safeUser}</strong><br>
-                    항목 수: <strong>${items.length}</strong><br>
-                    Source 수: <strong>${sourceCount}</strong><br>
+                    팩 유형: <strong>${isLongPack ? "LONG PRACTICE" : "DROP WORD"}</strong><br>
+                    항목 수: <strong>${isLongPack ? "장문 1개" : items.length}</strong><br>
+                    Source 수: <strong>${isLongPack ? "USER PROVIDED" : sourceCount}</strong><br>
                     Source 누락 항목: <strong style="color:${missingSources ? "#ffb000" : "#00ff85"};">${missingSources}</strong>
                 </p>
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border:1px solid rgba(0,243,255,.35);background:#050507;">
-                    ${reviewEmailPreviewItems(items)}
-                </table>
+                ${previewBlock}
                 <p style="margin:18px 0 0;color:#777f8e;font-size:12px;font-family:monospace;">메일 버튼은 관리자 로그인 후 해당 팩 검수와 승인/반려 확인창으로 이어집니다.</p>
             </td>
         </tr>
@@ -904,7 +916,8 @@ async function sendPackReviewEmail(req, pack, items, user) {
                     "CodeDrop 공개팩 심사 요청",
                     `팩 제목: ${pack.title}`,
                     `작성자: ${user.nickname}`,
-                    `항목 수: ${items.length}`,
+                    `팩 유형: ${sanitizePackKind(pack.pack_kind || pack.kind || pack.packKind) === "long" ? "LONG PRACTICE" : "DROP WORD"}`,
+                    `항목 수: ${sanitizePackKind(pack.pack_kind || pack.kind || pack.packKind) === "long" ? "장문 1개" : items.length}`,
                     `심사 화면: ${openUrl}`
                 ].join("\n")
             })
@@ -934,6 +947,35 @@ function packId(value) {
 function sanitizePackText(value, limit) {
     if (typeof value !== "string") return "";
     return value.replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function sanitizeLongPackText(value) {
+    if (typeof value !== "string") return "";
+    return value
+        .replace(/\r\n?/g, "\n")
+        .replace(/\u00a0/g, " ")
+        .replace(/[ \t]+\n/g, "\n")
+        .replace(/\n{4,}/g, "\n\n\n")
+        .trim()
+        .slice(0, MAX_LONG_PACK_TEXT_LEN);
+}
+
+function sanitizePackKind(value) {
+    return String(value || "").toLowerCase() === "long" ? "long" : "word";
+}
+
+function sanitizePackTags(value) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const tags = [];
+    for (const item of value) {
+        const tag = sanitizePackText(item, 32).toLowerCase();
+        if (!tag || seen.has(tag)) continue;
+        seen.add(tag);
+        tags.push(tag);
+        if (tags.length >= 12) break;
+    }
+    return tags;
 }
 
 function sanitizeSourceUrl(value) {
@@ -987,6 +1029,42 @@ function sanitizePackItems(items, { strict = true, requireSources = false, fallb
 }
 
 function sanitizePackPayload(body, { strict = true } = {}) {
+    const packKind = sanitizePackKind(body?.kind || body?.packKind);
+    if (packKind === "long") {
+        const title = sanitizePackText(body?.title, MAX_PACK_TITLE_LEN);
+        const description = sanitizePackText(body?.description, MAX_PACK_DESC_LEN)
+            || `${title || "Long Practice Pack"} - user-provided long-form`;
+        const text = sanitizeLongPackText(body?.text || body?.textContent || body?.content);
+        const submitForReview = body?.submitForReview === true;
+        const preprocess = sanitizePackText(body?.preprocess, 32) || "user-provided";
+        const tags = sanitizePackTags(body?.tags);
+
+        if (strict) {
+            if (title.length < 3) {
+                const err = new Error("Pack title must be 3-60 characters");
+                err.status = 400;
+                throw err;
+            }
+            if (text.length < MIN_LONG_PACK_TEXT_LEN) {
+                const err = new Error(`Long pack text must be at least ${MIN_LONG_PACK_TEXT_LEN} characters`);
+                err.status = 400;
+                throw err;
+            }
+        }
+
+        return {
+            id: body?.id ? packId(body.id) : null,
+            title,
+            description,
+            items: [],
+            submitForReview,
+            packKind,
+            text,
+            preprocess,
+            tags
+        };
+    }
+
     const title = sanitizePackText(body?.title, MAX_PACK_TITLE_LEN);
     const submitForReview = body?.submitForReview === true;
     const items = sanitizePackItems(body?.items, { strict, requireSources: submitForReview });
@@ -1010,7 +1088,11 @@ function sanitizePackPayload(body, { strict = true } = {}) {
         title,
         description,
         items,
-        submitForReview
+        submitForReview,
+        packKind: "word",
+        text: "",
+        preprocess: "",
+        tags: []
     };
 }
 
@@ -2822,7 +2904,7 @@ async function tableColumnExists(tableName, columnName) {
 const REQUIRED_SCHEMA_COLUMNS = {
     users: ["id", "nickname", "password", "created_at"],
     leaderboard: ["id", "user_id", "score", "wpm", "accuracy", "difficulty", "pack", "created_at"],
-    custom_packs: ["id", "owner_id", "title", "description", "status", "review_reason", "created_at", "updated_at"],
+    custom_packs: ["id", "owner_id", "title", "description", "status", "review_reason", "pack_kind", "text_content", "preprocess", "tags_json", "created_at", "updated_at"],
     custom_pack_items: ["id", "pack_id", "term", "description", "sources_json", "sort_order", "created_at"],
     custom_pack_scores: ["id", "pack_id", "user_id", "score", "wpm", "accuracy", "difficulty", "created_at"]
 };
@@ -2893,6 +2975,10 @@ async function ensureDatabaseSchema() {
             await ensureTableColumn("custom_packs", "description", "`description` VARCHAR(240) DEFAULT ''");
             await ensureTableColumn("custom_packs", "status", "`status` VARCHAR(16) NOT NULL DEFAULT 'draft'");
             await ensureTableColumn("custom_packs", "review_reason", "`review_reason` VARCHAR(240) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "pack_kind", "`pack_kind` VARCHAR(16) NOT NULL DEFAULT 'word'");
+            await ensureTableColumn("custom_packs", "text_content", "`text_content` MEDIUMTEXT NULL");
+            await ensureTableColumn("custom_packs", "preprocess", "`preprocess` VARCHAR(32) DEFAULT ''");
+            await ensureTableColumn("custom_packs", "tags_json", "`tags_json` TEXT NULL");
             await ensureTableColumn("custom_packs", "created_at", "`created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
             await ensureTableColumn("custom_packs", "updated_at", "`updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
             await ensureTableColumn("custom_pack_items", "sources_json", "`sources_json` TEXT NULL");
@@ -2932,6 +3018,10 @@ async function ensureCustomPackTables() {
                     description VARCHAR(240) DEFAULT '',
                     status VARCHAR(16) NOT NULL DEFAULT 'draft',
                     review_reason VARCHAR(240) DEFAULT '',
+                    pack_kind VARCHAR(16) NOT NULL DEFAULT 'word',
+                    text_content MEDIUMTEXT NULL,
+                    preprocess VARCHAR(32) DEFAULT '',
+                    tags_json TEXT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                     INDEX idx_custom_packs_owner (owner_id, status),
@@ -2980,18 +3070,32 @@ function packRowVisibleToUser(row, user) {
 }
 
 function serializePackRow(row, items = undefined) {
+    const packKind = sanitizePackKind(row.pack_kind || row.kind || row.packKind);
+    let tags = [];
+    try {
+        tags = JSON.parse(row.tags_json || "[]");
+    } catch (err) {
+        tags = [];
+    }
     const pack = {
         id: row.id,
         title: row.title,
         description: row.description || "",
         status: row.status,
+        kind: packKind,
+        packKind,
+        text: packKind === "long" ? (row.text_content || "") : "",
+        preprocess: row.preprocess || "",
+        tags: Array.isArray(tags) ? tags : [],
         ownerId: row.owner_id,
         ownerNickname: row.owner_nickname || "",
         reviewReason: row.review_reason || "",
         updatedAt: row.updated_at,
-        itemCount: Number(row.item_count || 0)
+        itemCount: packKind === "long"
+            ? (row.text_content ? 1 : 0)
+            : Number(row.item_count || 0)
     };
-    if (items) pack.items = items;
+    if (items) pack.items = packKind === "long" ? [] : items;
     return pack;
 }
 
@@ -3013,7 +3117,10 @@ function serializePackItem(row) {
 async function fetchPackRow(id) {
     const [rows] = await db.query(`
         SELECT p.*, u.nickname AS owner_nickname,
-            (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id) AS item_count
+            CASE
+                WHEN p.pack_kind = 'long' THEN IF(CHAR_LENGTH(COALESCE(p.text_content, '')) > 0, 1, 0)
+                ELSE (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id)
+            END AS item_count
         FROM custom_packs p
         JOIN users u ON u.id = p.owner_id
         WHERE p.id = ?
@@ -4214,7 +4321,10 @@ app.get("/api/packs", authUser, rateLimit("packs-list", 80, 60_000, req => req.u
 
         const [rows] = await db.query(`
             SELECT p.*, u.nickname AS owner_nickname,
-                (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id) AS item_count
+                CASE
+                    WHEN p.pack_kind = 'long' THEN IF(CHAR_LENGTH(COALESCE(p.text_content, '')) > 0, 1, 0)
+                    ELSE (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id)
+                END AS item_count
             FROM custom_packs p
             JOIN users u ON u.id = p.owner_id
             WHERE ${where}
@@ -4243,7 +4353,7 @@ app.get("/api/packs/:id", authUser, rateLimit("packs-detail", 120, 60_000, req =
         if (!row || !packRowVisibleToUser(row, req.user)) {
             return res.status(404).json({ error: "Pack not found" });
         }
-        const items = await fetchPackItems(id);
+        const items = sanitizePackKind(row.pack_kind) === "long" ? [] : await fetchPackItems(id);
         res.json({ pack: serializePackRow(row, items) });
     } catch (err) {
         console.error("Pack detail failed:", err.message);
@@ -4261,8 +4371,14 @@ app.get("/api/admin/packs", authUser, rateLimit("admin-packs", 80, 60_000, req =
         await ensureCustomPackTables();
         const [rows] = await db.query(`
             SELECT p.*, u.nickname AS owner_nickname,
-                (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id) AS item_count,
-                (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id AND i.sources_json = '[]') AS missing_source_count
+                CASE
+                    WHEN p.pack_kind = 'long' THEN IF(CHAR_LENGTH(COALESCE(p.text_content, '')) > 0, 1, 0)
+                    ELSE (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id)
+                END AS item_count,
+                CASE
+                    WHEN p.pack_kind = 'long' THEN 0
+                    ELSE (SELECT COUNT(*) FROM custom_pack_items i WHERE i.pack_id = p.id AND i.sources_json = '[]')
+                END AS missing_source_count
             FROM custom_packs p
             JOIN users u ON u.id = p.owner_id
             WHERE p.status = ?
@@ -4292,6 +4408,7 @@ app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.
 
     const status = payload.submitForReview ? "pending" : "draft";
     const connection = await db.getConnection();
+    const tagsJson = JSON.stringify(payload.tags || []);
 
     try {
         await ensureCustomPackTables();
@@ -4310,22 +4427,31 @@ app.post("/api/packs", authUser, rateLimit("packs-save", 20, 60_000, req => req.
                 return res.status(400).json({ error: "Approved packs must be resubmitted for review after edits" });
             }
             await connection.query(
-                "UPDATE custom_packs SET title = ?, description = ?, status = ?, review_reason = '' WHERE id = ?",
-                [payload.title, payload.description, status, id]
+                `UPDATE custom_packs
+                 SET title = ?, description = ?, status = ?, review_reason = '',
+                     pack_kind = ?, text_content = ?, preprocess = ?, tags_json = ?
+                 WHERE id = ?`,
+                [payload.title, payload.description, status, payload.packKind, payload.text, payload.preprocess, tagsJson, id]
             );
         } else {
             const [result] = await connection.query(
-                "INSERT INTO custom_packs (owner_id, title, description, status) VALUES (?, ?, ?, ?)",
-                [req.user.id, payload.title, payload.description, status]
+                `INSERT INTO custom_packs
+                 (owner_id, title, description, status, pack_kind, text_content, preprocess, tags_json)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                [req.user.id, payload.title, payload.description, status, payload.packKind, payload.text, payload.preprocess, tagsJson]
             );
             id = result.insertId;
         }
 
-        await savePackItems(connection, id, payload.items);
+        if (payload.packKind === "long") {
+            await connection.query("DELETE FROM custom_pack_items WHERE pack_id = ?", [id]);
+        } else {
+            await savePackItems(connection, id, payload.items);
+        }
         await connection.commit();
 
         const row = await fetchPackRow(id);
-        const items = await fetchPackItems(id);
+        const items = payload.packKind === "long" ? [] : await fetchPackItems(id);
         let reviewEmail = { sent: false, reason: "not submitted for review" };
         if (payload.submitForReview) {
             reviewEmail = await sendPackReviewEmail(req, row, items, req.user);
@@ -4407,7 +4533,7 @@ app.post("/api/packs/:id/review", authUser, rateLimit("packs-review", 20, 60_000
         );
         if (result.affectedRows === 0) return res.status(404).json({ error: "Pack not found" });
         const row = await fetchPackRow(id);
-        const items = await fetchPackItems(id);
+        const items = sanitizePackKind(row.pack_kind) === "long" ? [] : await fetchPackItems(id);
         res.json({ ok: true, pack: serializePackRow(row, items) });
     } catch (err) {
         console.error("Pack review failed:", err.message);
@@ -4435,6 +4561,9 @@ app.post("/api/packs/:id/submit-score", authUser, rateLimit("pack-score", 60, 60
         await ensureCustomPackTables();
         const row = await fetchPackRow(id);
         if (!row || !packRowVisibleToUser(row, req.user)) return res.status(404).json({ error: "Pack not found" });
+        if (sanitizePackKind(row.pack_kind) === "long") {
+            return res.status(400).json({ error: "Long practice packs do not use DROP scores" });
+        }
 
         await db.query(
             "INSERT INTO custom_pack_scores (pack_id, user_id, score, wpm, accuracy, difficulty) VALUES (?, ?, ?, ?, ?, ?)",
@@ -4463,6 +4592,9 @@ app.get("/api/packs/:id/leaderboard", authUser, rateLimit("pack-leaderboard", 12
         await ensureCustomPackTables();
         const row = await fetchPackRow(id);
         if (!row || !packRowVisibleToUser(row, req.user)) return res.status(404).json({ error: "Pack not found" });
+        if (sanitizePackKind(row.pack_kind) === "long") {
+            return res.status(400).json({ error: "Long practice packs do not use DROP leaderboards" });
+        }
         const top10 = await getCustomPackLeaderboard(id, difficulty);
         res.json({ top10 });
     } catch (err) {

@@ -2289,6 +2289,51 @@
             font-size: 0.82rem;
         }
 
+        .pack-maker-long-options {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+            padding: 10px;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(0, 243, 255, 0.035);
+        }
+
+        .pack-maker-long-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 6px 8px;
+            border: 1px solid rgba(0, 243, 255, 0.16);
+            border-radius: 6px;
+            color: #cfd9dc;
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+            letter-spacing: 0.02em;
+            background: rgba(0, 0, 0, 0.28);
+        }
+
+        .pack-maker-long-option input {
+            width: 15px;
+            height: 15px;
+            accent-color: var(--neon-cyan);
+        }
+
+        .pack-maker-long-option.action {
+            justify-content: center;
+            border-color: rgba(188, 19, 254, 0.42);
+            color: var(--neon-purple);
+            background: rgba(188, 19, 254, 0.08);
+            cursor: pointer;
+        }
+
+        .pack-maker-long-option.action:hover {
+            color: #fff;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 14px rgba(0, 243, 255, 0.16);
+        }
+
         .pack-maker-long-saved {
             border: 1px solid rgba(0, 243, 255, 0.35);
             border-radius: 6px;
@@ -2309,6 +2354,18 @@
 
         .pack-maker-long-actions .btn-small {
             width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            .pack-maker-long-options {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .pack-maker-long-options {
+                grid-template-columns: 1fr;
+            }
         }
 
         .pack-maker-table {
@@ -2607,6 +2664,12 @@
             color: #000;
             background: var(--primary-neon);
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.6);
+        }
+
+        .long-passage .line-space {
+            display: inline-block;
+            min-width: 0.45em;
+            opacity: 0.4;
         }
 
         #long-input {
@@ -4772,9 +4835,10 @@
         }
 
         .pack-selector.long-mode .pack-popover {
-            width: min(720px, calc(100vw - 32px));
-            height: min(560px, calc(100dvh - 96px));
-            max-height: min(560px, calc(100dvh - 96px));
+            width: min(820px, calc(100vw - 36px));
+            height: auto;
+            min-height: 360px;
+            max-height: min(620px, calc(100dvh - 76px));
         }
 
         .pack-selector.long-mode .pack-popover-body {
@@ -4790,6 +4854,7 @@
         .pack-selector.long-mode .pack-card-groups {
             gap: 14px;
             padding-right: 6px;
+            max-height: min(520px, calc(100dvh - 176px));
         }
 
         .pack-selector.long-mode .pack-card-grid {
@@ -7280,7 +7345,7 @@
                 </div>
                 <div class="long-controls">
                     <div class="select-group">
-                        <label for="long-pack-select">TEXT PACK</label>
+                        <label for="long-pack-select">문장팩 선택</label>
                         <select id="long-pack-select"></select>
                     </div>
                     <div class="long-note" id="long-pack-meta">공개/오리지널 연습문을 기본 제공하고, 직접 붙여넣기 텍스트도 연습할 수 있습니다.</div>
@@ -7398,10 +7463,36 @@
                     <div class="pack-maker-long-hint">
                         LONG PACK은 사용자가 직접 입력한 긴 글을 장문 연습팩으로 저장합니다. 저작권 있는 가사는 기본 제공하거나 검색해 가져오지 않고, 직접 붙여넣기 텍스트로만 다룹니다. 저장된 글은 USER PROVIDED로 표시됩니다.
                     </div>
+                    <div class="pack-maker-long-options" aria-label="Long pack preprocessing options">
+                        <label class="pack-maker-long-option">
+                            <input id="pack-maker-long-normalize-quotes" type="checkbox" checked>
+                            따옴표 정리
+                        </label>
+                        <label class="pack-maker-long-option">
+                            <input id="pack-maker-long-strip-brackets" type="checkbox" checked>
+                            괄호 껍데기 제거
+                        </label>
+                        <label class="pack-maker-long-option">
+                            <input id="pack-maker-long-strip-songform" type="checkbox" checked>
+                            송폼 라벨 제거
+                        </label>
+                        <label class="pack-maker-long-option">
+                            <input id="pack-maker-long-strip-punctuation" type="checkbox">
+                            쉼표·마침표 제거
+                        </label>
+                        <label class="pack-maker-long-option">
+                            <input id="pack-maker-long-four-lines" type="checkbox" checked>
+                            4줄 단위 제시
+                        </label>
+                        <button class="pack-maker-long-option action" id="pack-maker-long-apply-cleanup" type="button">
+                            APPLY CLEANUP
+                        </button>
+                    </div>
                     <textarea id="pack-maker-long-text" placeholder="여기에 장문 연습용 텍스트를 붙여넣으세요. 저장 후 LONG PRACTICE에서 바로 선택할 수 있습니다."></textarea>
                     <div class="pack-maker-long-saved hidden" id="pack-maker-long-saved" aria-live="polite"></div>
                     <div class="pack-maker-long-actions">
                         <button class="btn-small" id="pack-maker-save-long" type="button">SAVE LONG PACK</button>
+                        <button class="btn-small" id="pack-maker-submit-long" type="button">REQUEST PUBLIC LISTING</button>
                         <button class="btn-small" id="pack-maker-open-long" type="button">OPEN LONG PRACTICE</button>
                     </div>
                 </div>

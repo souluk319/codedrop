@@ -34,7 +34,8 @@ const PackMaker = (() => {
         exampleTimer: null,
         pendingSuggestion: null,
         packKind: 'word',
-        lastLongPackId: ''
+        lastLongPackId: '',
+        lastPrompt: ''
     };
 
     const ui = {};
@@ -126,6 +127,10 @@ const PackMaker = (() => {
     function packIdFromValue(value) {
         const match = String(value || '').match(/^PACK_(\d+)$/);
         return match ? match[1] : null;
+    }
+
+    function isLongPackRecord(pack) {
+        return pack && (pack.kind === 'long' || pack.packKind === 'long');
     }
 
     function renderStatus(text, danger = false) {
@@ -1354,20 +1359,24 @@ const PackMaker = (() => {
         if (!select) return;
         select.querySelectorAll('[data-custom-pack-group="true"]').forEach(group => group.remove());
 
-        if (stateRef.mine.length) {
+        const mineWordPacks = stateRef.mine.filter(pack => !isLongPackRecord(pack));
+        const publicWordPacks = stateRef.public.filter(pack =>
+            !isLongPackRecord(pack) && !mineWordPacks.some(mine => String(mine.id) === String(pack.id))
+        );
+
+        if (mineWordPacks.length) {
             const mine = document.createElement('optgroup');
             mine.label = 'My Packs';
             mine.dataset.customPackGroup = 'true';
-            appendPackOptions(mine, stateRef.mine, '', { deletable: true });
+            appendPackOptions(mine, mineWordPacks, '', { deletable: true });
             select.appendChild(mine);
         }
 
-        const publicOnly = stateRef.public.filter(pack => !stateRef.mine.some(mine => mine.id === pack.id));
-        if (publicOnly.length) {
+        if (publicWordPacks.length) {
             const pub = document.createElement('optgroup');
             pub.label = 'Public Packs';
             pub.dataset.customPackGroup = 'true';
-            appendPackOptions(pub, publicOnly, ' · PUBLIC', { deletable: false });
+            appendPackOptions(pub, publicWordPacks, ' · PUBLIC', { deletable: false });
             select.appendChild(pub);
         }
 
@@ -1381,6 +1390,7 @@ const PackMaker = (() => {
             stateRef.mine = [];
             stateRef.public = [];
             renderPackOptions();
+            window.LongPractice?.setRemotePacks?.([], []);
             renderReviewAlerts();
             return;
         }
@@ -1400,6 +1410,7 @@ const PackMaker = (() => {
             stateRef.mine = (await mineRes.json()).packs || [];
             stateRef.public = (await publicRes.json()).packs || [];
             renderPackOptions();
+            window.LongPractice?.setRemotePacks?.(stateRef.mine, stateRef.public);
             renderReviewAlerts();
         } catch (err) {
             console.warn('Custom packs unavailable:', err.message);
@@ -1516,6 +1527,7 @@ const PackMaker = (() => {
 
     async function sendChatText(message) {
         if (stateRef.busy || stateRef.submitting) return;
+        stateRef.lastPrompt = message;
         if (stateRef.packKind !== 'long' && isLongPackIntent(message)) {
             answerLongPackIntent(message);
             return;
@@ -1682,6 +1694,10 @@ const PackMaker = (() => {
             ui.saveLong.disabled = false;
             ui.saveLong.textContent = 'SAVE LONG PACK';
         }
+        if (ui.submitLong) {
+            ui.submitLong.disabled = false;
+            ui.submitLong.textContent = 'REQUEST PUBLIC LISTING';
+        }
         if (ui.input) {
             ui.input.placeholder = isLong
                 ? '예: 내가 붙여넣은 긴 글을 장문 연습팩으로 저장하고 싶어'
@@ -1690,13 +1706,155 @@ const PackMaker = (() => {
         renderStatus(isLong ? 'LONG PACK DIRECT INPUT' : `${stateRef.draft.items.length}/120 ITEMS`);
     }
 
-    function saveLongPack() {
+    function normalizeLongPunctuation(text) {
+        return String(text || '')
+            .replace(/\u00a0/g, ' ')
+            .replace(/[‘’‚‛ʼ`´＇]/g, "'")
+            .replace(/[“”„‟＂]/g, '"')
+            .replace(/[‐‑‒–—―]/g, '-')
+            .replace(/…/g, '...');
+    }
+
+    function normalizeLongSongFormToken(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/[._:/\\|]+/g, ' ')
+            .replace(/[-–—]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    function trimLongBracketShell(value) {
+        return String(value || '')
+            .replace(/^[\s\[({【（［｛]+/, '')
+            .replace(/[\])}】）］｝\s]+$/, '')
+            .trim();
+    }
+
+    function isLongSongFormLabel(value) {
+        const normalized = normalizeLongSongFormToken(trimLongBracketShell(value));
+        if (!normalized) return false;
+        const compact = normalized.replace(/\s+/g, '');
+        return [
+            'intro',
+            'outro',
+            'verse',
+            'verse1',
+            'verse2',
+            'verse3',
+            'hook',
+            'chorus',
+            'prechorus',
+            'postchorus',
+            'bridge',
+            'refrain',
+            'interlude',
+            'break',
+            'breakdown',
+            'rap',
+            'drop',
+            'instrumental',
+            'spoken',
+            'adlib',
+            'adlibs'
+        ].includes(compact);
+    }
+
+    function getLongCleanupOptions() {
+        return {
+            normalizeQuotes: ui.longNormalizeQuotes?.checked !== false,
+            stripBrackets: ui.longStripBrackets?.checked !== false,
+            stripSongForm: ui.longStripSongForm?.checked !== false,
+            stripPunctuation: !!ui.longStripPunctuation?.checked,
+            fourLines: ui.longFourLines?.checked !== false
+        };
+    }
+
+    function stripLongLineBrackets(line, options) {
+        const stageLinePattern = /^\s*(?:\[[^\]]+\]|\([^)]{1,120}\)|\{[^}]{1,120}\}|【[^】]{1,120}】|（[^）]{1,120}）|［[^］]{1,120}］|｛[^｝]{1,120}｝)\s*$/;
+        if (options.stripSongForm && stageLinePattern.test(line) && isLongSongFormLabel(line)) {
+            return '';
+        }
+        return line.replace(/[\[({【（［｛]\s*([^\])}】）］｝]{1,160}?)\s*[\])}】）］｝]/g, (match, inner) => {
+            const clean = String(inner || '').trim();
+            if (options.stripSongForm && isLongSongFormLabel(clean)) return ' ';
+            if (options.stripBrackets) return ` ${clean} `;
+            return match;
+        });
+    }
+
+    function stripLongPunctuation(text) {
+        return String(text || '')
+            .replace(/[,.，。、;；:：!?！？]/g, ' ')
+            .replace(/[ \t]{2,}/g, ' ');
+    }
+
+    function cleanLongPackText(rawText, options = getLongCleanupOptions()) {
+        let text = String(rawText || '').replace(/\r\n?/g, '\n');
+        if (options.normalizeQuotes) text = normalizeLongPunctuation(text);
+        const lines = text.split('\n').map(line => {
+            let next = line
+                .replace(/\b\d{1,2}:\d{2}(?:\.\d{1,3})?\b/g, ' ')
+                .replace(/[♪♫♬※]/g, ' ');
+            next = stripLongLineBrackets(next, options);
+            if (options.stripPunctuation) next = stripLongPunctuation(next);
+            return next
+                .replace(/[ \t]{2,}/g, ' ')
+                .replace(/\s+([,.;:!?])/g, '$1')
+                .trim();
+        });
+        return lines
+            .join('\n')
+            .replace(/[ \t]{2,}/g, ' ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
+    function longPreprocessMode(options, isLyricsPack) {
+        if (isLyricsPack) return 'lyrics';
+        if (options.fourLines || options.stripBrackets || options.normalizeQuotes || options.stripPunctuation) return 'structured';
+        return 'user-provided';
+    }
+
+    function longPackTags(options, isLyricsPack) {
+        const tags = ['user-provided', 'long-form'];
+        if (isLyricsPack) tags.push('lyrics');
+        if (options.stripSongForm) tags.push('songform-cleaned');
+        if (options.fourLines) tags.push('four-line');
+        if (options.stripPunctuation) tags.push('punctuation-light');
+        if (options.stripBrackets) tags.push('bracket-cleaned');
+        return Array.from(new Set(tags));
+    }
+
+    function applyLongCleanupPreview() {
+        if (!ui.longText) return;
+        const before = ui.longText.value;
+        const after = cleanLongPackText(before);
+        ui.longText.value = after;
+        const removed = Math.max(0, before.length - after.length);
+        renderStatus('LONG TEXT CLEANED');
+        if (ui.longSaved) {
+            ui.longSaved.textContent = `CLEANED: ${after.length} chars · removed ${removed} chars · 저장 시 이 정리본이 사용됩니다.`;
+            ui.longSaved.classList.remove('hidden');
+        }
+        window.sfx?.playKey?.();
+        ui.longText.focus();
+    }
+
+    async function saveLongPack(submitForReview = false) {
         const title = escapeText(ui.title?.value || 'User Long Pack').slice(0, 60) || 'User Long Pack';
-        const text = String(ui.longText?.value || '').trim();
+        const cleanupOptions = getLongCleanupOptions();
+        const text = cleanLongPackText(ui.longText?.value || '', cleanupOptions);
+        const isLyricsPack = /(가사|lyrics?|song|노래|cortis|red\s*red|k-?pop)/i.test(`${title} ${stateRef.lastPrompt || ''}`);
+        const preprocessMode = longPreprocessMode(cleanupOptions, isLyricsPack);
+        const tags = longPackTags(cleanupOptions, isLyricsPack);
         if (!text || text.length < 20) {
             renderStatus('LONG TEXT REQUIRED', true);
             window.sfx?.playFail?.();
             return;
+        }
+        if (ui.longText && ui.longText.value !== text) {
+            ui.longText.value = text;
         }
 
         if (!window.LongPractice || typeof window.LongPractice.saveUserPack !== 'function') {
@@ -1707,28 +1865,105 @@ const PackMaker = (() => {
         if (stateRef.saving) return;
         stateRef.saving = true;
         ui.longSaved?.classList.add('hidden');
-        ui.saveLong.disabled = true;
-        ui.saveLong.textContent = 'SAVING';
+        const resetLongButtons = () => {
+            stateRef.saving = false;
+            if (ui.saveLong) {
+                ui.saveLong.disabled = false;
+                ui.saveLong.textContent = 'SAVE LONG PACK';
+            }
+            if (ui.submitLong) {
+                ui.submitLong.disabled = false;
+                ui.submitLong.textContent = 'REQUEST PUBLIC LISTING';
+            }
+        };
+        if (ui.saveLong) {
+            ui.saveLong.disabled = true;
+            ui.saveLong.textContent = submitForReview ? 'SAVING LOCAL' : 'SAVING';
+        }
+        if (ui.submitLong) {
+            ui.submitLong.disabled = true;
+            ui.submitLong.textContent = submitForReview ? 'REQUESTING' : 'WAIT';
+        }
         const id = window.LongPractice.saveUserPack({
             title,
             label: title,
             text,
-            tags: ['user-provided', 'long-form']
+            tags,
+            preprocess: preprocessMode
         });
         stateRef.lastLongPackId = id || '';
         renderStatus(id ? 'LONG PACK SAVED' : 'LONG PACK SAVE FAILED', !id);
         if (ui.longSaved && id) {
-            ui.longSaved.textContent = `SAVED: ${title} · ${text.length} chars · LONG PRACTICE에서 바로 선택됩니다.`;
+            ui.longSaved.textContent = `SAVED: ${title} · ${text.length} chars · ${cleanupOptions.fourLines ? '4-line structured · ' : ''}LONG PRACTICE에서 바로 선택됩니다.`;
             ui.longSaved.classList.remove('hidden');
         }
-        if (id) window.sfx?.playSuccess?.();
-        else window.sfx?.playFail?.();
-        ui.saveLong.textContent = id ? 'SAVED' : 'SAVE LONG PACK';
-        window.setTimeout(() => {
-            stateRef.saving = false;
-            ui.saveLong.disabled = false;
-            ui.saveLong.textContent = 'SAVE LONG PACK';
-        }, 900);
+        if (!id) {
+            window.sfx?.playFail?.();
+            resetLongButtons();
+            return;
+        }
+
+        if (submitForReview) {
+            try {
+                if (!await ensureRemoteAuth()) {
+                    renderStatus('LOGIN REQUIRED', true);
+                    resetLongButtons();
+                    return;
+                }
+                renderStatus('REQUESTING LONG REVIEW');
+                const payload = {
+                    kind: 'long',
+                    title,
+                    description: escapeText(ui.description?.value || `${title} - user-provided long practice text`).slice(0, 240),
+                    text,
+                    tags,
+                    preprocess: preprocessMode,
+                    submitForReview: true
+                };
+                const res = await fetch(apiPath('/api/packs'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Long pack review request failed');
+                await refreshPacks();
+                renderStatus('LONG PACK REVIEW REQUESTED');
+                if (ui.longSaved) {
+                    ui.longSaved.textContent = `REQUESTED: ${title} · 운영자 승인 후 Public Long Packs에 표시됩니다.`;
+                    ui.longSaved.classList.remove('hidden');
+                }
+                if (typeof showCommandDialog === 'function') {
+                    showCommandDialog({
+                        title: 'LONG PACK REQUESTED',
+                        message: '장문팩 공개 요청을 보냈습니다. 운영자 검수 후 공개 장문팩 목록에 반영됩니다.',
+                        okText: 'OK',
+                        cancelText: ''
+                    });
+                }
+                window.sfx?.playSuccess?.();
+            } catch (err) {
+                renderStatus(err.message, true);
+                window.sfx?.playFail?.();
+                if (typeof showCommandDialog === 'function') {
+                    showCommandDialog({
+                        title: 'LONG PACK REQUEST FAILED',
+                        message: err.message,
+                        okText: 'OK',
+                        cancelText: '',
+                        danger: true
+                    });
+                }
+                resetLongButtons();
+                return;
+            }
+        } else {
+            renderStatus('LONG PACK SAVED');
+            window.sfx?.playSuccess?.();
+        }
+
+        if (ui.saveLong) ui.saveLong.textContent = submitForReview ? 'SAVED + REQUESTED' : 'SAVED';
+        window.setTimeout(resetLongButtons, 900);
     }
 
     function answerLongPackIntent(message) {
@@ -1859,7 +2094,14 @@ const PackMaker = (() => {
         ui.longEditor = $('pack-maker-long-editor');
         ui.longText = $('pack-maker-long-text');
         ui.longSaved = $('pack-maker-long-saved');
+        ui.longNormalizeQuotes = $('pack-maker-long-normalize-quotes');
+        ui.longStripBrackets = $('pack-maker-long-strip-brackets');
+        ui.longStripSongForm = $('pack-maker-long-strip-songform');
+        ui.longStripPunctuation = $('pack-maker-long-strip-punctuation');
+        ui.longFourLines = $('pack-maker-long-four-lines');
+        ui.longApplyCleanup = $('pack-maker-long-apply-cleanup');
         ui.saveLong = $('pack-maker-save-long');
+        ui.submitLong = $('pack-maker-submit-long');
         ui.openLong = $('pack-maker-open-long');
         ui.itemBody = $('pack-maker-items-body');
         ui.addItem = $('pack-maker-add-item');
@@ -1919,7 +2161,9 @@ const PackMaker = (() => {
         });
         ui.wordMode?.addEventListener('click', () => setPackKind('word'));
         ui.longMode?.addEventListener('click', () => setPackKind('long'));
-        ui.saveLong?.addEventListener('click', saveLongPack);
+        ui.longApplyCleanup?.addEventListener('click', applyLongCleanupPreview);
+        ui.saveLong?.addEventListener('click', () => saveLongPack(false));
+        ui.submitLong?.addEventListener('click', () => saveLongPack(true));
         ui.openLong?.addEventListener('click', openLongPracticeFromMaker);
         ui.save.addEventListener('click', () => savePack(false));
         ui.submit.addEventListener('click', () => savePack(true));
