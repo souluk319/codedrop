@@ -277,6 +277,61 @@ const OC_ENTRIES = [
     { text: "oc get packagemanifests", desc: "설치 가능한 오퍼레이터 카탈로그 조회" }
 ];
 
+// --- GitHub CORE Pack (GitHub Certification 공통 핵심) ---
+const GITHUB_ENTRIES = [
+    { text: "git clone", desc: "원격 저장소를 로컬로 복제" },
+    { text: "git status", desc: "작업 트리와 스테이징 상태 확인" },
+    { text: "git add .", desc: "변경 파일 전체를 스테이징" },
+    { text: "git commit -m", desc: "메시지와 함께 커밋 생성" },
+    { text: "git push", desc: "로컬 커밋을 원격 저장소로 업로드" },
+    { text: "git pull", desc: "원격 변경사항을 가져와 병합" },
+    { text: "git fetch", desc: "원격 변경사항만 가져오고 병합하지 않음" },
+    { text: "git branch", desc: "브랜치 목록 확인 또는 생성" },
+    { text: "git checkout -b", desc: "새 브랜치를 만들고 전환" },
+    { text: "git switch -c", desc: "새 브랜치를 만들고 전환하는 최신 명령" },
+    { text: "git merge", desc: "다른 브랜치의 변경사항 병합" },
+    { text: "git rebase", desc: "커밋 기반을 다른 브랜치 뒤로 재배치" },
+    { text: "git log --oneline", desc: "커밋 기록을 한 줄씩 요약 표시" },
+    { text: "git diff", desc: "변경된 코드 차이 확인" },
+    { text: "git stash", desc: "작업 중 변경사항 임시 보관" },
+    { text: "git tag", desc: "릴리스 지점을 표시하는 태그 관리" },
+    { text: "pull request", desc: "변경사항을 리뷰하고 병합 요청하는 단위" },
+    { text: "code review", desc: "변경 코드 검토와 승인/수정 요청 과정" },
+    { text: "merge conflict", desc: "같은 파일 변경이 충돌해 수동 해결이 필요한 상태" },
+    { text: "default branch", desc: "저장소의 기준 브랜치" },
+    { text: "issue templates", desc: "버그/기능 요청 양식을 표준화하는 템플릿" },
+    { text: "gh pr checkout", desc: "PR 브랜치를 로컬로 체크아웃" },
+    { text: "gh pr checks", desc: "PR의 CI 체크 상태 확인" },
+    { text: "gh workflow run", desc: "워크플로 수동 실행" },
+    { text: "gh run list", desc: "Actions 실행 목록 조회" },
+    { text: "gh run view --log", desc: "실패한 Actions 로그 확인" },
+    { text: "gh run rerun", desc: "Actions 실행 재시도" },
+    { text: "gh secret set", desc: "Actions/Dependabot용 Secret 등록" },
+    { text: "workflow_dispatch", desc: "Actions 워크플로를 수동 실행할 수 있게 하는 이벤트" },
+    { text: "pull_request", desc: "PR 생성/수정 시 Actions를 실행하는 이벤트" },
+    { text: "runs-on", desc: "Actions job이 실행될 runner 환경 지정" },
+    { text: "actions/checkout", desc: "워크플로에서 저장소 코드를 체크아웃하는 공식 액션" },
+    { text: "permissions", desc: "GITHUB_TOKEN 권한 범위를 제한하는 설정" },
+    { text: "repository secrets", desc: "저장소 단위 Actions 비밀값" },
+    { text: "environment secrets", desc: "배포 환경별로 분리한 비밀값" },
+    { text: "release notes", desc: "배포 변경사항과 주의점을 정리한 문서" },
+    { text: "CODEOWNERS", desc: "경로별 코드 소유자와 리뷰 책임자 지정" },
+    { text: "branch protection", desc: "브랜치 병합 규칙과 보호 정책" },
+    { text: "required checks", desc: "병합 전 반드시 통과해야 하는 CI 체크" },
+    { text: "rulesets", desc: "저장소/조직 단위 규칙 집합" },
+    { text: "repository visibility", desc: "저장소 공개/비공개/내부 공개 범위" },
+    { text: "organization owner", desc: "조직 전체 관리 권한을 가진 역할" },
+    { text: "team maintainer", desc: "팀 멤버와 권한을 관리하는 역할" },
+    { text: "audit log", desc: "조직 보안/관리 이벤트 기록" },
+    { text: "Dependabot alerts", desc: "의존성 취약점 알림" },
+    { text: "secret scanning", desc: "토큰/비밀정보 유출 탐지" },
+    { text: "code scanning", desc: "CodeQL 등 정적 분석 보안 알림" },
+    { text: "security advisories", desc: "보안 취약점 공지와 패치 관리" },
+    { text: "GitHub Advanced Security", desc: "CodeQL/Secret scanning 등 보안 기능 묶음" },
+    { text: "GitHub Actions", desc: "GitHub 내 CI/CD 자동화 플랫폼" },
+    { text: "GitHub Copilot", desc: "코드 작성과 설명을 돕는 AI 개발 도우미" }
+];
+
 // 명령어 → 한국어 설명 조회 테이블 (successWord 토스트에서 사용)
 const WORD_DESCS = {};
 WORD_PACKS.LINUX = LINUX_ENTRIES.map(e => {
@@ -284,6 +339,10 @@ WORD_PACKS.LINUX = LINUX_ENTRIES.map(e => {
     return e.text;
 });
 WORD_PACKS.OC_CORE = OC_ENTRIES.map(e => {
+    WORD_DESCS[e.text] = e.desc;
+    return e.text;
+});
+WORD_PACKS.GITHUB_CORE = GITHUB_ENTRIES.map(e => {
     WORD_DESCS[e.text] = e.desc;
     return e.text;
 });

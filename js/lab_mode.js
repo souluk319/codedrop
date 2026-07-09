@@ -5,6 +5,11 @@
 
 const LabMode = (() => {
     const BEST_KEY = 'codedrop_lab_best';
+    let runtime = {
+        labs: () => (typeof MOCK_LABS !== 'undefined' ? MOCK_LABS : []),
+        bestKey: BEST_KEY,
+        trackTitle: 'OCP Mock Lab'
+    };
 
     const state = {
         lab: null,
@@ -53,13 +58,25 @@ const LabMode = (() => {
         startSession(labId, 'solve');
     }
 
+    function configure(next = {}) {
+        runtime = { ...runtime, ...next };
+    }
+
+    function getLabs() {
+        return typeof runtime.labs === 'function' ? runtime.labs() : (runtime.labs || []);
+    }
+
+    function getBestKey() {
+        return runtime.bestKey || BEST_KEY;
+    }
+
     function startGuided(labId) {
         startSession(labId, 'follow');
     }
 
     function startSession(labId, practiceMode) {
         cacheEls();
-        const lab = findLab(labId) || MOCK_LABS[0];
+        const lab = findLab(labId) || getLabs()[0];
         if (!lab) return;
 
         state.lab = lab;
@@ -87,7 +104,7 @@ const LabMode = (() => {
     }
 
     function findLab(labId) {
-        return (MOCK_LABS || []).find(lab => lab.id === labId);
+        return getLabs().find(lab => lab.id === labId);
     }
 
     function quit() {
@@ -155,7 +172,7 @@ const LabMode = (() => {
             key: `lab_${state.lab?.id || 'current'}_${modeLabel}`,
             label: `${title} · ${ui.progress?.textContent || '-'} · ${modeLabel}`,
             lessonTitle: `${title} ${modeLabel}`,
-            trackTitle: 'OCP Mock Lab',
+            trackTitle: runtime.trackTitle || 'OCP Mock Lab',
             phase: isGuided() ? 'follow' : 'lab',
             progress: ui.progress ? ui.progress.textContent : '',
             prompt: `${state.lab?.goal || ''}\n${step ? step.scenario : ''}`.trim(),
@@ -356,14 +373,14 @@ const LabMode = (() => {
 
     function loadBest() {
         try {
-            return JSON.parse(localStorage.getItem(BEST_KEY)) || {};
+            return JSON.parse(localStorage.getItem(getBestKey())) || {};
         } catch (e) {
             return {};
         }
     }
 
     function saveBest(best) {
-        localStorage.setItem(BEST_KEY, JSON.stringify(best));
+        localStorage.setItem(getBestKey(), JSON.stringify(best));
     }
 
     function renderSummary() {
@@ -432,9 +449,10 @@ const LabMode = (() => {
     }
 
     function nextLab() {
-        const idx = MOCK_LABS.findIndex(lab => lab.id === state.lab.id);
-        if (idx < 0 || idx + 1 >= MOCK_LABS.length) return null;
-        return MOCK_LABS[idx + 1];
+        const labs = getLabs();
+        const idx = labs.findIndex(lab => lab.id === state.lab.id);
+        if (idx < 0 || idx + 1 >= labs.length) return null;
+        return labs[idx + 1];
     }
 
     function startNextLab() {
@@ -442,5 +460,5 @@ const LabMode = (() => {
         if (lab) startSession(lab.id, state.practiceMode);
     }
 
-    return { start, startGuided, quit };
+    return { start, startGuided, quit, configure };
 })();

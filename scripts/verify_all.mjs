@@ -35,4 +35,4 @@ for (const [cmd, args] of checks) {
     }
 }
 
-console.log('\nAll CodeDrop OCP verification checks passed.');
+console.log('\nAll CodeDrop verification checks passed.');

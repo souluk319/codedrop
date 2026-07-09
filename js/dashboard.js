@@ -11,6 +11,7 @@ const Dashboard = (() => {
 
     function cacheEls() {
         ui.screen = $('dashboard-screen');
+        ui.title = $('dashboard-title');
         ui.summary = $('dashboard-summary');
         ui.cats = $('dashboard-cats');
         ui.learn = $('dashboard-learn');
@@ -31,7 +32,7 @@ const Dashboard = (() => {
             if (ui.reviewBtn.disabled) return;
             close({ restoreStart: false });
             document.getElementById('start-screen').classList.add('hidden');
-            ScenarioMode.startReview();
+            ScenarioMode.startReview({ edition: currentEditionKey() });
         });
         ui.nextBtn.addEventListener('click', () => {
             const rec = recommendNext();
@@ -51,14 +52,18 @@ const Dashboard = (() => {
 
     function resetStudyData() {
         if (!isQaResetEnabled()) return;
+        const key = currentEditionKey();
 
         StudyStats.reset();
         localStorage.removeItem('codedrop_scenario_best');
         localStorage.removeItem('codedrop_lab_best');
+        localStorage.removeItem(`codedrop_${key}_scenario_best`);
+        localStorage.removeItem(`codedrop_${key}_lab_best`);
         if (typeof LearnMode !== 'undefined' && typeof LearnMode.resetProgress === 'function') {
             LearnMode.resetProgress();
         } else {
             localStorage.removeItem('codedrop_learn_progress');
+            localStorage.removeItem(`codedrop_${key}_learn_progress`);
         }
 
         render();
@@ -68,6 +73,25 @@ const Dashboard = (() => {
                 ui.resetBtn.textContent = 'QA RESET';
             }, 1200);
         }
+    }
+
+    function currentStudyConfig() {
+        if (typeof window !== 'undefined' && window.CodeDropModeControls?.currentConfig) {
+            return window.CodeDropModeControls.currentConfig();
+        }
+        return null;
+    }
+
+    function currentEditionKey() {
+        return currentStudyConfig()?.key || 'ocp';
+    }
+
+    function currentCopy() {
+        return currentStudyConfig()?.copy || {
+            dashboard: 'EX280 DASHBOARD',
+            examLabel: '실전 시험',
+            title: 'OCP EDITION'
+        };
     }
 
     // 추천 엔진: 지금 할 것 하나를 고른다
@@ -84,9 +108,12 @@ const Dashboard = (() => {
             }
         }
 
-        const summary = StudyStats.categorySummary();
+        const edition = currentEditionKey();
+        const copy = currentCopy();
+
+        const summary = StudyStats.categorySummary({ edition });
         const weak = Object.entries(summary)
-            .filter(([key, cat]) => key !== 'LAB' && cat.attempts >= 5 && cat.rate !== null && cat.rate < 0.5)
+            .filter(([key, cat]) => key !== 'LAB' && key !== 'GITHUB_LAB' && cat.attempts >= 5 && cat.rate !== null && cat.rate < 0.5)
             .sort((a, b) => a[1].rate - b[1].rate)[0];
         if (weak) {
             return {
@@ -95,19 +122,20 @@ const Dashboard = (() => {
             };
         }
 
-        if (StudyStats.reviewPool().length >= 5) {
+        if (StudyStats.reviewPool({ edition }).length >= 5) {
             return {
                 label: '오답노트 복습',
-                run: () => ScenarioMode.startReview()
+                run: () => ScenarioMode.startReview({ edition })
             };
         }
 
-        if (typeof MOCK_LABS !== 'undefined' && typeof LabMode !== 'undefined') {
+        const labs = currentStudyConfig()?.labs?.() || (typeof MOCK_LABS !== 'undefined' ? MOCK_LABS : []);
+        if (labs.length > 0 && typeof LabMode !== 'undefined') {
             let labBest = {};
             try {
-                labBest = JSON.parse(localStorage.getItem('codedrop_lab_best')) || {};
+                labBest = JSON.parse(localStorage.getItem(`codedrop_${edition}_lab_best`)) || {};
             } catch (e) { /* 손상 무시 */ }
-            const freshLab = MOCK_LABS.find(lab => labBest[lab.id] === undefined);
+            const freshLab = labs.find(lab => labBest[lab.id] === undefined);
             if (freshLab) {
                 return {
                     label: `모의랩: ${freshLab.title}`,
@@ -117,7 +145,7 @@ const Dashboard = (() => {
         }
 
         return {
-            label: '실전 시험 도전',
+            label: `${copy.examLabel || '실전 시험'} 도전`,
             run: () => ScenarioMode.startExam()
         };
     }
@@ -141,13 +169,17 @@ const Dashboard = (() => {
     }
 
     function render() {
-        const summary = StudyStats.categorySummary();
+        const edition = currentEditionKey();
+        const copy = currentCopy();
+        const summary = StudyStats.categorySummary({ edition });
         const data = StudyStats.get();
         const categories = Object.entries(summary);
         const attemptedQuestions = categories.reduce((sum, [, cat]) => sum + cat.attempted, 0);
         const totalQuestions = categories.reduce((sum, [, cat]) => sum + cat.total, 0);
         const totalAttempts = categories.reduce((sum, [, cat]) => sum + cat.attempts, 0);
-        const reviewCount = StudyStats.reviewPool().length;
+        const reviewCount = StudyStats.reviewPool({ edition }).length;
+
+        if (ui.title) ui.title.textContent = copy.dashboard || `${copy.title || 'STUDY'} DASHBOARD`;
 
         ui.summary.innerHTML = '';
         addMetric(ui.summary, '커버리지', `${attemptedQuestions} / ${totalQuestions}`);
@@ -159,13 +191,17 @@ const Dashboard = (() => {
 
         renderLearn();
         renderWeak(summary);
-        renderExams(data.exams || []);
+        renderExams((data.exams || []).filter(exam => {
+            const examEdition = exam.edition || 'ocp';
+            return examEdition === edition;
+        }));
 
         ui.reviewBtn.textContent = `오답노트 풀기 (${reviewCount}문제)`;
         ui.reviewBtn.disabled = reviewCount === 0;
 
         const rec = recommendNext();
-        ui.nextBtn.textContent = `다음 추천: ${rec.label}`;
+        ui.nextBtn.textContent = rec ? `다음 추천: ${rec.label}` : '다음 추천 없음';
+        ui.nextBtn.disabled = !rec;
     }
 
     function renderLearn() {

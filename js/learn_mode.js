@@ -16,12 +16,38 @@ const LearnMode = (() => {
 
     const $ = (id) => document.getElementById(id);
     const ui = {};
+    let runtime = {
+        tracks: () => (typeof LESSON_TRACKS !== 'undefined') ? LESSON_TRACKS : [],
+        scenarioPacks: () => (typeof SCENARIO_PACKS !== 'undefined') ? SCENARIO_PACKS : {},
+        progressKey: 'codedrop_learn_progress'
+    };
+
+    function configure(next = {}) {
+        runtime = { ...runtime, ...next };
+        LearnProgress.setKey(runtime.progressKey || 'codedrop_learn_progress');
+    }
+
+    function getTracks() {
+        return typeof runtime.tracks === 'function' ? runtime.tracks() : (runtime.tracks || []);
+    }
+
+    function getScenarioPacks() {
+        return typeof runtime.scenarioPacks === 'function' ? runtime.scenarioPacks() : (runtime.scenarioPacks || {});
+    }
 
     // ---------- 진행도 스토어 ----------
     const LearnProgress = (() => {
-        const KEY = 'codedrop_learn_progress';
+        let key = 'codedrop_learn_progress';
         const VERSION = 1;
         let memoryData = null;
+
+        function setKey(nextKey) {
+            const normalized = String(nextKey || 'codedrop_learn_progress');
+            if (normalized !== key) {
+                key = normalized;
+                memoryData = null;
+            }
+        }
 
         function emptyData() {
             return { v: VERSION, lessons: {}, last: null };
@@ -61,7 +87,7 @@ const LearnMode = (() => {
         function load() {
             if (memoryData) return normalizeData(memoryData);
             try {
-                return normalizeData(JSON.parse(localStorage.getItem(KEY)));
+                return normalizeData(JSON.parse(localStorage.getItem(key)));
             } catch (e) { /* 손상 → 리셋 */ }
             return emptyData();
         }
@@ -70,7 +96,7 @@ const LearnMode = (() => {
             const normalized = normalizeData(data);
             memoryData = normalized;
             try {
-                localStorage.setItem(KEY, JSON.stringify(normalized));
+                localStorage.setItem(key, JSON.stringify(normalized));
             } catch (e) {
                 console.warn('Learn progress will stay in memory for this session:', e);
             }
@@ -103,16 +129,16 @@ const LearnMode = (() => {
 
         function reset() {
             memoryData = null;
-            localStorage.removeItem(KEY);
+            localStorage.removeItem(key);
         }
 
-        return { load, markVisit, complete, isDone, reset };
+        return { load, markVisit, complete, isDone, reset, setKey };
     })();
 
     // ---------- 커리큘럼 헬퍼 ----------
 
     function tracks() {
-        return (typeof LESSON_TRACKS !== 'undefined') ? LESSON_TRACKS : [];
+        return getTracks();
     }
 
     // [{lesson, track}] 순서 평탄화
@@ -152,6 +178,37 @@ const LearnMode = (() => {
         };
     }
 
+    function currentStudyEditionText() {
+        const config = window.CodeDropModeControls
+            && typeof window.CodeDropModeControls.currentConfig === 'function'
+            ? window.CodeDropModeControls.currentConfig()
+            : null;
+
+        if (config && config.key === 'github') {
+            return {
+                key: 'github',
+                surface: '현재 GitHub Edition 학습 화면',
+                listLabel: 'GitHub 학습 목록',
+                trackTitle: 'GitHub Certification 커리큘럼',
+                pickerIntro: '따라 치면서 배우는 GitHub Certification 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.',
+                prompt: 'GitHub Certification 학습 커리큘럼 목록 화면입니다. 사용자가 Foundations, Actions, Security, Administration, Copilot 중 어디서 시작할지 질문할 수 있습니다.',
+                explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
+                hint: '처음이면 이어서 학습 버튼이나 Foundations 첫 레슨부터 시작하는 것이 좋습니다.'
+            };
+        }
+
+        return {
+            key: 'ocp',
+            surface: '현재 OCP 학습 화면',
+            listLabel: 'OCP 학습 목록',
+            trackTitle: 'EX280 커리큘럼',
+            pickerIntro: '따라 치면서 배우는 EX280 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.',
+            prompt: 'EX280 학습 커리큘럼 목록 화면입니다. 사용자가 어떤 레슨부터 보면 좋을지, 현재 보이는 학습 흐름을 질문할 수 있습니다.',
+            explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
+            hint: '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.'
+        };
+    }
+
     function lessonsForCategory(cat) {
         return flatLessons()
             .filter(item => lessonCategories(item.lesson).includes(cat))
@@ -159,7 +216,7 @@ const LearnMode = (() => {
     }
 
     function effectiveLessonQuizCount(lesson) {
-        const pack = (typeof SCENARIO_PACKS !== 'undefined') ? SCENARIO_PACKS[lesson.quizFrom] : null;
+        const pack = getScenarioPacks()[lesson.quizFrom] || null;
         const poolSize = pack && Array.isArray(pack.questions) ? pack.questions.length : Number(lesson.quizCount) || 0;
         return Math.min(Math.max(Number(lesson.quizCount) || 0, MIN_LESSON_QUIZ_COUNT), poolSize);
     }
@@ -239,6 +296,7 @@ const LearnMode = (() => {
     function cacheEls() {
         ui.screen = $('learn-screen');
         ui.picker = $('learn-picker');
+        ui.pickerIntro = ui.picker ? ui.picker.querySelector('.learn-picker-intro') : null;
         ui.pickerProgress = $('learn-picker-progress');
         ui.pickerHome = $('learn-picker-home');
         ui.pickerChat = $('learn-picker-chat');
@@ -1080,7 +1138,7 @@ const LearnMode = (() => {
         session.chatAutoStick = true;
         ui.chatStatus.textContent = chatEngineStatus('READY');
         ui.chatLog.replaceChildren();
-        const surface = session.externalContext ? '현재 OCP 학습 화면' : '현재 레슨 화면';
+        const surface = session.externalContext ? currentStudyEditionText().surface : '현재 레슨 화면';
         appendChat('system', `${chatEngineLabel()}가 ${surface}을 같이 보고 답합니다. 막히는 명령, 플래그, 왜 쓰는지 물어보세요.`);
         session.chat.forEach(entry => appendChat(entry.role, entry.content, { question: entry.question || '' }));
         scrollChatToBottom(true);
@@ -1386,21 +1444,22 @@ const LearnMode = (() => {
 
     function openPickerChat(options = {}) {
         const p = progress();
+        const copy = currentStudyEditionText();
         showChatPanel({
             ownerScreen: ui.screen,
             ownerClass: 'learn-session-active',
             externalContext: {
-                key: 'learn-picker',
-                label: 'OCP 학습 목록',
-                lessonTitle: 'OCP 학습 목록',
-                trackTitle: 'EX280 커리큘럼',
+                key: `${copy.key}-learn-picker`,
+                label: copy.listLabel,
+                lessonTitle: copy.listLabel,
+                trackTitle: copy.trackTitle,
                 phase: 'lesson-picker',
                 progress: `${p.done} / ${p.total} 레슨 완료`,
-                prompt: 'EX280 학습 커리큘럼 목록 화면입니다. 사용자가 어떤 레슨부터 보면 좋을지, 현재 보이는 학습 흐름을 질문할 수 있습니다.',
+                prompt: copy.prompt,
                 command: '',
                 output: '',
-                explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
-                hint: '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.'
+                explanation: copy.explanation,
+                hint: copy.hint
             }
         });
         if (options.focus !== false && ui.chatInput) ui.chatInput.focus();
@@ -1413,6 +1472,7 @@ const LearnMode = (() => {
         if (!ensureEls()) return;
         setPracticeMode(options.practiceMode);
         bindEvents();
+        if (ui.pickerIntro) ui.pickerIntro.textContent = currentStudyEditionText().pickerIntro;
         renderPicker();
 
         ui.card.classList.add('hidden');
@@ -1521,8 +1581,8 @@ const LearnMode = (() => {
     }
 
     function buildQuizList(lesson) {
-        if (typeof SCENARIO_PACKS === 'undefined' || typeof StudyCore === 'undefined') return [];
-        const pack = SCENARIO_PACKS[lesson.quizFrom];
+        if (typeof StudyCore === 'undefined') return [];
+        const pack = getScenarioPacks()[lesson.quizFrom];
         if (!pack) return [];
         const targetCount = Math.min(
             Math.max(Number(lesson.quizCount) || 0, MIN_LESSON_QUIZ_COUNT),
@@ -2231,5 +2291,6 @@ const LearnMode = (() => {
         openContextChat,
         setExternalChatContext,
         closeChatPanel
+        , configure
     };
 })();

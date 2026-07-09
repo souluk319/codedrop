@@ -534,7 +534,15 @@ const APP_ROUTE_PATHS = {
     ocpLab: '/ocp/lab',
     ocpIncident: '/ocp/incident',
     ocpExam: '/ocp/exam',
-    ocpDashboard: '/ocp/dashboard'
+    ocpDashboard: '/ocp/dashboard',
+    github: '/github',
+    githubPlay: '/github/play',
+    githubLearn: '/github/learn',
+    githubScenario: '/github/scenario',
+    githubLab: '/github/lab',
+    githubIncident: '/github/incident',
+    githubExam: '/github/exam',
+    githubDashboard: '/github/dashboard'
 };
 
 function routePath(route) {
@@ -607,13 +615,20 @@ function applyAppRoute(route) {
     try {
         restoreStartShellForRoute();
 
-        if (route.startsWith('ocp')) {
-            window.CodeDropModeControls?.openOcpEdition();
+        const studyKey = route.startsWith('github') ? 'github' : (route.startsWith('ocp') ? 'ocp' : '');
+        if (studyKey) {
+            window.CodeDropModeControls?.openStudyEdition(studyKey);
         } else {
-            window.CodeDropModeControls?.closeOcpEdition();
+            window.CodeDropModeControls?.closeStudyEdition();
         }
 
-        if (route === 'packMaker') {
+        if (route === 'play' || route === 'ocpPlay' || route === 'githubPlay') {
+            if (studyKey) {
+                window.CodeDropModeControls?.setMode('DROP');
+                forceStudyDropPackSync({ notify: false });
+            }
+            void startGame();
+        } else if (route === 'packMaker') {
             window.PackMaker?.open();
         } else if (route === 'longPractice') {
             window.LongPractice?.open();
@@ -621,26 +636,31 @@ function applyAppRoute(route) {
             window.AdminPacks?.open();
         } else if (route === 'keyTest') {
             window.KeyboardTest?.open();
-        } else if (route === 'ocpDashboard') {
+        } else if (route === 'ocpDashboard' || route === 'githubDashboard') {
             if (typeof Dashboard !== 'undefined') Dashboard.open();
-        } else if (route === 'ocpLearn') {
+        } else if (route === 'ocpLearn' || route === 'githubLearn') {
             window.CodeDropModeControls?.setMode('LEARN');
+            els.screens.start.classList.add('hidden');
             if (typeof LearnMode !== 'undefined') LearnMode.openPicker();
-        } else if (route === 'ocpScenario') {
+        } else if (route === 'ocpScenario' || route === 'githubScenario') {
             window.CodeDropModeControls?.setMode('SCENARIO');
+            els.screens.start.classList.add('hidden');
             if (typeof ScenarioMode !== 'undefined') {
                 ScenarioMode.start(document.getElementById('scenario-category-select')?.value);
             }
-        } else if (route === 'ocpLab') {
+        } else if (route === 'ocpLab' || route === 'githubLab') {
             window.CodeDropModeControls?.setMode('LAB');
+            els.screens.start.classList.add('hidden');
             if (typeof LabMode !== 'undefined') {
                 LabMode.start(document.getElementById('lab-select')?.value);
             }
-        } else if (route === 'ocpIncident') {
+        } else if (route === 'ocpIncident' || route === 'githubIncident') {
             window.CodeDropModeControls?.setMode('INCIDENT');
+            els.screens.start.classList.add('hidden');
             if (typeof ScenarioMode !== 'undefined') ScenarioMode.startIncidentDrill();
-        } else if (route === 'ocpExam') {
+        } else if (route === 'ocpExam' || route === 'githubExam') {
             window.CodeDropModeControls?.setMode('EXAM');
+            els.screens.start.classList.add('hidden');
             if (typeof ScenarioMode !== 'undefined') ScenarioMode.startExam();
         }
 
@@ -661,15 +681,15 @@ function initAppRouter() {
     };
 
     document.getElementById('pack-maker-btn')?.addEventListener('click', () => navigateAppRoute('packMaker'));
-    document.getElementById('pack-maker-close')?.addEventListener('click', () => navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home'));
+    document.getElementById('pack-maker-close')?.addEventListener('click', () => navigateAppRoute(isStudyEditionActive() ? currentStudyHomeRoute() : 'home'));
     document.getElementById('long-home')?.addEventListener('click', () => navigateAppRoute('home'));
     document.getElementById('keyboard-test-btn')?.addEventListener('click', () => navigateAppRoute('keyTest'));
-    document.getElementById('keytest-close')?.addEventListener('click', () => navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home'));
-    document.getElementById('dashboard-close')?.addEventListener('click', () => navigateAppRoute('ocp'));
-    document.getElementById('scenario-quit')?.addEventListener('click', () => navigateAppRoute('ocp'));
-    document.getElementById('lab-home')?.addEventListener('click', () => navigateAppRoute('ocp'));
-    document.getElementById('learn-picker-home')?.addEventListener('click', () => navigateAppRoute('ocp'));
-    document.getElementById('learn-home')?.addEventListener('click', () => navigateAppRoute('ocp'));
+    document.getElementById('keytest-close')?.addEventListener('click', () => navigateAppRoute(isStudyEditionActive() ? currentStudyHomeRoute() : 'home'));
+    document.getElementById('dashboard-close')?.addEventListener('click', () => navigateAppRoute(currentStudyHomeRoute()));
+    document.getElementById('scenario-quit')?.addEventListener('click', () => navigateAppRoute(currentStudyHomeRoute()));
+    document.getElementById('lab-home')?.addEventListener('click', () => navigateAppRoute(currentStudyHomeRoute()));
+    document.getElementById('learn-picker-home')?.addEventListener('click', () => navigateAppRoute(currentStudyHomeRoute()));
+    document.getElementById('learn-home')?.addEventListener('click', () => navigateAppRoute(currentStudyHomeRoute()));
 
     window.addEventListener('popstate', () => {
         applyAppRoute(routeFromPath(window.location.pathname));
@@ -684,6 +704,14 @@ function initAppRouter() {
     }
 
     setTimeout(() => applyAppRoute(routeFromPath(window.location.pathname)), 0);
+}
+
+function reapplyCurrentRouteAfterAuth() {
+    const route = window.CodeDropRouter?.routeFromPath?.(window.location.pathname);
+    if (!route || route === 'home') return;
+    setTimeout(() => {
+        window.CodeDropRouter?.apply?.(route);
+    }, 0);
 }
 
 window.CodeDropRouter = {
@@ -1225,6 +1253,7 @@ const PACK_META = {
     CLI: { title: 'Terminal', chip: 'CLI', style: 'cli' },
     LINUX: { title: 'Linux', chip: 'LINUX', style: 'linux' },
     OC_CORE: { title: 'OpenShift', chip: 'OCP', style: 'oc_core' },
+    GITHUB_CORE: { title: 'GitHub', chip: 'GH', style: 'github_core' },
     VOCAB: { title: 'Vocabulary', chip: 'WORDS', style: 'vocab' },
     MIX: { title: 'Mix', chip: 'MIX', style: 'mix' }
 };
@@ -1770,20 +1799,25 @@ function syncPackSelector() {
     renderPackCards();
 }
 
-function forceOcpDropPackSync({ notify = true } = {}) {
+function forceStudyDropPackSync({ notify = true } = {}) {
     const select = els.controls.packSelect;
     if (!select) return;
-    const hasOcpPack = Array.from(select.options).some(option => option.value === 'OC_CORE');
-    if (!hasOcpPack) return;
+    const packValue = currentStudyConfig()?.dropPack || 'OC_CORE';
+    const hasStudyPack = Array.from(select.options).some(option => option.value === packValue);
+    if (!hasStudyPack) return;
 
-    const changed = select.value !== 'OC_CORE';
-    select.value = 'OC_CORE';
+    const changed = select.value !== packValue;
+    select.value = packValue;
     syncPackSelector();
     closePackPopover();
 
     if (changed && notify) {
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }
+}
+
+function forceOcpDropPackSync(options) {
+    forceStudyDropPackSync(options);
 }
 
 function animatePackEquip(meta, sourceEl) {
@@ -2114,7 +2148,7 @@ function isStudyMode() {
 }
 
 function activeStudyTimeInput() {
-    if (isOcpEditionActive() && els.controls.ocpStudyTimeInput) {
+    if (isStudyEditionActive() && els.controls.ocpStudyTimeInput) {
         return els.controls.ocpStudyTimeInput;
     }
     return els.controls.studyTimeInput;
@@ -2172,11 +2206,12 @@ window.CodeDropPackSelector = {
 };
 
 function leaderboardSelection() {
-    if (isOcpEditionActive()) {
+    const studyConfig = currentStudyConfig();
+    if (studyConfig) {
         const ocpDiff = document.getElementById('ocp-difficulty-select');
         return {
             diff: effectiveDifficultyKey((ocpDiff && ocpDiff.value) || 'NORMAL').toLowerCase(),
-            pack: 'oc_core',
+            pack: String(studyConfig.dropPack || 'OC_CORE').toLowerCase(),
             customPackId: null
         };
     }
@@ -2765,9 +2800,141 @@ function renderLeaderboard(list) {
 // --- Mode Routing (DROP / SCENARIO / LAB / EXAM) ---
 let gameMode = 'DROP';
 let editionBurstTimer = null;
+let activeStudyEditionKey = '';
+
+const STUDY_EDITION_CONFIGS = {
+    ocp: {
+        key: 'ocp',
+        bodyClass: 'ocp-edition',
+        dropPack: 'OC_CORE',
+        incidentCategory: 'INCIDENTS',
+        routes: {
+            home: 'ocp',
+            play: 'ocpPlay',
+            learn: 'ocpLearn',
+            scenario: 'ocpScenario',
+            lab: 'ocpLab',
+            incident: 'ocpIncident',
+            exam: 'ocpExam',
+            dashboard: 'ocpDashboard'
+        },
+        packs: () => (typeof SCENARIO_PACKS !== 'undefined' ? SCENARIO_PACKS : {}),
+        labs: () => (typeof MOCK_LABS !== 'undefined' ? MOCK_LABS : []),
+        lessons: () => (typeof LESSON_TRACKS !== 'undefined' ? LESSON_TRACKS : []),
+        examBlueprint: () => (typeof EXAM_BLUEPRINT !== 'undefined' ? EXAM_BLUEPRINT : null),
+        copy: {
+            title: 'OCP EDITION',
+            subtitle: 'EX280 실전 학습 덱',
+            learn: '학습 모드',
+            learnDesc: '처음이라면 여기부터 — 따라치며 배우는 EX280',
+            drop: 'CLI DROP',
+            dropDesc: 'OC 핵심 명령 낙하 타자',
+            scenario: '시나리오',
+            scenarioDesc: '상황별 명령 10문제',
+            lab: '모의 랩',
+            labDesc: '실전 절차 훈련',
+            incident: '진단훈련',
+            incidentDesc: 'CrashLoop, Pending, RBAC, SCC 원인 찾기',
+            exam: '시험 모드',
+            examDesc: '15문제 · 90초',
+            fixedPack: 'OpenShift CLI (EX280) 팩으로 고정됩니다.',
+            start: 'START OCP',
+            dashboard: '학습 대시보드',
+            dropDifficulty: 'CLI 드롭 난이도',
+            scenarioCategory: '시나리오 카테고리',
+            mockLab: '모의 랩 선택',
+            examLabel: 'EX280 모의시험',
+            examInfo: '15문제 · 문제당 90초 · 힌트 없음 · 70% 이상 합격'
+        }
+    },
+    github: {
+        key: 'github',
+        bodyClass: 'github-edition',
+        dropPack: 'GITHUB_CORE',
+        incidentCategory: 'GITHUB_INCIDENTS',
+        routes: {
+            home: 'github',
+            play: 'githubPlay',
+            learn: 'githubLearn',
+            scenario: 'githubScenario',
+            lab: 'githubLab',
+            incident: 'githubIncident',
+            exam: 'githubExam',
+            dashboard: 'githubDashboard'
+        },
+        packs: () => (typeof GITHUB_SCENARIO_PACKS !== 'undefined' ? GITHUB_SCENARIO_PACKS : {}),
+        labs: () => (typeof GITHUB_MOCK_LABS !== 'undefined' ? GITHUB_MOCK_LABS : []),
+        lessons: () => (typeof GITHUB_LESSON_TRACKS !== 'undefined' ? GITHUB_LESSON_TRACKS : []),
+        examBlueprint: () => (typeof GITHUB_EXAM_BLUEPRINT !== 'undefined' ? GITHUB_EXAM_BLUEPRINT : null),
+        copy: {
+            title: 'GITHUB EDITION',
+            subtitle: 'GitHub 자격증 실전 학습 덱',
+            learn: '학습 모드',
+            learnDesc: 'Foundations부터 Copilot까지 따라치며 정리',
+            drop: 'GITHUB DROP',
+            dropDesc: 'GitHub 핵심 용어 낙하 타자',
+            scenario: '시나리오',
+            scenarioDesc: 'Actions, 보안, 관리 상황별 문제',
+            lab: '모의 랩',
+            labDesc: '워크플로, 브랜치 보호, 보안 절차 훈련',
+            incident: '진단훈련',
+            incidentDesc: 'Action 실패, 권한, Secret, 보안 알림 원인 찾기',
+            exam: '시험 모드',
+            examDesc: '5개 GitHub 자격증 범위',
+            fixedPack: 'GitHub Certification 핵심 팩으로 고정됩니다.',
+            start: 'START GITHUB',
+            dashboard: 'GitHub 학습 대시보드',
+            dropDifficulty: 'GitHub 드롭 난이도',
+            scenarioCategory: 'GitHub 시나리오 카테고리',
+            mockLab: 'GitHub 모의 랩 선택',
+            examLabel: 'GitHub Certification',
+            examInfo: 'Foundations, Actions, Security, Admin, Copilot · 15문제 · 90초'
+        },
+        copyEn: {
+            title: 'GITHUB EDITION',
+            subtitle: 'GitHub certification practice deck',
+            learn: 'LEARN MODE',
+            learnDesc: 'Type through Foundations, Actions, Security, Admin, and Copilot',
+            drop: 'GITHUB DROP',
+            dropDesc: 'Falling typing drill for core GitHub terms',
+            scenario: 'SCENARIO',
+            scenarioDesc: 'Situational drills for Actions, security, and administration',
+            lab: 'MOCK LAB',
+            labDesc: 'Workflow, branch protection, and security procedure training',
+            incident: 'INCIDENT DRILL',
+            incidentDesc: 'Diagnose Actions failures, permissions, secrets, and alerts',
+            exam: 'EXAM MODE',
+            examDesc: 'Five GitHub certification domains',
+            fixedPack: 'Fixed to the GitHub Certification core pack.',
+            start: 'START GITHUB',
+            dashboard: 'GitHub Study Dashboard',
+            dropDifficulty: 'GitHub Drop Difficulty',
+            scenarioCategory: 'GitHub Scenario Category',
+            mockLab: 'GitHub Mock Lab',
+            examLabel: 'GitHub Certification',
+            examInfo: 'Foundations, Actions, Security, Admin, Copilot · 15 questions · 90 seconds'
+        }
+    }
+};
 
 function isOcpEditionActive() {
     return document.body.classList.contains('ocp-edition');
+}
+
+function currentStudyConfig() {
+    return STUDY_EDITION_CONFIGS[activeStudyEditionKey] || null;
+}
+
+function isStudyEditionActive() {
+    return Boolean(currentStudyConfig());
+}
+
+function currentStudyHomeRoute() {
+    return currentStudyConfig()?.routes?.home || 'home';
+}
+
+function currentStudyPlayRoute() {
+    return currentStudyConfig()?.routes?.play || 'play';
 }
 
 function triggerEditionBurst() {
@@ -2788,37 +2955,42 @@ function getOcpPracticeStyle() {
 }
 
 function handleStart() {
+    const studyConfig = currentStudyConfig();
+    if (!studyConfig) {
+        handleStandardStart();
+        return;
+    }
     const practiceStyle = getOcpPracticeStyle();
     if (gameMode === 'LEARN') {
-        navigateAppRoute('ocpLearn');
+        navigateAppRoute(studyConfig.routes.learn);
         els.screens.start.classList.add('hidden');
         LearnMode.openPicker({ practiceMode: practiceStyle });
     } else if (gameMode === 'SCENARIO') {
-        navigateAppRoute('ocpScenario');
+        navigateAppRoute(studyConfig.routes.scenario);
         const catSelect = document.getElementById('scenario-category-select');
         els.screens.start.classList.add('hidden');
         if (practiceStyle === 'follow') ScenarioMode.startGuided(catSelect.value);
         else ScenarioMode.start(catSelect.value);
     } else if (gameMode === 'LAB') {
-        navigateAppRoute('ocpLab');
+        navigateAppRoute(studyConfig.routes.lab);
         const labSelect = document.getElementById('lab-select');
         els.screens.start.classList.add('hidden');
         if (practiceStyle === 'follow') LabMode.startGuided(labSelect.value);
         else LabMode.start(labSelect.value);
     } else if (gameMode === 'INCIDENT') {
-        navigateAppRoute('ocpIncident');
+        navigateAppRoute(studyConfig.routes.incident);
         els.screens.start.classList.add('hidden');
-        if (practiceStyle === 'follow') ScenarioMode.startGuided('INCIDENTS');
+        if (practiceStyle === 'follow') ScenarioMode.startGuided(studyConfig.incidentCategory);
         else ScenarioMode.startIncidentDrill();
     } else if (gameMode === 'EXAM') {
-        navigateAppRoute('ocpExam');
+        navigateAppRoute(studyConfig.routes.exam);
         els.screens.start.classList.add('hidden');
         ScenarioMode.startExam();
     } else {
-        if (isOcpEditionActive()) {
+        if (isStudyEditionActive()) {
             const ocpDiff = document.getElementById('ocp-difficulty-select');
             if (ocpDiff) els.controls.diffSelect.value = ocpDiff.value;
-            forceOcpDropPackSync({ notify: false });
+            forceStudyDropPackSync({ notify: false });
         }
         startGame();
     }
@@ -2870,6 +3042,7 @@ function initModeControls() {
     const ocpMenu = document.getElementById('ocp-menu');
     const editionCodeBtn = document.getElementById('edition-code-btn');
     const editionOcpBtn = document.getElementById('edition-ocp-btn');
+    const editionGithubBtn = document.getElementById('edition-github-btn');
     const ocpDiffSelect = document.getElementById('ocp-difficulty-select');
     const ocpStartBtn = document.getElementById('ocp-start-btn');
     const dashboardBtn = document.getElementById('dashboard-btn');
@@ -2889,9 +3062,98 @@ function initModeControls() {
     initStandardModeControls();
     initDifficultyPickers();
 
-    // 카테고리 옵션을 SCENARIO_PACKS에서 자동 생성
-    if (typeof SCENARIO_PACKS !== 'undefined' && catSelect && catSelect.options.length === 0) {
-        Object.entries(SCENARIO_PACKS).forEach(([key, pack]) => {
+    function configureStudyModules(config) {
+        if (!config) return;
+        if (typeof ScenarioMode !== 'undefined') {
+            ScenarioMode.configure({
+                packs: config.packs,
+                examBlueprint: config.examBlueprint,
+                bestKey: `codedrop_${config.key}_scenario_best`,
+                incidentCategory: config.incidentCategory,
+                examLabel: config.copy.examLabel,
+                edition: config.key
+            });
+        }
+        if (typeof LabMode !== 'undefined') {
+            LabMode.configure({
+                labs: config.labs,
+                bestKey: `codedrop_${config.key}_lab_best`,
+                trackTitle: `${config.copy.title} Mock Labs`
+            });
+        }
+        if (typeof LearnMode !== 'undefined') {
+            LearnMode.configure({
+                tracks: config.lessons,
+                scenarioPacks: config.packs,
+                progressKey: `codedrop_${config.key}_learn_progress`
+            });
+        }
+    }
+
+    function populateStudySelectors(config) {
+        if (!config) return;
+        if (catSelect) {
+            catSelect.replaceChildren();
+            Object.entries(config.packs()).forEach(([key, pack]) => {
+                if (key === config.incidentCategory) return;
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = pack.label;
+                catSelect.appendChild(opt);
+            });
+        }
+
+        if (labSelect) {
+            labSelect.replaceChildren();
+            config.labs().forEach((lab, index) => {
+                const opt = document.createElement('option');
+                opt.value = lab.id;
+                opt.textContent = `${String(index + 1).padStart(2, '0')}. ${lab.title}`;
+                labSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function applyStudyEditionCopy(config) {
+        if (!config) return;
+        const copy = config.key === 'github' && appLang() === 'en' && config.copyEn
+            ? config.copyEn
+            : config.copy;
+        const setText = (selector, text) => {
+            const el = document.querySelector(selector);
+            if (el && text) el.textContent = text;
+        };
+        const setModeCopy = (mode, title, desc) => {
+            const btn = document.querySelector(`[data-mode="${mode}"]`);
+            if (!btn) return;
+            const strong = btn.querySelector('strong');
+            const span = btn.querySelector('span');
+            if (strong && title) strong.textContent = title;
+            if (span && desc) span.textContent = desc;
+        };
+
+        setText('.ocp-title', copy.title);
+        setText('.ocp-subtitle', copy.subtitle);
+        setModeCopy('LEARN', copy.learn, copy.learnDesc);
+        setModeCopy('DROP', copy.drop, copy.dropDesc);
+        setModeCopy('SCENARIO', copy.scenario, copy.scenarioDesc);
+        setModeCopy('LAB', copy.lab, copy.labDesc);
+        setModeCopy('INCIDENT', copy.incident, copy.incidentDesc);
+        setModeCopy('EXAM', copy.exam, copy.examDesc);
+        setText('#ocp-drop-group > label', copy.dropDifficulty);
+        setText('#ocp-drop-group .mode-info', copy.fixedPack);
+        setText('#scenario-select-group > label', copy.scenarioCategory);
+        setText('#lab-select-group > label', copy.mockLab);
+        setText('#exam-info-group > label', copy.examLabel);
+        setText('#exam-info-group .mode-info', copy.examInfo);
+        if (ocpStartBtn) ocpStartBtn.textContent = copy.start;
+        if (dashboardBtn) dashboardBtn.textContent = copy.dashboard;
+    }
+
+    // 초기 OCP 데이터로 기본 셀렉터를 채운다. 에디션 전환 시 아래에서 다시 교체된다.
+    if (catSelect && catSelect.options.length === 0) {
+        Object.entries(STUDY_EDITION_CONFIGS.ocp.packs()).forEach(([key, pack]) => {
+            if (key === STUDY_EDITION_CONFIGS.ocp.incidentCategory) return;
             const opt = document.createElement('option');
             opt.value = key;
             opt.textContent = pack.label;
@@ -2899,8 +3161,8 @@ function initModeControls() {
         });
     }
 
-    if (typeof MOCK_LABS !== 'undefined' && labSelect && labSelect.options.length === 0) {
-        MOCK_LABS.forEach((lab, index) => {
+    if (labSelect && labSelect.options.length === 0) {
+        STUDY_EDITION_CONFIGS.ocp.labs().forEach((lab, index) => {
             const opt = document.createElement('option');
             opt.value = lab.id;
             opt.textContent = `${String(index + 1).padStart(2, '0')}. ${lab.title}`;
@@ -2948,49 +3210,92 @@ function initModeControls() {
             }
         }
 
-        if (mode === 'DROP' && isOcpEditionActive()) {
-            forceOcpDropPackSync();
+        if (mode === 'DROP' && isStudyEditionActive()) {
+            forceStudyDropPackSync();
         }
         syncStudyDifficultyControls();
     }
 
-    function openOcpEdition() {
-        navigateAppRoute('ocp');
-        if (isOcpEditionActive()) {
+    function setEditionButtons(activeKey) {
+        if (editionCodeBtn) editionCodeBtn.classList.toggle('active', !activeKey);
+        if (editionOcpBtn) editionOcpBtn.classList.toggle('active', activeKey === 'ocp');
+        if (editionGithubBtn) editionGithubBtn.classList.toggle('active', activeKey === 'github');
+    }
+
+    function clearStudyEditionClasses() {
+        Object.values(STUDY_EDITION_CONFIGS).forEach(config => {
+            document.body.classList.remove(config.bodyClass);
+        });
+    }
+
+    function openStudyEdition(key = 'ocp') {
+        const config = STUDY_EDITION_CONFIGS[key] || STUDY_EDITION_CONFIGS.ocp;
+        navigateAppRoute(config.routes.home);
+        if (activeStudyEditionKey === config.key) {
+            configureStudyModules(config);
+            populateStudySelectors(config);
+            applyStudyEditionCopy(config);
             setMode('DROP');
-            forceOcpDropPackSync();
+            forceStudyDropPackSync();
             return;
         }
-        document.body.classList.add('ocp-edition');
+        clearStudyEditionClasses();
+        activeStudyEditionKey = config.key;
+        document.body.classList.add(config.bodyClass);
         sfx.playEditionBurst();
         triggerEditionBurst();
         if (standardMenu) standardMenu.classList.add('hidden');
         if (ocpMenu) ocpMenu.classList.remove('hidden');
-        if (editionCodeBtn) editionCodeBtn.classList.remove('active');
-        if (editionOcpBtn) editionOcpBtn.classList.add('active');
+        setEditionButtons(config.key);
+        configureStudyModules(config);
+        populateStudySelectors(config);
+        applyStudyEditionCopy(config);
+        setMode('DROP');
+        forceStudyDropPackSync({ notify: false });
+        fetchLeaderboard();
+    }
+
+    function closeStudyEdition() {
+        navigateAppRoute('home');
+        if (!isStudyEditionActive()) return;
+        sfx.playEditionBurst();
+        triggerEditionBurst();
+        clearStudyEditionClasses();
+        activeStudyEditionKey = '';
+        if (ocpMenu) ocpMenu.classList.add('hidden');
+        if (standardMenu) standardMenu.classList.remove('hidden');
+        setEditionButtons('');
         setMode('DROP');
         fetchLeaderboard();
+    }
+
+    function openOcpEdition() {
+        openStudyEdition('ocp');
+    }
+
+    function openGithubEdition() {
+        openStudyEdition('github');
     }
 
     function closeOcpEdition() {
-        navigateAppRoute('home');
-        if (!isOcpEditionActive()) return;
-        sfx.playEditionBurst();
-        triggerEditionBurst();
-        document.body.classList.remove('ocp-edition');
-        if (ocpMenu) ocpMenu.classList.add('hidden');
-        if (standardMenu) standardMenu.classList.remove('hidden');
-        if (editionOcpBtn) editionOcpBtn.classList.remove('active');
-        if (editionCodeBtn) editionCodeBtn.classList.add('active');
-        setMode('DROP');
-        fetchLeaderboard();
+        closeStudyEdition();
+    }
+
+    function refreshActiveCopy() {
+        const config = currentStudyConfig();
+        if (config) applyStudyEditionCopy(config);
     }
 
     window.CodeDropModeControls = {
+        openStudyEdition,
+        closeStudyEdition,
         openOcpEdition,
         closeOcpEdition,
+        openGithubEdition,
         setMode,
-        currentMode: () => gameMode
+        refreshActiveCopy,
+        currentMode: () => gameMode,
+        currentConfig: currentStudyConfig
     };
 
     modeButtons.forEach(btn => {
@@ -3012,8 +3317,12 @@ function initModeControls() {
         editionOcpBtn.addEventListener('click', openOcpEdition);
     }
 
+    if (editionGithubBtn) {
+        editionGithubBtn.addEventListener('click', openGithubEdition);
+    }
+
     if (editionCodeBtn) {
-        editionCodeBtn.addEventListener('click', closeOcpEdition);
+        editionCodeBtn.addEventListener('click', closeStudyEdition);
     }
 
     if (ocpStartBtn) {
@@ -3022,7 +3331,7 @@ function initModeControls() {
 
     if (dashboardBtn) {
         dashboardBtn.addEventListener('click', () => {
-            navigateAppRoute('ocpDashboard');
+            navigateAppRoute(currentStudyConfig()?.routes.dashboard || 'ocpDashboard');
             Dashboard.open();
         });
     }
@@ -3077,7 +3386,7 @@ async function startGame() {
     const pack = els.controls.packSelect.value;
     const playMode = isStudyDifficulty(diff) ? 'STUDY' : 'MISSION';
     if (!await ensureSelectedPackReady(pack)) return;
-    navigateAppRoute(isOcpEditionActive() ? 'ocpPlay' : 'play');
+    navigateAppRoute(isStudyEditionActive() ? currentStudyPlayRoute() : 'play');
     sfx.playBoot();
 
     state.difficulty = diff;
@@ -3183,7 +3492,7 @@ async function goHome() {
 
     fetchLeaderboard();
     initGameControls();
-    navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home', { replace: true });
+    navigateAppRoute(isStudyEditionActive() ? currentStudyHomeRoute() : 'home', { replace: true });
     syncOverlayChrome();
     // sfx.playBGM();
 }
@@ -3205,7 +3514,7 @@ function handleRestart() {
     state.endReason = '';
     state.pauseStartedAt = 0;
     fetchLeaderboard();
-    navigateAppRoute(isOcpEditionActive() ? 'ocp' : 'home', { replace: true });
+    navigateAppRoute(isStudyEditionActive() ? currentStudyHomeRoute() : 'home', { replace: true });
     syncOverlayChrome();
     // sfx.playBGM();
 }
@@ -3717,6 +4026,10 @@ function applyAppLanguage(value) {
         }
     }
 
+    if (window.CodeDropModeControls?.currentConfig?.()?.key === 'github') {
+        window.CodeDropModeControls.refreshActiveCopy?.();
+    }
+
     window.dispatchEvent(new CustomEvent('codedrop:language', { detail: { lang } }));
 }
 
@@ -3869,10 +4182,10 @@ function init() {
                 (!adminPacks || adminPacks.classList.contains('hidden')) &&
                 (!keyboardTest || keyboardTest.classList.contains('hidden')) &&
                 !state.isPlaying) {
-                if (isOcpEditionActive()) {
+                if (isStudyEditionActive()) {
                     handleStart();
                 } else {
-                    startGame();
+                    handleStandardStart();
                 }
             }
         }
@@ -4346,19 +4659,25 @@ function showLoggedInView() {
     // Refresh leaderboard for default view
     fetchLeaderboard();
     initGameControls();
+    reapplyCurrentRouteAfterAuth();
     syncOverlayChrome();
 }
 
 function showAuthView() {
-    document.body.classList.remove('ocp-edition');
+    Object.values(STUDY_EDITION_CONFIGS).forEach(config => {
+        document.body.classList.remove(config.bodyClass);
+    });
+    activeStudyEditionKey = '';
     setGameChrome(false);
     const standardMenu = document.getElementById('standard-menu');
     const ocpMenu = document.getElementById('ocp-menu');
     const editionCodeBtn = document.getElementById('edition-code-btn');
     const editionOcpBtn = document.getElementById('edition-ocp-btn');
+    const editionGithubBtn = document.getElementById('edition-github-btn');
     if (standardMenu) standardMenu.classList.remove('hidden');
     if (ocpMenu) ocpMenu.classList.add('hidden');
     if (editionOcpBtn) editionOcpBtn.classList.remove('active');
+    if (editionGithubBtn) editionGithubBtn.classList.remove('active');
     if (editionCodeBtn) editionCodeBtn.classList.add('active');
     els.auth.authContainer.style.display = 'block';
     els.auth.loggedInView.classList.remove('active');

@@ -46,25 +46,74 @@ const StudyStats = (() => {
         if (qidToCategory) return;
         qidToCategory = {};
         qidToQuestion = {};
-        if (typeof SCENARIO_PACKS !== 'undefined') {
-            Object.entries(SCENARIO_PACKS).forEach(([cat, pack]) => {
+        const scenarioSources = [];
+        if (typeof SCENARIO_PACKS !== 'undefined') scenarioSources.push(SCENARIO_PACKS);
+        if (typeof GITHUB_SCENARIO_PACKS !== 'undefined') scenarioSources.push(GITHUB_SCENARIO_PACKS);
+
+        scenarioSources.forEach(source => {
+            Object.entries(source).forEach(([cat, pack]) => {
                 pack.questions.forEach(q => {
                     qidToCategory[q.id] = cat;
                     qidToQuestion[q.id] = q;
                 });
             });
-        }
-        if (typeof MOCK_LABS !== 'undefined') {
-            MOCK_LABS.forEach(lab => {
+        });
+
+        const labSources = [];
+        if (typeof MOCK_LABS !== 'undefined') labSources.push({ cat: 'LAB', labs: MOCK_LABS, label: '모의랩' });
+        if (typeof GITHUB_MOCK_LABS !== 'undefined') labSources.push({ cat: 'GITHUB_LAB', labs: GITHUB_MOCK_LABS, label: 'GitHub Lab' });
+
+        labSources.forEach(source => {
+            source.labs.forEach(lab => {
                 lab.steps.forEach(step => {
-                    qidToCategory[step.id] = 'LAB';
+                    qidToCategory[step.id] = source.cat;
                     qidToQuestion[step.id] = {
                         ...step,
                         scenario: `[${lab.title}] ${step.scenario}`
                     };
                 });
             });
+        });
+    }
+
+    function normalizeEditionOptions(options = {}) {
+        if (typeof options === 'string') return { edition: options };
+        return options || {};
+    }
+
+    function normalizeEditionKey(edition) {
+        return edition === 'github' ? 'github' : (edition === 'all' ? 'all' : 'ocp');
+    }
+
+    function isGithubCategory(cat) {
+        return String(cat || '').startsWith('GH_') || cat === 'GITHUB_INCIDENTS' || cat === 'GITHUB_LAB';
+    }
+
+    function belongsToEdition(category, edition) {
+        const normalized = normalizeEditionKey(edition);
+        if (normalized === 'all') return true;
+        const github = isGithubCategory(category);
+        return normalized === 'github' ? github : !github;
+    }
+
+    function scenarioSourcesForEdition(edition) {
+        const normalized = normalizeEditionKey(edition);
+        const sources = [];
+        if (normalized !== 'github' && typeof SCENARIO_PACKS !== 'undefined') sources.push(SCENARIO_PACKS);
+        if (normalized !== 'ocp' && typeof GITHUB_SCENARIO_PACKS !== 'undefined') sources.push(GITHUB_SCENARIO_PACKS);
+        return sources;
+    }
+
+    function labSourcesForEdition(edition) {
+        const normalized = normalizeEditionKey(edition);
+        const sources = [];
+        if (normalized !== 'github' && typeof MOCK_LABS !== 'undefined') {
+            sources.push({ cat: 'LAB', labs: MOCK_LABS, label: '모의랩' });
         }
+        if (normalized !== 'ocp' && typeof GITHUB_MOCK_LABS !== 'undefined') {
+            sources.push({ cat: 'GITHUB_LAB', labs: GITHUB_MOCK_LABS, label: 'GitHub Lab' });
+        }
+        return sources;
     }
 
     function emptyData() {
@@ -154,30 +203,34 @@ const StudyStats = (() => {
     }
 
     // 카테고리별 요약: {CAT: {label, attempted, total, cleanRate}}
-    function categorySummary() {
+    function categorySummary(options = {}) {
+        const opts = normalizeEditionOptions(options);
         buildMaps();
         const summary = {};
 
-        if (typeof SCENARIO_PACKS !== 'undefined') {
-            Object.entries(SCENARIO_PACKS).forEach(([cat, pack]) => {
+        scenarioSourcesForEdition(opts.edition).forEach(source => {
+            Object.entries(source).forEach(([cat, pack]) => {
                 summary[cat] = summarizeItems(pack.questions, pack.label);
             });
-        }
-        if (typeof MOCK_LABS !== 'undefined') {
-            const steps = MOCK_LABS.flatMap(lab => lab.steps);
-            summary.LAB = summarizeItems(steps, '모의랩');
-        }
+        });
+
+        labSourcesForEdition(opts.edition).forEach(source => {
+            const steps = source.labs.flatMap(lab => lab.steps);
+            summary[source.cat] = summarizeItems(steps, source.label);
+        });
         return summary;
     }
 
     // 오답노트 풀: 마지막이 wrong/skip/dirty 이거나 정답률 60% 미만(2회 이상 시도)
-    function reviewPool() {
+    function reviewPool(options = {}) {
+        const opts = normalizeEditionOptions(options);
         buildMaps();
         const data = load();
         const pool = [];
         Object.entries(data.q).forEach(([id, e]) => {
             const q = qidToQuestion[id];
             if (!q) return;
+            if (!belongsToEdition(qidToCategory[id], opts.edition)) return;
             const weak = e.last === 'wrong' || e.last === 'skip' || e.last === 'dirty' ||
                 (e.a >= 2 && e.c / e.a < 0.6);
             if (weak) pool.push(q);
