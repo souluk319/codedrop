@@ -740,11 +740,11 @@ const LearnMode = (() => {
 
     function isCrossEditionAssistantEntry(item, edition) {
         if (!item || item.role !== 'assistant') return false;
-        const content = String(item.content || '');
+        const content = `${item.content || ''}\n${item.question || ''}`;
         if (edition === 'github') {
-            return /\b(?:oc|kubectl)\s+|OpenShift|EX280|Kubernetes|클러스터|네임스페이스/i.test(content);
+            return /\b(?:oc|kubectl)\s+|CodeDrop\s+OCP\s+Edition|OCP\s+Edition|OpenShift|EX280|Kubernetes|클러스터|네임스페이스|오픈시프트|오씨피/i.test(content);
         }
-        return /\bgh\s+(?:auth|repo|issue|pr|api|workflow|run|release)|GitHub Actions|branch protection|Copilot|pull request/i.test(content);
+        return /CodeDrop\s+GitHub\s+Edition|GitHub\s+Edition|\bgh\s+(?:auth|repo|issue|pr|api|workflow|run|release)|GitHub Actions|branch protection|Copilot|pull request|souluk319\/codedrop/i.test(content);
     }
 
     function loadChatHistory() {
