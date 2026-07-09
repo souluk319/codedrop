@@ -23,6 +23,13 @@ const ScenarioMode = (() => {
     };
     const EXAM_TIME_PER_Q = 90;   // 초
     const EXAM_PASS_RATE = 0.7;
+    let runtime = {
+        packs: () => (typeof SCENARIO_PACKS !== 'undefined' ? SCENARIO_PACKS : {}),
+        examBlueprint: () => EXAM_BLUEPRINT,
+        bestKey: BEST_KEY,
+        incidentCategory: 'INCIDENTS',
+        examLabel: '실전 시험'
+    };
 
     const session = {
         opts: null,
@@ -73,8 +80,24 @@ const ScenarioMode = (() => {
 
     // ---------- 진입점 ----------
 
+    function configure(next = {}) {
+        runtime = { ...runtime, ...next };
+    }
+
+    function getPacks() {
+        return typeof runtime.packs === 'function' ? runtime.packs() : (runtime.packs || {});
+    }
+
+    function getExamBlueprint() {
+        return typeof runtime.examBlueprint === 'function' ? runtime.examBlueprint() : (runtime.examBlueprint || EXAM_BLUEPRINT);
+    }
+
+    function getBestKey() {
+        return runtime.bestKey || BEST_KEY;
+    }
+
     function start(category) {
-        const pack = SCENARIO_PACKS[category];
+        const pack = getPacks()[category];
         if (!pack) {
             console.error('Unknown scenario category:', category);
             return;
@@ -92,7 +115,7 @@ const ScenarioMode = (() => {
     }
 
     function startGuided(category) {
-        const pack = SCENARIO_PACKS[category];
+        const pack = getPacks()[category];
         if (!pack) {
             console.error('Unknown scenario category:', category);
             return;
@@ -111,19 +134,20 @@ const ScenarioMode = (() => {
     }
 
     function startIncidentDrill() {
-        start('INCIDENTS');
+        start(runtime.incidentCategory || 'INCIDENTS');
     }
 
     function startExam() {
         const questions = [];
-        Object.entries(EXAM_BLUEPRINT).forEach(([cat, count]) => {
-            const pack = SCENARIO_PACKS[cat];
+        const packs = getPacks();
+        Object.entries(getExamBlueprint()).forEach(([cat, count]) => {
+            const pack = packs[cat];
             if (!pack) return;
             questions.push(...StudyCore.shuffle(pack.questions).slice(0, count));
         });
         startSession({
             mode: 'exam',
-            label: '실전 시험',
+            label: runtime.examLabel || '실전 시험',
             questions: StudyCore.shuffle(questions),
             hintsAllowed: false,
             timePerQuestion: EXAM_TIME_PER_Q,
@@ -133,8 +157,8 @@ const ScenarioMode = (() => {
         });
     }
 
-    function startReview() {
-        const pool = StudyStats.reviewPool().slice(0, QUESTIONS_PER_SESSION);
+    function startReview(options = {}) {
+        const pool = StudyStats.reviewPool({ edition: options.edition || runtime.edition || 'ocp' }).slice(0, QUESTIONS_PER_SESSION);
         if (pool.length === 0) return;
         startSession({
             mode: 'review',
@@ -144,7 +168,7 @@ const ScenarioMode = (() => {
             timePerQuestion: null,
             skipToQueue: false,
             bestKeyCategory: null,
-            retry: () => startReview()
+            retry: () => startReview(options)
         });
     }
 
@@ -562,14 +586,14 @@ const ScenarioMode = (() => {
 
     function loadBest() {
         try {
-            return JSON.parse(localStorage.getItem(BEST_KEY)) || {};
+            return JSON.parse(localStorage.getItem(getBestKey())) || {};
         } catch (e) {
             return {};
         }
     }
 
     function saveBest(best) {
-        localStorage.setItem(BEST_KEY, JSON.stringify(best));
+        localStorage.setItem(getBestKey(), JSON.stringify(best));
     }
 
     function endSession() {
@@ -716,7 +740,8 @@ const ScenarioMode = (() => {
             row.className = 'exam-cat-row';
             const label = document.createElement('span');
             label.className = 'exam-cat-label';
-            label.textContent = (SCENARIO_PACKS[cat] && SCENARIO_PACKS[cat].label) || cat;
+            const packs = getPacks();
+            label.textContent = (packs[cat] && packs[cat].label) || cat;
             const bar = document.createElement('span');
             bar.className = 'exam-cat-bar';
             const fill = document.createElement('span');
@@ -792,6 +817,7 @@ const ScenarioMode = (() => {
         }
 
         StudyStats.recordExam({
+            edition: runtime.edition || 'ocp',
             score: correct,
             total,
             correct,
@@ -800,5 +826,5 @@ const ScenarioMode = (() => {
         });
     }
 
-    return { start, startGuided, startIncidentDrill, startExam, startReview, quit };
+    return { start, startGuided, startIncidentDrill, startExam, startReview, quit, configure };
 })();

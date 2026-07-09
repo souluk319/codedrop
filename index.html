@@ -336,6 +336,13 @@
             align-items: center;
         }
 
+        .hud-actions {
+            flex-direction: row;
+            gap: 15px;
+            align-items: center;
+            margin-left: 20px;
+        }
+
         .hud-label {
             font-family: var(--font-display);
             font-size: 0.7rem;
@@ -3300,8 +3307,67 @@
             }
 
             #input-field {
+                width: calc(100vw - 32px);
+                max-width: 400px;
                 font-size: 1.5rem;
                 height: 50px;
+            }
+
+            #hud {
+                height: auto;
+                min-height: 78px;
+                padding: 8px 10px;
+                gap: 8px;
+                flex-wrap: wrap;
+                overflow: hidden;
+            }
+
+            .hud-group {
+                flex: 1 1 112px;
+                min-width: 0;
+                gap: 10px;
+                justify-content: center;
+                flex-wrap: wrap;
+                align-content: center;
+                row-gap: 4px;
+            }
+
+            .hud-center-group {
+                min-width: 0;
+                gap: 10px;
+            }
+
+            .hud-actions {
+                flex: 0 1 100%;
+                gap: 6px;
+                margin-left: 0;
+                flex-wrap: nowrap;
+                justify-content: center;
+            }
+
+            .hud-actions .btn-small {
+                padding: 7px;
+                font-size: 0.62rem;
+                letter-spacing: 0;
+            }
+
+            .hud-label {
+                font-size: 0.58rem;
+                letter-spacing: 0;
+            }
+
+            .hud-value {
+                font-size: 1.05rem;
+            }
+
+            #lives-display {
+                font-size: 1.12rem;
+                letter-spacing: 1px;
+            }
+
+            #study-timer-display {
+                min-width: 66px;
+                font-size: 1rem;
             }
 
             #music-widget[data-player-ui="island"].island-open {
@@ -4821,6 +4887,7 @@
         .pack-style-cli { --pack-accent: #32383a; --pack-shell: #d8ddd9; --pack-shell-dark: #8b9290; }
         .pack-style-linux { --pack-accent: #ec8127; --pack-shell: #f3a23c; --pack-shell-dark: #a95316; }
         .pack-style-oc_core { --pack-accent: #ff3045; --pack-shell: #ff3045; --pack-shell-dark: #961624; }
+        .pack-style-github_core { --pack-accent: #2f81f7; --pack-shell: #60a5fa; --pack-shell-dark: #0d419d; }
         .pack-style-vocab { --pack-accent: #7e39ff; --pack-shell: #bb87ff; --pack-shell-dark: #6431b6; }
         .pack-style-mix { --pack-accent: #101214; --pack-shell: #f0f0e8; --pack-shell-dark: #8d918c; }
         .pack-style-custom { --pack-accent: #ff5cc8; --pack-shell: #ff86d9; --pack-shell-dark: #ac2f80; }
@@ -5252,7 +5319,7 @@
 
         .edition-switch {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 0;
             width: 100%;
             flex: 0 0 auto;
@@ -5267,10 +5334,13 @@
             margin: 0;
             border: 0;
             border-radius: 0;
-            padding: 14px 12px;
+            padding: 13px 8px;
             color: #777;
             box-shadow: none;
-            font-size: 0.84rem;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
             background: transparent;
         }
 
@@ -5673,7 +5743,10 @@
 
             body.ocp-edition .mode-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-auto-rows: minmax(62px, auto);
                 gap: 8px;
+                flex: 0 0 auto;
+                min-height: auto;
             }
 
             body.ocp-edition .mode-choice {
@@ -5711,6 +5784,368 @@
         body.ocp-edition .mode-choice.active {
             background: rgba(255, 48, 69, 0.1);
             box-shadow: 0 0 16px rgba(255, 48, 69, 0.22);
+        }
+
+        body.github-edition {
+            --glass-border: rgba(47, 129, 247, 0.26);
+            --primary-neon: #2f81f7;
+            --secondary-neon: #a371f7;
+            --danger-color: #ff7b72;
+            --success-color: #3fb950;
+        }
+
+        body.github-edition #start-screen {
+            padding: 46px 0 32px;
+            scrollbar-gutter: stable;
+        }
+
+        body.github-edition .start-layout {
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 1320px;
+            gap: 36px;
+        }
+
+        body.github-edition #start-screen .card {
+            width: 840px;
+            height: 760px;
+            min-height: 760px;
+            max-width: 92vw;
+            max-height: calc(100dvh - 120px);
+            overflow: hidden;
+            padding: 32px 46px;
+        }
+
+        body.github-edition #logged-in-view {
+            height: 100%;
+            min-height: 0;
+            justify-content: flex-start;
+            gap: 12px;
+            padding: 0 10px;
+        }
+
+        body.github-edition #logged-in-view .welcome-msg {
+            margin-bottom: 2px;
+        }
+
+        body.github-edition .edition-switch {
+            margin-bottom: 2px;
+            border-color: rgba(47, 129, 247, 0.55);
+            box-shadow: 0 0 18px rgba(47, 129, 247, 0.16);
+        }
+
+        body.github-edition .edition-switch button + button {
+            border-left-color: rgba(47, 129, 247, 0.45);
+        }
+
+        body.github-edition .edition-switch button.active {
+            background: #2f81f7;
+            color: #01060c;
+            box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.14), 0 0 18px rgba(47, 129, 247, 0.28);
+        }
+
+        body.github-edition .ocp-menu {
+            display: grid;
+            grid-template-columns: minmax(0, 1.18fr) minmax(270px, 0.82fr);
+            grid-template-rows: auto auto auto auto auto;
+            gap: 14px 18px;
+            flex: 1 1 auto;
+            padding: 4px 0 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            min-height: 0;
+            align-content: stretch;
+        }
+
+        body.github-edition .ocp-header {
+            grid-column: 1 / -1;
+            margin-bottom: 0;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(47, 129, 247, 0.28);
+        }
+
+        body.github-edition .ocp-subtitle {
+            margin-top: 4px;
+        }
+
+        body.github-edition .mode-grid {
+            grid-column: 1;
+            grid-row: 2 / 6;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-auto-rows: minmax(86px, 1fr);
+            gap: 12px;
+            min-height: 0;
+        }
+
+        body.github-edition .mode-choice {
+            min-height: 86px;
+            padding: 13px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-color: rgba(47, 129, 247, 0.34);
+        }
+
+        body.github-edition .mode-choice strong {
+            font-size: 0.86rem;
+            margin-bottom: 5px;
+        }
+
+        body.github-edition .mode-choice span {
+            font-size: 0.7rem;
+            line-height: 1.3;
+        }
+
+        body.github-edition .mode-choice-wide {
+            border-color: rgba(47, 129, 247, 0.42);
+            background: rgba(47, 129, 247, 0.05);
+        }
+
+        body.github-edition .mode-choice-wide:hover,
+        body.github-edition .mode-choice-wide.active,
+        body.github-edition .mode-choice:hover,
+        body.github-edition .mode-choice.active {
+            color: #f0f6fc;
+            border-color: #2f81f7;
+            background: rgba(47, 129, 247, 0.12);
+            box-shadow: 0 0 16px rgba(47, 129, 247, 0.22);
+        }
+
+        body.github-edition #learn-info-group,
+        body.github-edition #ocp-drop-group,
+        body.github-edition #scenario-select-group,
+        body.github-edition #lab-select-group,
+        body.github-edition #exam-info-group,
+        body.github-edition #practice-style-group {
+            grid-column: 2;
+            align-self: start;
+            margin: 0;
+            gap: 6px;
+        }
+
+        body.github-edition #learn-info-group,
+        body.github-edition #ocp-drop-group,
+        body.github-edition #scenario-select-group,
+        body.github-edition #lab-select-group,
+        body.github-edition #exam-info-group {
+            grid-row: 2;
+        }
+
+        body.github-edition #practice-style-group {
+            grid-row: 3;
+        }
+
+        body.github-edition .select-group select {
+            padding: 12px;
+        }
+
+        body.github-edition .mode-info {
+            padding: 10px 12px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        body.github-edition #ocp-start-btn {
+            grid-column: 2;
+            grid-row: 4;
+            align-self: end;
+            margin: 0;
+            padding: 14px;
+            font-size: 1.12rem;
+            letter-spacing: 2px;
+            white-space: nowrap;
+        }
+
+        body.github-edition #dashboard-btn {
+            grid-column: 2;
+            grid-row: 5;
+            margin: 0;
+        }
+
+        body.github-edition #leaderboard-preview {
+            position: static;
+            width: 440px;
+            max-width: 440px;
+            height: 760px;
+            min-height: 760px;
+            max-height: calc(100dvh - 120px);
+            transform: none;
+            opacity: 1;
+            overflow-y: auto;
+            align-self: center;
+        }
+
+        body.github-edition #logged-in-view>div:last-child {
+            margin-top: 2px !important;
+        }
+
+        body.github-edition .bg-grid {
+            opacity: 0.44;
+        }
+
+        body.github-edition #hud,
+        body.github-edition #input-area {
+            box-shadow: 0 0 26px rgba(47, 129, 247, 0.12);
+        }
+
+        body.github-edition h1 {
+            text-shadow: 2px 2px #0d419d, -2px -2px var(--secondary-neon);
+        }
+
+        body.github-edition .learn-track-head {
+            border-bottom-color: rgba(47, 129, 247, 0.24);
+        }
+
+        body.github-edition .learn-lesson-row:hover {
+            background: rgba(47, 129, 247, 0.06);
+            border-color: rgba(47, 129, 247, 0.25);
+        }
+
+        body.github-edition .learn-target {
+            border-color: rgba(47, 129, 247, 0.35);
+        }
+
+        body.github-edition #learn-input:focus {
+            box-shadow: 0 0 15px rgba(47, 129, 247, 0.2);
+        }
+
+        body.github-edition .learn-output {
+            background: #02060d;
+            border-color: #163d73;
+            color: #dff0ff;
+        }
+
+        body.github-edition .learn-target .ok {
+            text-shadow: 0 0 6px rgba(63, 185, 80, 0.45);
+        }
+
+        body.github-edition .learn-chat-panel {
+            border-color: rgba(47, 129, 247, 0.34);
+        }
+
+        @media (max-height: 780px) {
+            body.github-edition #start-screen {
+                padding: 28px 0 24px;
+            }
+
+            body.github-edition #start-screen .card {
+                height: 700px;
+                min-height: 700px;
+                padding: 28px 42px;
+            }
+
+            body.github-edition #leaderboard-preview {
+                height: 700px;
+                min-height: 700px;
+            }
+
+            body.github-edition .ocp-menu {
+                grid-template-columns: minmax(0, 1.05fr) minmax(250px, 0.95fr);
+                gap: 12px 14px;
+            }
+
+            body.github-edition .mode-grid {
+                gap: 8px;
+                grid-auto-rows: minmax(68px, auto);
+            }
+
+            body.github-edition .mode-choice {
+                min-height: 68px;
+                padding: 10px 12px;
+            }
+
+            body.github-edition .mode-choice-wide {
+                min-height: 76px;
+            }
+
+            body.github-edition #ocp-start-btn {
+                padding: 12px;
+                font-size: 1rem;
+            }
+        }
+
+        @media (max-width: 980px) {
+            body.github-edition #leaderboard-preview {
+                display: none;
+            }
+        }
+
+        @media (max-width: 700px) {
+            body.github-edition #start-screen {
+                overflow-y: auto;
+                padding: 18px 0;
+            }
+
+            body.github-edition #start-screen .card {
+                height: auto;
+                min-height: 0;
+                max-height: calc(100dvh - 130px);
+                padding: 24px;
+            }
+
+            body.github-edition #logged-in-view {
+                overflow-y: auto;
+            }
+
+            body.github-edition .brand-title {
+                min-height: 64px;
+                line-height: 1.18;
+                align-items: center;
+            }
+
+            body.github-edition .edition-switch button {
+                min-width: 0;
+                min-height: 52px;
+                padding: 8px 4px;
+                font-size: 0.64rem;
+                line-height: 1.15;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                text-overflow: clip;
+                letter-spacing: 0;
+            }
+
+            body.github-edition #ocp-start-btn {
+                min-height: 52px;
+                padding: 11px 10px;
+                font-size: 0.94rem;
+                line-height: 1.2;
+                letter-spacing: 1px;
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+
+            body.github-edition .ocp-menu {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 12px;
+            }
+
+            body.github-edition .mode-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-auto-rows: minmax(62px, auto);
+                gap: 8px;
+                flex: 0 0 auto;
+                min-height: auto;
+            }
+
+            body.github-edition .mode-choice {
+                min-height: 62px;
+                padding: 8px 10px;
+            }
+
+            body.github-edition .mode-choice strong {
+                font-size: 0.78rem;
+            }
+
+            body.github-edition .mode-choice span {
+                font-size: 0.64rem;
+            }
         }
 
         #dashboard-btn {
@@ -5922,10 +6357,14 @@
 
         .learn-track-list {
             max-height: 490px;
+            min-height: min(360px, 48dvh);
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 6px;
+            position: relative;
+            z-index: 1;
+            flex: 0 0 auto;
         }
 
         .learn-track-head {
@@ -5958,6 +6397,10 @@
             color: var(--text-color);
             font-size: 1.04rem;
             transition: all 0.2s;
+            position: relative;
+            z-index: 1;
+            pointer-events: auto;
+            background: rgba(0, 0, 0, 0.01);
         }
 
         .learn-lesson-row:hover {
@@ -6712,6 +7155,131 @@
             border-color: rgba(255, 48, 69, 0.34);
         }
 
+        body.github-edition .card.scenario-card,
+        body.github-edition .dashboard-card {
+            box-shadow: 0 0 30px rgba(47, 129, 247, 0.14), inset 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        body.github-edition #scenario-input:focus,
+        body.github-edition #lab-input:focus {
+            box-shadow: 0 0 15px rgba(47, 129, 247, 0.22);
+        }
+
+        body.github-edition .lab-goal {
+            border-color: rgba(47, 129, 247, 0.28);
+        }
+
+        body.github-edition .lab-check-item.current {
+            border-color: rgba(47, 129, 247, 0.3);
+            background: rgba(47, 129, 247, 0.06);
+        }
+
+        body.github-edition .learn-chat-panel {
+            background: rgba(4, 8, 18, 0.94);
+            border-color: rgba(47, 129, 247, 0.42);
+            box-shadow: 0 0 28px rgba(47, 129, 247, 0.16), inset 0 0 18px rgba(0, 0, 0, 0.55);
+        }
+
+        body.github-edition .learn-engine-toggle {
+            background:
+                linear-gradient(rgba(47, 129, 247, 0.08), rgba(47, 129, 247, 0.02)),
+                rgba(0, 0, 0, 0.78);
+            border-color: rgba(47, 129, 247, 0.68);
+            box-shadow: 0 0 14px rgba(47, 129, 247, 0.1);
+        }
+
+        body.github-edition .learn-engine-toggle:hover,
+        body.github-edition .learn-engine-toggle:focus-visible,
+        body.github-edition .learn-engine-select.open .learn-engine-toggle {
+            color: #eaf4ff;
+            box-shadow: 0 0 18px rgba(47, 129, 247, 0.26), 0 0 10px rgba(163, 113, 247, 0.12);
+        }
+
+        body.github-edition .learn-engine-menu {
+            border-color: rgba(47, 129, 247, 0.78);
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 5px),
+                linear-gradient(180deg, rgba(4, 12, 28, 0.98), rgba(2, 4, 11, 0.98));
+            box-shadow: 0 0 22px rgba(47, 129, 247, 0.24), inset 0 0 18px rgba(47, 129, 247, 0.08);
+        }
+
+        body.github-edition .learn-engine-option:hover,
+        body.github-edition .learn-engine-option[aria-selected="true"] {
+            background: rgba(47, 129, 247, 0.24);
+            text-shadow: 0 0 8px rgba(47, 129, 247, 0.85);
+        }
+
+        body.github-edition .learn-chat-context {
+            border-color: rgba(47, 129, 247, 0.24);
+        }
+
+        body.github-edition .learn-chat-msg.user {
+            border-color: rgba(47, 129, 247, 0.38);
+            background: rgba(47, 129, 247, 0.11);
+        }
+
+        body.github-edition .learn-chat-msg.assistant {
+            border-color: rgba(163, 113, 247, 0.24);
+        }
+
+        body.github-edition .learn-chat-body blockquote {
+            border-left-color: rgba(47, 129, 247, 0.56);
+        }
+
+        body.github-edition .learn-chat-body code {
+            color: #dff0ff;
+            background: rgba(47, 129, 247, 0.09);
+            border-color: rgba(47, 129, 247, 0.14);
+        }
+
+        body.github-edition .learn-chat-body pre {
+            background: #020712;
+            border-color: rgba(47, 129, 247, 0.24);
+        }
+
+        body.github-edition .learn-chat-body pre code {
+            color: #dff0ff;
+        }
+
+        body.github-edition .learn-chat-copy-code {
+            color: #d7ecff;
+            border-color: rgba(47, 129, 247, 0.38);
+        }
+
+        body.github-edition .learn-chat-body th {
+            background: rgba(47, 129, 247, 0.12);
+        }
+
+        body.github-edition .learn-chat-body a {
+            border-bottom-color: rgba(47, 129, 247, 0.48);
+        }
+
+        body.github-edition .learn-chat-action:hover,
+        body.github-edition .learn-chat-copy-code:hover {
+            border-color: rgba(47, 129, 247, 0.6);
+        }
+
+        body.github-edition .learn-chat-typing::before {
+            background:
+                linear-gradient(90deg, rgba(47, 129, 247, 0.25), rgba(163, 113, 247, 0.65), rgba(47, 129, 247, 0.25));
+            background-size: 200% 100%;
+            box-shadow: 0 0 12px rgba(47, 129, 247, 0.32);
+        }
+
+        body.github-edition .learn-chat-bottom {
+            background: rgba(47, 129, 247, 0.88);
+            border-color: rgba(156, 204, 255, 0.55);
+            box-shadow: 0 0 16px rgba(47, 129, 247, 0.3);
+        }
+
+        body.github-edition #learn-chat-input {
+            border-color: rgba(47, 129, 247, 0.38);
+        }
+
+        body.github-edition #learn-chat-input:focus {
+            box-shadow: 0 0 14px rgba(47, 129, 247, 0.22);
+        }
+
         .dashboard-card {
             width: 780px;
             max-width: 92vw;
@@ -7012,7 +7580,7 @@
                 <span class="hud-label">Difficulty</span>
                 <span class="hud-value" id="diff-badge">EASY</span>
             </div>
-            <div class="hud-item" style="flex-direction: row; gap: 15px; align-items: center; margin-left: 20px;">
+            <div class="hud-item hud-actions">
                 <!-- Music button removed from here -->
                 <button id="btn-pause" class="btn-small">PAUSE</button>
                 <button id="btn-home" class="btn-small">HOME</button>
@@ -7082,6 +7650,7 @@
                     <div class="edition-switch" id="edition-switch">
                         <button class="btn-small active" id="edition-code-btn" type="button">CODEDROP</button>
                         <button class="btn-small" id="edition-ocp-btn" type="button">OCP EDITION</button>
+                        <button class="btn-small" id="edition-github-btn" type="button">GITHUB EDITION</button>
                     </div>
 
                     <div class="standard-menu" id="standard-menu">
@@ -7126,6 +7695,7 @@
                                 <option value="CLI">Terminal</option>
                                 <option value="LINUX">Linux</option>
                                 <option value="OC_CORE">OpenShift</option>
+                                <option value="GITHUB_CORE">GitHub</option>
                                 <option value="VOCAB">Vocabulary</option>
                                 <option value="MIX">Mix</option>
                             </select>
@@ -7665,7 +8235,7 @@
     <!-- Study Dashboard -->
     <div id="dashboard-screen" class="overlay hidden">
         <div class="card dashboard-card">
-            <h2 class="scenario-summary-title">EX280 DASHBOARD</h2>
+            <h2 class="scenario-summary-title" id="dashboard-title">EX280 DASHBOARD</h2>
             <div class="dashboard-summary" id="dashboard-summary"></div>
             <div class="dashboard-body">
                 <div class="dashboard-panel">
@@ -8069,6 +8639,7 @@
     <script src="js/scenario_packs.js"></script>
     <script src="js/lab_packs.js"></script>
     <script src="js/lesson_packs.js"></script>
+    <script src="js/github_edition_packs.js"></script>
     <script src="js/long_packs.js"></script>
     <script src="js/study_stats.js"></script>
     <script src="https://w.soundcloud.com/player/api.js"></script>

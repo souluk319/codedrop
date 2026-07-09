@@ -5,6 +5,8 @@ import vm from 'vm';
 const root = process.cwd();
 const index = read('index.html');
 const game = read('js/game.js');
+const wordPacks = read('js/word_packs.js');
+const githubEditionPacks = read('js/github_edition_packs.js');
 const packMaker = read('js/pack_maker.js');
 const adminPacks = read('js/admin_packs.js');
 const server = read('server.js');
@@ -117,6 +119,36 @@ function pxValue(block, prop) {
     return Number(match[1]);
 }
 
+function loadGithubEditionData() {
+    const sandbox = {};
+    vm.runInNewContext(`${githubEditionPacks}
+globalThis.__githubEditionData = {
+    GITHUB_SCENARIO_PACKS,
+    GITHUB_EXAM_BLUEPRINT,
+    GITHUB_MOCK_LABS,
+    GITHUB_LESSON_TRACKS
+};`, sandbox);
+    return sandbox.__githubEditionData;
+}
+
+function collectObjectIds(value, ids = []) {
+    if (!value || typeof value !== 'object') return ids;
+    if (Array.isArray(value)) {
+        value.forEach(item => collectObjectIds(item, ids));
+        return ids;
+    }
+    if (typeof value.id === 'string') ids.push(value.id);
+    Object.values(value).forEach(item => collectObjectIds(item, ids));
+    return ids;
+}
+
+function assertNoDuplicateValues(values, label) {
+    const counts = new Map();
+    values.forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+    const duplicates = [...counts.entries()].filter(([, count]) => count > 1).map(([value, count]) => `${value}:${count}`);
+    assert(duplicates.length === 0, `${label} should not contain duplicates: ${duplicates.join(', ')}`);
+}
+
 function hasId(id) {
     return index.includes(`id="${id}"`);
 }
@@ -127,6 +159,7 @@ const expectedOrder = [
     'js/scenario_packs.js',
     'js/lab_packs.js',
     'js/lesson_packs.js',
+    'js/github_edition_packs.js',
     'js/long_packs.js',
     'js/study_stats.js',
     'js/game.js',
@@ -171,6 +204,7 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'edition-switch',
     'edition-code-btn',
     'edition-ocp-btn',
+    'edition-github-btn',
     'standard-menu',
     'ocp-menu',
     'mode-grid',
@@ -405,6 +439,122 @@ assert(pxValue(ocpLeaderboard, 'width') === 440, 'OCP leaderboard should match t
 assert(pxValue(ocpLeaderboard, 'height') === 760, 'OCP leaderboard should match the standard leaderboard height');
 assert(pxValue(ocpLeaderboard, 'min-height') === 760, 'OCP leaderboard min-height should preserve the aligned desktop frame');
 assert(ocpLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'OCP leaderboard should not overflow short desktop viewports');
+
+assert(index.includes('<button class="btn-small" id="edition-github-btn" type="button">GITHUB EDITION</button>'), 'GitHub Edition switch button is missing');
+assert(index.includes('<option value="GITHUB_CORE">GitHub</option>'), 'GitHub DROP pack option is missing');
+assert(index.includes('js/github_edition_packs.js'), 'GitHub Edition data script is missing');
+assert(wordPacks.includes('GITHUB_ENTRIES'), 'GitHub core word entries are missing');
+assert(wordPacks.includes('WORD_PACKS.GITHUB_CORE'), 'GitHub core word pack should be registered');
+assert(game.includes('STUDY_EDITION_CONFIGS') && game.includes('github-edition') && game.includes('GITHUB_CORE'), 'GitHub Edition study config is missing');
+assert(game.includes('openGithubEdition'), 'GitHub Edition open helper is missing');
+assert(game.includes('configureStudyModules(config)'), 'study edition module configuration should be shared by OCP and GitHub');
+assert(game.includes('populateStudySelectors(config)'), 'study selectors should be data-driven by edition config');
+assert(index.includes('body.github-edition'), 'GitHub Edition theme styles are missing');
+assert(index.includes('.pack-style-github_core'), 'GitHub cartridge style is missing');
+assert(githubEditionPacks.includes('GITHUB_SCENARIO_PACKS'), 'GitHub scenario packs are missing');
+assert(githubEditionPacks.includes('GITHUB_MOCK_LABS'), 'GitHub mock labs are missing');
+assert(githubEditionPacks.includes('GITHUB_LESSON_TRACKS'), 'GitHub lesson tracks are missing');
+assert(githubEditionPacks.includes('GITHUB_EXAM_BLUEPRINT'), 'GitHub exam blueprint is missing');
+assert(githubEditionPacks.includes('GITHUB_INCIDENTS'), 'GitHub incident drills are missing');
+assert(['GH_FOUNDATIONS', 'GH_ACTIONS', 'GH_SECURITY', 'GH_ADMIN', 'GH_COPILOT'].every(key => githubEditionPacks.includes(key)), 'GitHub cert category coverage is incomplete');
+const githubEditionContractText = githubEditionPacks.toLowerCase();
+[
+    'workflow_call',
+    'actions/caches',
+    'actions/oidc/customization/sub',
+    'environments',
+    'credential-authorizations',
+    'push protection',
+    'code-scanning/default-setup',
+    'copilot/metrics/reports/organization-28-day/latest',
+    'copilot/metrics/reports/users-28-day/latest',
+    'copilot/billing/selected_users'
+].forEach(term => assert(githubEditionContractText.includes(term.toLowerCase()), `GitHub Edition should include ${term} coverage`));
+[
+    'canonical: "gh api orgs/octo-org/copilot/usage"',
+    'canonical: "gh api orgs/octo-org/copilot/metrics"',
+    'copilot/billing/seats --field selected_usernames',
+    'copilot/billing/seats/dev1'
+].forEach(stale => assert(!githubEditionPacks.includes(stale), `GitHub Edition should not use stale Copilot API pattern: ${stale}`));
+const githubEditionData = loadGithubEditionData();
+const githubCertCategories = ['GH_FOUNDATIONS', 'GH_ACTIONS', 'GH_SECURITY', 'GH_ADMIN', 'GH_COPILOT'];
+function assertGitHubCanonicalMatches(item, label) {
+    assert(item.answers.some(pattern => new RegExp(pattern).test(item.canonical)), `${label} canonical does not match its answer patterns: ${item.id}`);
+}
+for (const category of githubCertCategories) {
+    const questions = githubEditionData.GITHUB_SCENARIO_PACKS?.[category]?.questions || [];
+    assert(questions.length >= 10, `GitHub category ${category} should include at least 10 scenario questions`);
+    for (const question of questions) {
+        assert(question.id && question.scenario && question.canonical && question.hint && question.explain, `GitHub question ${question.id || '(missing id)'} is incomplete`);
+        assert(Array.isArray(question.answers) && question.answers.length > 0, `GitHub question ${question.id} should have answer patterns`);
+        question.answers.forEach(pattern => new RegExp(pattern));
+        assertGitHubCanonicalMatches(question, 'GitHub question');
+    }
+}
+const githubIncidentQuestions = githubEditionData.GITHUB_SCENARIO_PACKS?.GITHUB_INCIDENTS?.questions || [];
+assert(githubIncidentQuestions.length >= 10, 'GitHub Edition should include real incident drill coverage');
+githubIncidentQuestions.forEach(question => {
+    assert(question.id && question.scenario && question.canonical && question.hint && question.explain, `GitHub incident ${question.id || '(missing id)'} is incomplete`);
+    assert(Array.isArray(question.answers) && question.answers.length > 0, `GitHub incident ${question.id} should have answer patterns`);
+    question.answers.forEach(pattern => new RegExp(pattern));
+    assertGitHubCanonicalMatches(question, 'GitHub incident');
+});
+const githubExamTotal = Object.values(githubEditionData.GITHUB_EXAM_BLUEPRINT).reduce((sum, count) => sum + count, 0);
+assert(githubExamTotal >= 30, 'GitHub exam blueprint should be certification-sized, not a tiny sample');
+for (const [category, count] of Object.entries(githubEditionData.GITHUB_EXAM_BLUEPRINT)) {
+    assert(githubCertCategories.includes(category), `GitHub exam category ${category} should be one of the certification domains`);
+    assert(githubEditionData.GITHUB_SCENARIO_PACKS[category].questions.length >= count, `GitHub exam category ${category} does not have enough questions for its blueprint`);
+}
+assert(githubEditionData.GITHUB_MOCK_LABS.length >= 7, 'GitHub mock labs should cover multiple certification workflows');
+const githubLabSteps = githubEditionData.GITHUB_MOCK_LABS.flatMap(lab => lab.steps || []);
+assert(githubLabSteps.length >= 35, 'GitHub mock labs should include enough hands-on steps');
+githubLabSteps.forEach(step => {
+    assert(step.id && step.scenario && step.canonical && step.hint && step.explain, `GitHub lab step ${step.id || '(missing id)'} is incomplete`);
+    assert(Array.isArray(step.answers) && step.answers.length > 0, `GitHub lab step ${step.id} should have answer patterns`);
+    step.answers.forEach(pattern => new RegExp(pattern));
+    assertGitHubCanonicalMatches(step, 'GitHub lab step');
+});
+const githubLessons = githubEditionData.GITHUB_LESSON_TRACKS.flatMap(track => track.lessons || []);
+assert(githubLessons.length >= 10, 'GitHub learn mode should have a full lesson track, not a shallow picker');
+const githubLessonSteps = githubLessons.flatMap(lesson => lesson.steps || []);
+assert(githubLessonSteps.length >= 50, 'GitHub learn mode should include enough follow-along typing steps');
+githubLessons.forEach(lesson => {
+    assert(lesson.quizCount >= 5, `GitHub lesson ${lesson.id} should include enough quiz practice`);
+    assert(githubCertCategories.includes(lesson.quizFrom), `GitHub lesson ${lesson.id} should quiz from a certification category`);
+});
+const githubAllIds = collectObjectIds(githubEditionData);
+assertNoDuplicateValues(githubAllIds, 'GitHub Edition ids');
+assert(learn.includes('function currentStudyEditionText'), 'learn mode must derive edition-specific copy from the active study edition');
+assert(learn.includes('GitHub Certification 커리큘럼'), 'GitHub learn picker copy is missing');
+assert(learn.includes('`${copy.key}-learn-picker`'), 'learn picker chat history key must be edition-specific');
+assert(learn.includes('ui.pickerIntro.textContent = currentStudyEditionText().pickerIntro'), 'learn picker intro must follow the active edition');
+const githubCard = cssBlock('body.github-edition #start-screen .card');
+assert(pxValue(githubCard, 'width') === 840, 'GitHub card must match the standard/OCP frame width');
+assert(pxValue(githubCard, 'height') === 760, 'GitHub card must match the standard/OCP frame height');
+assert(pxValue(githubCard, 'min-height') === 760, 'GitHub card min-height must protect its full menu');
+assert(githubCard.includes('overflow: hidden;'), 'GitHub desktop card should use the same complete frame treatment as OCP');
+const githubMenu = cssBlock('body.github-edition .ocp-menu');
+assert(githubMenu.includes('display: grid;'), 'GitHub menu should use the copied OCP edition grid engine');
+assert(githubMenu.includes('grid-template-columns: minmax(0, 1.18fr) minmax(270px, 0.82fr);'), 'GitHub menu should preserve the OCP two-column balance');
+const githubChatPanel = cssBlock('body.github-edition .learn-chat-panel', block => block.includes('box-shadow: 0 0 28px rgba(47, 129, 247'));
+assert(githubChatPanel.includes('background: rgba(4, 8, 18, 0.94);'), 'GitHub learn chat panel should use a blue-black shell');
+assert(!/255,\s*48,\s*69|#ff3045/i.test(githubChatPanel), 'GitHub learn chat panel should not keep OCP red glow');
+const githubEngineToggle = cssBlock('body.github-edition .learn-engine-toggle');
+assert(githubEngineToggle.includes('rgba(47, 129, 247'), 'GitHub learn engine toggle should use blue accents');
+assert(!/255,\s*48,\s*69|#ff3045/i.test(githubEngineToggle), 'GitHub learn engine toggle should not keep OCP red accents');
+const githubChatUser = cssBlock('body.github-edition .learn-chat-msg.user');
+assert(githubChatUser.includes('rgba(47, 129, 247'), 'GitHub learn user chat bubbles should use blue accents');
+assert(!/255,\s*48,\s*69|#ff3045/i.test(githubChatUser), 'GitHub learn user chat bubbles should not keep OCP red accents');
+const githubChatInput = cssBlock('body.github-edition #learn-chat-input');
+assert(githubChatInput.includes('rgba(47, 129, 247'), 'GitHub learn chat input should use blue accents');
+const githubScenarioCards = cssBlock('body.github-edition .card.scenario-card,\n        body.github-edition .dashboard-card');
+assert(githubScenarioCards.includes('rgba(47, 129, 247'), 'GitHub scenario/lab/dashboard cards should use blue glow');
+const githubLeaderboard = cssBlock('body.github-edition #leaderboard-preview');
+assert(pxValue(githubLeaderboard, 'width') === 440, 'GitHub leaderboard should match the standard/OCP leaderboard width');
+assert(pxValue(githubLeaderboard, 'height') === 760, 'GitHub leaderboard should match the standard/OCP leaderboard height');
+assert(pxValue(githubLeaderboard, 'min-height') === 760, 'GitHub leaderboard should preserve the aligned desktop frame');
+assert(index.includes('@media (max-height: 780px)') && index.includes('body.github-edition .mode-grid'), 'GitHub Edition should have compact-height responsive guards');
+assert(index.includes('@media (max-width: 700px)') && index.includes('body.github-edition #logged-in-view'), 'GitHub Edition should have mobile responsive guards');
 
 const learnRow = cssBlock('.learn-lesson-row');
 assert(learnRow.includes('grid-template-columns: 28px minmax(0, 1fr) auto;'), 'learn lesson rows should keep long titles and quiz meta aligned');
@@ -1257,10 +1407,12 @@ assert(game.includes("users.test = { id: 'local-test', nickname: 'test', passwor
 assert(game.includes('tryLocalDevLogin(nickname, password)'), 'login flow does not call local dev fallback');
 assert(game.includes('async function provisionLocalDevServerSession'), 'local test/test should try to obtain a real server token for Pack Maker');
 assert(game.includes('await provisionLocalDevServerSession(nickname, password)'), 'login flow should use local credentials to provision a server session before falling back');
-assert(game.includes('function forceOcpDropPackSync'), 'OCP CLI Drop pack sync helper is missing');
-assert(game.includes("select.value = 'OC_CORE';"), 'OCP CLI Drop must force the OC_CORE pack');
-assert(game.includes('forceOcpDropPackSync();'), 'OCP Edition entry/drop mode must sync the visible pack selector immediately');
-assert(game.includes('forceOcpDropPackSync({ notify: false })'), 'OCP game start must re-assert OC_CORE before spawning words');
+assert(game.includes('function forceStudyDropPackSync'), 'study edition drop pack sync helper is missing');
+assert(game.includes("dropPack: 'OC_CORE'"), 'OCP CLI Drop must define OC_CORE as its forced pack');
+assert(game.includes("dropPack: 'GITHUB_CORE'"), 'GitHub Drop must define GITHUB_CORE as its forced pack');
+assert(game.includes("currentStudyConfig()?.dropPack || 'OC_CORE'"), 'study edition drop mode must sync from the active edition pack');
+assert(game.includes('forceStudyDropPackSync();'), 'study edition entry/drop mode must sync the visible pack selector immediately');
+assert(game.includes('forceStudyDropPackSync({ notify: false })'), 'study game start must re-assert the active edition pack before spawning words');
 assert(game.includes('ScenarioMode.startExam()'), 'EXAM mode route is missing');
 assert(game.includes('LabMode.start(labSelect.value)'), 'LAB mode route is missing');
 assert(game.includes('Dashboard.open()'), 'dashboard route is missing');
