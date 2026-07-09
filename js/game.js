@@ -3121,13 +3121,15 @@ function initModeControls() {
             LabMode.configure({
                 labs: config.labs,
                 bestKey: `codedrop_${config.key}_lab_best`,
-                trackTitle: `${config.copy.title} Mock Labs`
+                trackTitle: `${config.copy.title} Mock Labs`,
+                edition: config.key
             });
         }
         if (typeof LearnMode !== 'undefined') {
             LearnMode.configure({
                 tracks: config.lessons,
                 scenarioPacks: config.packs,
+                edition: config.key,
                 progressKey: `codedrop_${config.key}_learn_progress`
             });
         }

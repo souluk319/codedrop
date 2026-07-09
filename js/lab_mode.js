@@ -8,7 +8,8 @@ const LabMode = (() => {
     let runtime = {
         labs: () => (typeof MOCK_LABS !== 'undefined' ? MOCK_LABS : []),
         bestKey: BEST_KEY,
-        trackTitle: 'OCP Mock Lab'
+        trackTitle: 'OCP Mock Lab',
+        edition: 'ocp'
     };
 
     const state = {
@@ -170,6 +171,7 @@ const LabMode = (() => {
         const title = state.lab?.title || 'Mock Lab';
         return {
             key: `lab_${state.lab?.id || 'current'}_${modeLabel}`,
+            edition: runtime.edition === 'github' ? 'github' : 'ocp',
             label: `${title} · ${ui.progress?.textContent || '-'} · ${modeLabel}`,
             lessonTitle: `${title} ${modeLabel}`,
             trackTitle: runtime.trackTitle || 'OCP Mock Lab',

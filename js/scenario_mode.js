@@ -28,7 +28,8 @@ const ScenarioMode = (() => {
         examBlueprint: () => EXAM_BLUEPRINT,
         bestKey: BEST_KEY,
         incidentCategory: 'INCIDENTS',
-        examLabel: '실전 시험'
+        examLabel: '실전 시험',
+        edition: 'ocp'
     };
 
     const session = {
@@ -326,11 +327,13 @@ const ScenarioMode = (() => {
         const q = currentQuestion();
         const modeLabel = chatModeLabel();
         const label = session.opts?.label || 'Scenario';
+        const edition = runtime.edition === 'github' ? 'github' : 'ocp';
         return {
             key: `scenario_${label}_${modeLabel}`,
+            edition,
             label: `${label} · ${ui.progress?.textContent || '-'} · ${modeLabel}`,
             lessonTitle: `${label} ${modeLabel}`,
-            trackTitle: 'OCP Scenario',
+            trackTitle: edition === 'github' ? 'GitHub Scenario' : 'OCP Scenario',
             phase: isGuidedSession() ? 'follow' : (session.opts?.mode || 'practice'),
             progress: ui.progress ? ui.progress.textContent : '',
             prompt: q ? q.scenario : '',

@@ -476,6 +476,18 @@ const githubEditionContractText = githubEditionPacks.toLowerCase();
     'copilot/billing/seats --field selected_usernames',
     'copilot/billing/seats/dev1'
 ].forEach(stale => assert(!githubEditionPacks.includes(stale), `GitHub Edition should not use stale Copilot API pattern: ${stale}`));
+assert(githubEditionPacks.includes('souluk319/codedrop'), 'GitHub Edition should use the real CodeDrop repo in repo-level examples');
+assert(githubEditionPacks.includes('feat/codedrop-dev'), 'GitHub Edition should use CodeDrop-flavored branch examples');
+[
+    'octo-org/app',
+    'feature/login',
+    'login-fix',
+    'login flow',
+    'fix login',
+    'login bug',
+    'token is empty',
+    'handle empty token'
+].forEach(stale => assert(!githubEditionPacks.includes(stale), `GitHub Edition should not use stale generic app/login example: ${stale}`));
 const githubEditionData = loadGithubEditionData();
 const githubCertCategories = ['GH_FOUNDATIONS', 'GH_ACTIONS', 'GH_SECURITY', 'GH_ADMIN', 'GH_COPILOT'];
 function assertGitHubCanonicalMatches(item, label) {
@@ -526,7 +538,7 @@ assert(githubLessonOrder[2] === 'gh-lesson-repo-guardrails', 'GitHub learn mode 
     assert(githubLessonOrder[expectedIndex + 3] === lessonId, `GitHub learn priority order is wrong at ${lessonId}`);
 });
 const githubFirstLessonCommands = githubLessons[0].steps.map(step => step.cmd);
-['git clone https://github.com/octo-org/app.git', 'git status', 'git switch -c login-fix', 'git add .', 'git commit -m "add login flow"', 'git push -u origin login-fix'].forEach(cmd => {
+['git clone https://github.com/souluk319/codedrop.git', 'git status', 'git switch -c feat/codedrop-dev', 'git add .', 'git commit -m "polish codedrop dev"', 'git push -u origin feat/codedrop-dev'].forEach(cmd => {
     assert(githubFirstLessonCommands.includes(cmd), `GitHub first lesson should include practical Git command: ${cmd}`);
 });
 githubLessons.forEach(lesson => {
@@ -652,6 +664,16 @@ assert(index.includes('id="learn-chat-engine" aria-label="LLM 엔진 선택" ari
 assert(server.includes('app.post("/api/learn-chat"'), 'learn chat proxy route is missing');
 assert(server.includes('app.post("/api/learn-chat/stream"'), 'streaming learn chat proxy route is missing');
 assert(server.includes("조교의 한마디:") && server.includes("6~10줄"), 'learn chat prompt should enforce concise tutor-style answers across all LLM engines');
+assert(server.includes('function learnChatSystemPrompt') && server.includes('CodeDrop GitHub Edition의 GitHub Certification 학습 조교'), 'learn chat prompt should be edition-aware for GitHub');
+assert(server.includes('OpenShift, Kubernetes, oc, kubectl 명령은 사용자가 명시적으로 비교를 요청하지 않는 한 절대 제시하지 않는다'), 'GitHub learn chat prompt should forbid accidental OCP command leakage');
+assert(learn.includes('edition: normalizeStudyEdition(runtime.edition)'), 'learn chat context should send the active study edition');
+assert(learn.includes('edition: session.externalContext.edition'), 'external study chat context should preserve the active study edition');
+assert(learn.includes('modeGuide: editionCopy.modeGuide') && learn.includes('modeGuide: copy.modeGuide'), 'learn chat should send product mode guidance for normal lessons and picker chat');
+assert(server.includes('학습모드 안내:') && server.includes('중급자 코스') && server.includes('추천 모드와 이유') && server.includes('상황 판단 훈련인 Scenario'), 'learn chat prompt should guide difficulty/course questions without hard-coded answers');
+assert(server.includes('2) 다음 행동:'), 'learn chat answer skeleton should support route recommendations when no command is needed');
+assert(learn.includes('function isCrossEditionAssistantEntry') && learn.includes('OpenShift|EX280|Kubernetes'), 'learn chat history should purge cross-edition assistant contamination');
+assert(learn.includes("edition === 'github' ? 'GitHub 따라치기' : 'OCP 따라치기'"), 'external study chat defaults should not fall back to OCP labels in GitHub mode');
+assert(game.includes('edition: config.key') && scenario.includes("trackTitle: edition === 'github' ? 'GitHub Scenario' : 'OCP Scenario'"), 'scenario/lab shared study chat should be edition-aware');
 assert(server.includes('application/x-ndjson'), 'streaming learn chat should emit NDJSON');
 assert(server.includes('writeNdjson(res, "meta"'), 'streaming learn chat should emit meta events');
 assert(server.includes('writeNdjson(res, "delta"'), 'streaming learn chat should emit delta events');
