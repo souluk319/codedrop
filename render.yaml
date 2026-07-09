@@ -31,9 +31,9 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: REVIEW_NOTIFY_EMAIL
-        value: souluk319@gmail.com
+        sync: false
       - key: MAIL_FROM
-        value: CodeDrop <onboarding@resend.dev>
+        sync: false
       - key: PUBLIC_APP_URL
         sync: false
       - key: KUGNUS_GATEWAY_BASE_URL

@@ -142,7 +142,14 @@ npm run db:local:reset
 
 ## Environment
 
-Use `.env.local.example` for local development and `.env.production.example` as the deployment checklist. Do not commit real `.env` or secret-filled production files.
+Environment templates are committed only as generic guides:
+
+- `.env.local.example`: local Docker/MySQL development defaults.
+- `.env.production.example`: deployment checklist with placeholder public URLs.
+- `.env.kugnus-gateway.example`: KUGNUS gateway handoff variables.
+
+Do not commit real `.env`, `.env.local`, production env files, API keys, admin
+emails, or deployment-specific domains.
 
 Generate the production session secret with:
 
@@ -161,7 +168,7 @@ DB_NAME=codedrop_db
 DB_SSL=false
 SESSION_SECRET=codedrop-local-dev-session-secret-change-for-release
 ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
-PACK_ADMIN_NICKNAMES=test
+PACK_ADMIN_NICKNAMES=admin
 DEFAULT_CHAT_ENGINE=kugnus
 ```
 
@@ -318,12 +325,12 @@ DUCKDUCKGO_API_KEY
 `KUGNUS_GATEWAY_BASE_URL` must be the public HTTPS gateway URL, not a Tailscale,
 localhost, or direct Ollama address.
 
-### Deploy under www.kugnus.com/games/codedrop
+### Deploy under a subpath
 
-CodeDrop is prepared to live under this public path:
+CodeDrop is prepared to live under a public subpath like:
 
 ```text
-https://www.kugnus.com/games/codedrop/
+https://codedrop.example.com/games/codedrop/
 ```
 
 The app uses browser routes below that base path, for example:
@@ -345,9 +352,9 @@ All of those paths must serve the CodeDrop app. The backend already returns
 `index.html` for `/games/codedrop/*`, serves assets under
 `/games/codedrop/js`, `/games/codedrop/assets`, and `/games/codedrop/sound`,
 and accepts API/auth calls under the same base path so the game can coexist with
-the main `www.kugnus.com` site.
+the main site on the same host.
 
-If `www.kugnus.com` is a reverse proxy in front of this Node service, route the
+If a public web host is a reverse proxy in front of this Node service, route the
 game base path to the CodeDrop backend:
 
 ```text
@@ -362,7 +369,7 @@ game base path to the CodeDrop backend:
 
 Keep the root `/health` and `/ready` endpoints available on the backend service
 for platform health checks. They do not need to be public pages on
-`www.kugnus.com`.
+the main site.
 
 Example Nginx shape:
 
@@ -386,10 +393,11 @@ Do not use `handle_path` for this route unless you also rewrite the path back to
 `/games/codedrop/*`; direct browser routes such as `/games/codedrop/pack-maker`
 must arrive at the backend with the base path intact.
 
-For this domain, production `ALLOWED_ORIGINS` should include exactly:
+For the example domain above, production `ALLOWED_ORIGINS` should include
+exactly:
 
 ```text
-https://www.kugnus.com
+https://codedrop.example.com
 ```
 
 Firebase migration target:

@@ -1039,6 +1039,9 @@ assert(renderYaml.includes('autoDeployTrigger: checksPass'), 'render.yaml should
     'DB_PASSWORD',
     'SESSION_SECRET',
     'ALLOWED_ORIGINS',
+    'REVIEW_NOTIFY_EMAIL',
+    'MAIL_FROM',
+    'PUBLIC_APP_URL',
     'KUGNUS_GATEWAY_BASE_URL',
     'KUGNUS_GATEWAY_API_KEY',
     'OPENAI_API_KEY',
@@ -1397,12 +1400,12 @@ assert(server.includes('const CODEDROP_BASE_PATH = "/games/codedrop";'), 'server
 assert(server.includes('CODEDROP_PREFIXED_API_PATHS'), 'server should alias base-prefixed API/login routes for subpath deployment');
 assert(server.includes('app.use(`${CODEDROP_BASE_PATH}/js`'), 'server should serve JS assets under /games/codedrop');
 assert(server.includes('/^\\/games\\/codedrop(?:\\/.*)?$/'), 'server should fallback /games/codedrop routes to index.html');
-assert(readme.includes('https://www.kugnus.com/games/codedrop/'), 'README should document the public CodeDrop subpath');
+assert(readme.includes('https://codedrop.example.com/games/codedrop/'), 'README should document a generic public CodeDrop subpath');
 assert(readme.includes('/games/codedrop/*') && readme.includes('-> CodeDrop backend'), 'README should document the reverse proxy path for CodeDrop');
 assert(readme.includes('/games/codedrop/api/*') && readme.includes('/games/codedrop/login'), 'README should document base-prefixed API proxy routing for subpath deploy');
 assert(readme.includes('handle /games/codedrop/*'), 'README Caddy example should preserve the /games/codedrop prefix');
 assert(!readme.includes('handle_path /games/codedrop/*'), 'README should not suggest stripping /games/codedrop before proxying direct browser routes');
-assert(readme.includes('ALLOWED_ORIGINS') && readme.includes('https://www.kugnus.com'), 'README should document the production allowed origin for kugnus.com');
+assert(readme.includes('ALLOWED_ORIGINS') && readme.includes('https://codedrop.example.com'), 'README should document the production allowed origin with a generic example domain');
 assert(verifyServerSmoke.includes('/games/codedrop/pack-maker'), 'server smoke should verify Pack Maker direct subpath refresh');
 assert(verifyServerSmoke.includes('/games/codedrop/ocp/dashboard'), 'server smoke should verify OCP dashboard direct subpath refresh');
 assert(verifyServerSmoke.includes('/games/codedrop/js/game.js'), 'server smoke should verify subpath JS asset serving');
@@ -1476,17 +1479,19 @@ assert(fs.existsSync(path.join(root, 'scripts/ci_fake_kugnus_gateway.mjs')), 'CI
 assert(localEnvExample.includes('SESSION_SECRET='), '.env.local.example should document SESSION_SECRET for stable sessions');
 assert(localEnvExample.includes('ALLOWED_ORIGINS='), '.env.local.example should document ALLOWED_ORIGINS for release preflight');
 assert(localEnvExample.includes('PACK_ADMIN_NICKNAMES='), '.env.local.example should document pack admin configuration');
-assert(localEnvExample.includes('REVIEW_NOTIFY_EMAIL=souluk319@gmail.com'), '.env.local.example should document public review notification recipient');
+assert(localEnvExample.includes('REVIEW_NOTIFY_EMAIL='), '.env.local.example should document public review notification recipient without committing a real address');
+assert(!/@gmail\.com/i.test(localEnvExample), '.env.local.example should not include a personal review email');
 assert(productionEnvExample.includes('RESEND_API_KEY='), '.env.production.example should document review email API key');
-assert(productionEnvExample.includes('PUBLIC_APP_URL=https://www.kugnus.com/games/codedrop'), '.env.production.example should document public app URL for review links');
+assert(productionEnvExample.includes('PUBLIC_APP_URL=https://codedrop.example.com/games/codedrop'), '.env.production.example should document public app URL with a generic example domain');
+assert(!/@gmail\.com/i.test(productionEnvExample), '.env.production.example should not include a personal review email');
 assert(/(^|\n)KUGNUS_GATEWAY_BASE_URL=\s*(\n|$)/.test(localEnvExample), '.env.local.example should not activate a fake KUGNUS gateway URL by default');
 assert(localEnvExample.includes('KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document the public KUGNUS gateway key');
 assert(productionEnvExample.includes('NODE_ENV=production'), '.env.production.example should be explicitly production-scoped');
 assert(productionEnvExample.includes('SESSION_SECRET='), '.env.production.example should require a session secret');
 assert(productionEnvExample.includes('npm run release:secret'), '.env.production.example should point to the session secret generator');
 assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://'), '.env.production.example should require public allowed origins');
-assert(productionEnvExample.includes('https://www.kugnus.com/games/codedrop/'), '.env.production.example should document the kugnus.com CodeDrop subpath');
-assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://www.kugnus.com'), '.env.production.example should use the kugnus.com production origin');
+assert(productionEnvExample.includes('https://codedrop.example.com/games/codedrop/'), '.env.production.example should document a generic CodeDrop subpath');
+assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://codedrop.example.com'), '.env.production.example should use a generic production origin');
 assert(productionEnvExample.includes('DB_SSL=true'), '.env.production.example should default production DB SSL on');
 assert(productionEnvExample.includes('KUGNUS_GATEWAY_BASE_URL='), '.env.production.example should require the public KUGNUS gateway URL');
 assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
