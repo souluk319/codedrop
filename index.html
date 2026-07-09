@@ -29,6 +29,10 @@
             --music-island-width: min(380px, var(--music-island-safe-width));
             --music-island-expanded-width: min(640px, var(--music-island-safe-width));
             --command-input-lift: -10px;
+            --scrollbar-track: rgba(1, 8, 12, 0.82);
+            --scrollbar-thumb: rgba(5, 255, 161, 0.42);
+            --scrollbar-thumb-hover: rgba(0, 243, 255, 0.68);
+            --scrollbar-border: rgba(1, 8, 12, 0.96);
         }
 
         * {
@@ -36,6 +40,33 @@
             margin: 0;
             padding: 0;
             user-select: none;
+            scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+            scrollbar-width: thin;
+        }
+
+        *::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+            border-radius: 999px;
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, var(--scrollbar-thumb-hover), var(--scrollbar-thumb));
+            border: 2px solid var(--scrollbar-border);
+            border-radius: 999px;
+            box-shadow: 0 0 10px var(--scrollbar-thumb);
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+            background: var(--scrollbar-thumb-hover);
+        }
+
+        *::-webkit-scrollbar-corner {
+            background: var(--scrollbar-track);
         }
 
         html {
@@ -55,6 +86,20 @@
 
         body.game-active {
             --corner-widget-offset: 28px;
+        }
+
+        body.ocp-edition {
+            --scrollbar-track: rgba(16, 2, 6, 0.86);
+            --scrollbar-thumb: rgba(255, 48, 69, 0.42);
+            --scrollbar-thumb-hover: rgba(255, 99, 116, 0.72);
+            --scrollbar-border: rgba(16, 2, 6, 0.96);
+        }
+
+        body.github-edition {
+            --scrollbar-track: rgba(2, 8, 18, 0.88);
+            --scrollbar-thumb: rgba(47, 129, 247, 0.46);
+            --scrollbar-thumb-hover: rgba(88, 166, 255, 0.76);
+            --scrollbar-border: rgba(2, 8, 18, 0.98);
         }
 
         body[data-app-lang="ko"] {
