@@ -67,6 +67,17 @@ pull request, Actions, security, administration, and Copilot study.
 
 ![CodeDrop Pack Maker](assets/readme/pack-maker.jpg)
 
+Pack Maker is not only for private practice packs. A signed-in player can submit
+a generated pack for public release, and the operator reviews it before it joins
+the global pack list for everyone.
+
+### Public Pack Review
+
+![CodeDrop public pack review email](assets/readme/public-pack-review-email.png)
+
+Public submissions arrive as operator review mail with pack metadata, a source
+coverage check, sample rows, and direct review actions for approve/reject.
+
 ## Highlights
 
 - **DROP typing game**: neon falling-word gameplay with official packs,
@@ -79,8 +90,8 @@ pull request, Actions, security, administration, and Copilot study.
   Git basics and PR review, then moves through repository guardrails, Actions,
   security/admin operations, and Copilot.
 - **Pack Maker**: search-grounded data-pack drafting, editable term/description
-  table, private pack save, operator-reviewed public listing, and generated packs
-  that appear in the SELECT PACK cartridge picker.
+  table, private pack save, user-submitted public pack requests, operator review
+  mail, and generated packs that appear in the SELECT PACK cartridge picker.
 - **LLM choices**: KUGNUS SERVER is the default for the official/owner setup.
   Public clones can use Gemini Flash or GPT mini by adding their own API keys.
 - **Guest-first UX**: official packs and screens are explorable without account
