@@ -6783,6 +6783,8 @@
             display: grid;
             gap: 7px;
             position: relative;
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         .learn-chat-title {
@@ -6790,6 +6792,315 @@
             color: var(--primary-neon);
             letter-spacing: 1px;
             text-shadow: 0 0 10px var(--primary-neon);
+        }
+
+        .kugbot-header {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+        }
+
+        .kugbot-avatar {
+            --kugbot-accent: var(--primary-neon);
+            --kugbot-shell: #f7fbff;
+            position: relative;
+            width: 66px;
+            height: 52px;
+            display: grid;
+            place-items: center;
+            flex: 0 0 auto;
+            filter: drop-shadow(0 0 11px color-mix(in srgb, var(--kugbot-accent) 48%, transparent));
+            animation: kugBotIdle 5.8s ease-in-out infinite;
+        }
+
+        .kugbot-face {
+            position: relative;
+            width: 52px;
+            height: 24px;
+            margin-top: -8px;
+            border: 0;
+            border-radius: 0;
+            background:
+                linear-gradient(90deg, transparent 0 19px, color-mix(in srgb, var(--kugbot-accent) 68%, #ffffff 8%) 19px 33px, transparent 33px 100%),
+                linear-gradient(180deg, transparent 0 10px, rgba(255, 255, 255, 0.42) 10px 13px, transparent 13px 100%);
+            box-shadow: none;
+        }
+
+        .kugbot-face::before,
+        .kugbot-face::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            width: 22px;
+            height: 22px;
+            border-radius: 999px;
+            border: 1px solid color-mix(in srgb, var(--kugbot-accent) 78%, #ffffff 10%);
+            background:
+                radial-gradient(circle at 34% 33%, #ffffff 0 2px, rgba(255, 255, 255, 0.45) 3px 5px, transparent 6px),
+                radial-gradient(circle at 50% 52%, #ffffff 0 10%, color-mix(in srgb, var(--kugbot-accent) 76%, #ffffff 12%) 18% 34%, #08111d 50%, #000 72%);
+            box-shadow:
+                0 0 16px color-mix(in srgb, var(--kugbot-accent) 68%, transparent),
+                inset 0 0 10px rgba(255, 255, 255, 0.2);
+            animation: kugBotBlink 4.6s steps(1, end) infinite;
+        }
+
+        .kugbot-face::before {
+            left: 0;
+        }
+
+        .kugbot-face::after {
+            right: 0;
+        }
+
+        .kugbot-mouth {
+            position: absolute;
+            left: 50%;
+            bottom: -17px;
+            width: 30px;
+            height: 13px;
+            border: 1px solid color-mix(in srgb, var(--kugbot-accent) 58%, #ffffff 8%);
+            border-radius: 3px 3px 2px 2px;
+            background:
+                repeating-linear-gradient(90deg, transparent 0 5px, rgba(0, 0, 0, 0.18) 5px 6px),
+                linear-gradient(180deg, #ffffff, color-mix(in srgb, var(--kugbot-accent) 26%, #dcecff 74%));
+            transform: translateX(-50%);
+            box-shadow:
+                0 0 11px color-mix(in srgb, var(--kugbot-accent) 48%, transparent),
+                inset 0 -2px 5px rgba(0, 0, 0, 0.18);
+        }
+
+        .kugbot-mouth::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 4px;
+            width: 4px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--kugbot-accent);
+            box-shadow:
+                8px 0 0 rgba(255, 255, 255, 0.28),
+                16px 0 0 rgba(255, 255, 255, 0.18),
+                0 0 7px color-mix(in srgb, var(--kugbot-accent) 80%, transparent);
+        }
+
+        .kugbot-track {
+            position: absolute;
+            left: 50%;
+            bottom: 2px;
+            width: 42px;
+            height: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 999px;
+            background:
+                repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.32) 0 3px, transparent 3px 6px),
+                rgba(0, 0, 0, 0.92);
+            transform: translateX(-50%);
+            box-shadow: 0 0 7px rgba(0, 0, 0, 0.8);
+        }
+
+        .kugbot-ear,
+        .kugbot-tentacle,
+        .kugbot-redhat {
+            display: none;
+            position: absolute;
+            pointer-events: none;
+        }
+
+        .kugbot-ear {
+            top: 6px;
+            width: 17px;
+            height: 17px;
+            background:
+                linear-gradient(135deg, var(--kugbot-shell), color-mix(in srgb, var(--kugbot-accent) 34%, #ffffff 66%));
+            border: 1px solid color-mix(in srgb, var(--kugbot-accent) 70%, #ffffff 18%);
+            clip-path: polygon(50% 0, 100% 100%, 0 100%);
+            filter: drop-shadow(0 0 6px color-mix(in srgb, var(--kugbot-accent) 52%, transparent));
+        }
+
+        .kugbot-ear-left {
+            left: 13px;
+            transform: rotate(-18deg);
+        }
+
+        .kugbot-ear-right {
+            right: 13px;
+            transform: rotate(18deg);
+        }
+
+        .kugbot-tentacle {
+            bottom: -1px;
+            width: 26px;
+            height: 20px;
+            border: 3px solid color-mix(in srgb, var(--kugbot-accent) 64%, #ffffff 24%);
+            border-top: 0;
+            border-right: 0;
+            border-radius: 0 0 0 999px;
+            box-shadow: 0 0 9px color-mix(in srgb, var(--kugbot-accent) 46%, transparent);
+        }
+
+        .kugbot-tentacle::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            bottom: 2px;
+            width: 3px;
+            height: 3px;
+            border-radius: 999px;
+            background: #ffffff;
+            box-shadow:
+                6px 4px 0 rgba(255, 255, 255, 0.82),
+                13px 5px 0 rgba(255, 255, 255, 0.62);
+        }
+
+        .kugbot-tentacle-left {
+            left: 8px;
+            transform: rotate(22deg);
+        }
+
+        .kugbot-tentacle-mid {
+            left: 30px;
+            transform: rotate(-14deg);
+        }
+
+        .kugbot-tentacle-right {
+            right: 8px;
+            transform: rotate(-22deg);
+        }
+
+        .kugbot-redhat {
+            top: -12px;
+            left: 50%;
+            width: 43px;
+            height: auto;
+            transform: translateX(-50%) rotate(-7deg);
+            filter:
+                drop-shadow(0 0 7px rgba(255, 48, 69, 0.72))
+                drop-shadow(0 2px 2px rgba(0, 0, 0, 0.78));
+            z-index: 3;
+        }
+
+        .kugbot-antenna {
+            position: absolute;
+            top: 4px;
+            left: 20px;
+            width: 1px;
+            height: 14px;
+            background: color-mix(in srgb, var(--kugbot-accent) 58%, #ffffff 8%);
+            transform: rotate(-24deg);
+            transform-origin: bottom;
+            box-shadow: 0 0 7px color-mix(in srgb, var(--kugbot-accent) 52%, transparent);
+        }
+
+        .kugbot-antenna::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            border-radius: 999px;
+            background: #050505;
+            border: 1px solid var(--kugbot-accent);
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--kugbot-accent) 72%, transparent);
+        }
+
+        .kugbot-thought {
+            position: absolute;
+            right: -2px;
+            top: -8px;
+            width: 22px;
+            height: 14px;
+            border: 1px solid color-mix(in srgb, var(--kugbot-accent) 74%, #ffffff 10%);
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.86);
+            opacity: 0;
+            transform: translateY(5px) scale(0.86);
+            box-shadow: 0 0 10px color-mix(in srgb, var(--kugbot-accent) 32%, transparent);
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        .kugbot-thought::before,
+        .kugbot-thought::after {
+            content: '';
+            position: absolute;
+            border-radius: 999px;
+            background: var(--kugbot-accent);
+            box-shadow: 0 0 6px color-mix(in srgb, var(--kugbot-accent) 68%, transparent);
+            animation: kugBotDots 1s ease-in-out infinite;
+        }
+
+        .kugbot-thought::before {
+            left: 6px;
+            top: 5px;
+            width: 3px;
+            height: 3px;
+        }
+
+        .kugbot-thought::after {
+            right: 6px;
+            top: 5px;
+            width: 3px;
+            height: 3px;
+            animation-delay: 0.22s;
+        }
+
+        .learn-chat-panel.kugbot-thinking .kugbot-avatar {
+            animation-duration: 2.6s;
+        }
+
+        .learn-chat-panel.kugbot-thinking .kugbot-thought {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .learn-chat-panel.kugbot-thinking .kugbot-mouth {
+            animation: kugBotTalk 0.9s ease-in-out infinite;
+        }
+
+        .learn-chat-panel.kugbot-thinking .kugbot-face::before,
+        .learn-chat-panel.kugbot-thinking .kugbot-face::after {
+            animation: kugBotLensScan 1.05s ease-in-out infinite;
+        }
+
+        body.github-edition .kugbot-avatar {
+            --kugbot-accent: #58a6ff;
+            --kugbot-shell: #f8fcff;
+            filter:
+                drop-shadow(0 0 12px rgba(88, 166, 255, 0.7))
+                drop-shadow(0 0 5px rgba(255, 255, 255, 0.34));
+        }
+
+        body.github-edition .kugbot-ear,
+        body.github-edition .kugbot-tentacle-mid {
+            display: block;
+        }
+
+        body.github-edition .kugbot-antenna {
+            display: none;
+        }
+
+        body.github-edition .kugbot-track {
+            opacity: 0.42;
+        }
+
+        body.ocp-edition .kugbot-avatar {
+            --kugbot-accent: #ff3045;
+            --kugbot-shell: #fff4f6;
+            filter:
+                drop-shadow(0 0 13px rgba(255, 48, 69, 0.72))
+                drop-shadow(0 0 5px rgba(255, 255, 255, 0.32));
+        }
+
+        body.ocp-edition .kugbot-redhat {
+            display: block;
+        }
+
+        body.ocp-edition .kugbot-antenna {
+            display: none;
         }
 
         #learn-chat-engine {
@@ -7176,6 +7487,86 @@
         @keyframes learnChatBlink {
             50% {
                 opacity: 0;
+            }
+        }
+
+        @keyframes kugBotIdle {
+            0%,
+            100% {
+                transform: translateX(0) rotate(0deg);
+            }
+
+            28% {
+                transform: translateX(3px) rotate(1.5deg);
+            }
+
+            52% {
+                transform: translateX(0) translateY(2px) rotate(0deg);
+            }
+
+            78% {
+                transform: translateX(-3px) rotate(-1.5deg);
+            }
+        }
+
+        @keyframes kugBotBlink {
+            0%,
+            92%,
+            100% {
+                transform: scaleY(1);
+            }
+
+            94%,
+            96% {
+                transform: scaleY(0.22);
+            }
+        }
+
+        @keyframes kugBotTalk {
+            0%,
+            100% {
+                filter: brightness(1);
+            }
+
+            50% {
+                filter: brightness(1.32);
+            }
+        }
+
+        @keyframes kugBotLensScan {
+            0%,
+            100% {
+                filter: brightness(1);
+            }
+
+            50% {
+                filter: brightness(1.45);
+            }
+        }
+
+        @keyframes kugBotDots {
+            0%,
+            100% {
+                opacity: 0.35;
+                transform: translateY(0);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateY(-2px);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .kugbot-avatar,
+            .kugbot-face::before,
+            .kugbot-face::after,
+            .kugbot-thought::before,
+            .kugbot-thought::after,
+            .learn-chat-panel.kugbot-thinking .kugbot-face::before,
+            .learn-chat-panel.kugbot-thinking .kugbot-face::after,
+            .learn-chat-panel.kugbot-thinking .kugbot-mouth {
+                animation: none;
             }
         }
 
@@ -7719,11 +8110,26 @@
             }
 
             .learn-chat-head {
+                display: grid;
+                grid-template-columns: 1fr auto;
                 gap: 8px;
+                align-items: start;
             }
 
             .learn-chat-meta {
+                grid-column: 1 / -1;
+                order: 2;
                 min-width: 0;
+            }
+
+            .learn-chat-mobile-close {
+                order: 1;
+                justify-self: start;
+            }
+
+            #learn-chat-clear {
+                order: 1;
+                justify-self: end;
             }
 
             .learn-engine-select {
@@ -7733,6 +8139,74 @@
 
             .learn-chat-title {
                 font-size: 1.2rem;
+            }
+
+            .kugbot-header {
+                gap: 8px;
+            }
+
+            .kugbot-avatar {
+                width: 50px;
+                height: 42px;
+            }
+
+            .kugbot-face {
+                width: 42px;
+                height: 20px;
+            }
+
+            .kugbot-face::before,
+            .kugbot-face::after {
+                width: 18px;
+                height: 18px;
+            }
+
+            .kugbot-mouth {
+                width: 26px;
+                height: 11px;
+                bottom: -15px;
+            }
+
+            .kugbot-track {
+                width: 36px;
+                height: 5px;
+            }
+
+            .kugbot-ear {
+                top: 8px;
+                width: 14px;
+                height: 14px;
+            }
+
+            .kugbot-ear-left {
+                left: 9px;
+            }
+
+            .kugbot-ear-right {
+                right: 9px;
+            }
+
+            .kugbot-tentacle {
+                bottom: 1px;
+                width: 22px;
+                height: 17px;
+            }
+
+            .kugbot-tentacle-left {
+                left: 5px;
+            }
+
+            .kugbot-tentacle-right {
+                right: 5px;
+            }
+
+            .kugbot-tentacle-mid {
+                left: 22px;
+            }
+
+            .kugbot-redhat {
+                top: -10px;
+                width: 35px;
             }
 
             .learn-step-nav {
@@ -8839,7 +9313,21 @@
         <aside class="learn-chat-panel hidden" id="learn-chat-panel" aria-label="학습 질문 챗">
             <div class="learn-chat-head">
                 <div class="learn-chat-meta">
-                    <div class="learn-chat-title" id="learn-chat-title">ASK TO KUGNUS SERVER</div>
+                    <div class="kugbot-header" aria-label="KugBot 학습 파트너">
+                        <div class="kugbot-avatar" aria-hidden="true">
+                            <span class="kugbot-ear kugbot-ear-left"></span>
+                            <span class="kugbot-ear kugbot-ear-right"></span>
+                            <img class="kugbot-redhat" src="assets/red-hat-logo.svg" alt="">
+                            <span class="kugbot-antenna"></span>
+                            <span class="kugbot-face"><span class="kugbot-mouth"></span></span>
+                            <span class="kugbot-tentacle kugbot-tentacle-left"></span>
+                            <span class="kugbot-tentacle kugbot-tentacle-mid"></span>
+                            <span class="kugbot-tentacle kugbot-tentacle-right"></span>
+                            <span class="kugbot-track"></span>
+                            <span class="kugbot-thought"></span>
+                        </div>
+                        <div class="learn-chat-title" id="learn-chat-title">ASK TO KugBot</div>
+                    </div>
                     <div class="learn-engine-select" id="learn-chat-engine-shell">
                         <button class="learn-engine-toggle" id="learn-chat-engine-toggle" type="button"
                             aria-haspopup="listbox" aria-expanded="false">

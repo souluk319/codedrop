@@ -502,10 +502,6 @@ const LearnMode = (() => {
         return CHAT_ENGINE_LABELS[normalizeChatEngineValue(ui.chatEngine && ui.chatEngine.value)] || CHAT_ENGINE_LABELS.kugnus;
     }
 
-    function chatTitleLabel() {
-        return chatEngineLabel();
-    }
-
     function routeDisplayLabel(route) {
         const value = String(route || '').toLowerCase();
         if (value === 'direct') return 'LOCAL DIRECT';
@@ -565,7 +561,7 @@ const LearnMode = (() => {
         if (!ui.chatEngine) return;
         const engine = normalizeChatEngineValue(ui.chatEngine.value);
         ui.chatEngine.value = engine;
-        if (ui.chatTitle) ui.chatTitle.textContent = `ASK TO ${chatTitleLabel()}`;
+        if (ui.chatTitle) ui.chatTitle.textContent = 'ASK TO KugBot';
         if (ui.chatEngineLabel) ui.chatEngineLabel.textContent = chatEngineLabel();
         updateChatRouteStatus();
         if (ui.chatEngineMenu) {
@@ -605,6 +601,16 @@ const LearnMode = (() => {
         ui.chatEngineToggle.focus();
     }
 
+    function applyChatFallbackEngine(engine) {
+        const nextEngine = normalizeChatEngineValue(engine);
+        if (nextEngine === 'kugnus') return false;
+        ui.chatEngine.value = nextEngine;
+        chatEngineOverride = nextEngine;
+        syncChatEngineUi();
+        ui.chatStatus.textContent = chatEngineStatus('READY');
+        return true;
+    }
+
     function submitChatForm() {
         if (typeof ui.chatForm.requestSubmit === 'function') {
             ui.chatForm.requestSubmit();
@@ -618,14 +624,16 @@ const LearnMode = (() => {
         const helper = window.CodeDropLlmStatus;
         if (!helper || typeof helper.maybeSwitchFromOfflineKugnus !== 'function') return false;
 
-        const shouldSwitch = await helper.maybeSwitchFromOfflineKugnus('learn');
-        if (!shouldSwitch) return false;
+        const fallbackEngine = await helper.maybeSwitchFromOfflineKugnus('learn');
+        return fallbackEngine ? applyChatFallbackEngine(fallbackEngine) : false;
+    }
 
-        ui.chatEngine.value = 'openai';
-        chatEngineOverride = 'openai';
-        syncChatEngineUi();
-        ui.chatStatus.textContent = chatEngineStatus('READY');
-        return true;
+    async function offerFailedEngineFallback(engine, err) {
+        const helper = window.CodeDropLlmStatus;
+        if (!helper || typeof helper.maybeSwitchFromFailedEngine !== 'function') return false;
+
+        const fallbackEngine = await helper.maybeSwitchFromFailedEngine('learn', engine, err && err.message);
+        return fallbackEngine ? applyChatFallbackEngine(fallbackEngine) : false;
     }
 
     function setChatBusy(busy) {
@@ -634,6 +642,7 @@ const LearnMode = (() => {
         ui.chatSend.disabled = false;
         ui.chatSend.textContent = busy ? 'STOP' : 'ASK';
         ui.chatSend.classList.toggle('stop', busy);
+        if (ui.chatPanel) ui.chatPanel.classList.toggle('kugbot-thinking', busy);
         ui.chatStatus.textContent = busy ? chatEngineStatus('THINKING') : chatEngineStatus('READY');
     }
 
@@ -1305,13 +1314,16 @@ const LearnMode = (() => {
         await sendChatText(message);
     }
 
-    async function sendChatText(message) {
+    async function sendChatText(message, options = {}) {
         if (session.chatBusy || session.chatSubmitting) return;
         session.chatSubmitting = true;
         const requestId = ++session.chatRequestSeq;
         session.chatActiveRequestId = requestId;
+        const renderUserMessage = options.renderUserMessage !== false;
+        const retryFallbackAttempt = options.retryFallbackAttempt === true;
         let pending = null;
         let finalStatus = '';
+        let retryAfterFallback = false;
 
         try {
             await offerKugnusFallbackIfNeeded();
@@ -1322,7 +1334,7 @@ const LearnMode = (() => {
                 .slice(-8)
                 .map(entry => ({ role: entry.role, content: entry.content }));
 
-            appendChat('user', message);
+            if (renderUserMessage) appendChat('user', message);
             ui.chatInput.value = '';
 
             pending = appendChat('assistant', '', { question: message, streaming: true });
@@ -1383,8 +1395,20 @@ const LearnMode = (() => {
                 if (pending) stopAssistantMessage(pending);
                 finalStatus = chatEngineStatus('STOPPED');
             } else {
-                if (pending) failAssistantMessage(pending, err.message, message);
-                finalStatus = chatEngineStatus('OFFLINE');
+                const failedEngine = normalizeChatEngineValue(ui.chatEngine && ui.chatEngine.value);
+                const canRetryWithGpt = !retryFallbackAttempt && failedEngine === 'gemini';
+                if (canRetryWithGpt && await offerFailedEngineFallback(failedEngine, err)) {
+                    retryAfterFallback = true;
+                    if (pending) {
+                        pending.remove();
+                        if (session.chatActiveMessage === pending) session.chatActiveMessage = null;
+                        pending = null;
+                    }
+                    finalStatus = chatEngineStatus('READY');
+                } else {
+                    if (pending) failAssistantMessage(pending, err.message, message);
+                    finalStatus = chatEngineStatus('OFFLINE');
+                }
             }
         } finally {
             if (session.chatActiveRequestId === requestId) {
@@ -1396,6 +1420,11 @@ const LearnMode = (() => {
                 if (finalStatus) ui.chatStatus.textContent = finalStatus;
             }
             ui.chatInput.focus();
+            if (retryAfterFallback) {
+                window.setTimeout(() => {
+                    sendChatText(message, { retryFallbackAttempt: true, renderUserMessage: false });
+                }, 0);
+            }
         }
     }
 
