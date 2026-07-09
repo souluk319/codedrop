@@ -882,6 +882,11 @@ assert(index.includes('body.github-edition #start-screen .card') && index.includ
 assert(index.includes('padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 calc(var(--mobile-safe-bottom) + 8px);'), 'mobile learn/scenario chat screens should reserve top space for README/MUSIC widgets');
 assert(index.includes('padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 var(--mobile-safe-bottom);'), 'mobile Pack Maker should reserve top space for README/MUSIC widgets');
 assert(index.includes('body.game-active #readme-widget') && index.includes('top: calc(env(safe-area-inset-top, 0px) + 132px);'), 'mobile DROP play widgets should move below the HUD instead of covering score controls');
+assert(index.includes('class="study-account-actions"'), 'logout/withdraw controls should have a stable account action class instead of relying on last-child layout');
+assert(index.includes('body.github-edition .study-account-actions'), 'mobile study edition account actions should stay in normal card flow');
+assert(index.includes('#readme-widget .widget-label') && index.includes('font-size: 0.58rem;'), 'mobile README widget should keep a compact visible label');
+assert(index.includes('body.game-active #readme-widget .widget-label'), 'DROP play may hide the README label only while protecting the HUD');
+assert(index.includes('body.github-edition #ocp-start-btn') && index.includes('font-size: clamp(0.78rem, 3.2vw, 0.94rem);'), 'mobile study start buttons should fit text inside the button frame');
 assert(readmeWidget.includes('width: var(--corner-widget-size);'), 'readme widget should use the shared corner widget width');
 assert(readmeWidget.includes('height: var(--corner-widget-size);'), 'readme widget should use the shared corner widget height');
 assert(game.includes('function updateBottomWidgetOverlap'), 'DROP mode should detect when falling words overlap the bottom widgets');

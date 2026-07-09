@@ -7821,18 +7821,38 @@
 
             #logged-in-view>div:last-child,
             body.ocp-edition #logged-in-view>div:last-child,
-            body.github-edition #logged-in-view>div:last-child {
+            body.github-edition #logged-in-view>div:last-child,
+            .study-account-actions,
+            body.ocp-edition .study-account-actions,
+            body.github-edition .study-account-actions {
                 width: 100%;
                 display: grid !important;
                 grid-template-columns: 1fr 1fr;
                 gap: 8px !important;
                 margin-top: 12px !important;
                 position: static;
+                inset: auto;
+                transform: none;
+                align-self: stretch;
+                order: 20;
             }
 
-            #logged-in-view>div:last-child .btn-small {
+            #logged-in-view>div:last-child .btn-small,
+            .study-account-actions .btn-small {
                 width: 100%;
                 min-width: 0;
+            }
+
+            body.ocp-edition #ocp-start-btn,
+            body.github-edition #ocp-start-btn {
+                min-height: 54px;
+                padding: 10px 12px;
+                font-size: clamp(0.78rem, 3.2vw, 0.94rem);
+                line-height: 1.18;
+                letter-spacing: 0;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                text-align: center;
             }
 
             .exam-cat-row,
@@ -7987,8 +8007,15 @@
                 width: auto;
             }
 
-            #music-widget.closed .icon-label,
             #readme-widget .widget-label {
+                display: block;
+                font-size: 0.58rem;
+                line-height: 1.04;
+                letter-spacing: 0;
+            }
+
+            body.game-active #readme-widget .widget-label,
+            #music-widget.closed .icon-label {
                 display: none;
             }
         }
@@ -8297,7 +8324,7 @@
                         <button class="btn-small" id="dashboard-btn" type="button">학습 대시보드</button>
                     </div>
 
-                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <div class="study-account-actions" style="margin-top: 20px; display: flex; gap: 10px;">
                         <button class="btn-small" id="btn-logout">LOGOUT</button>
                         <button class="btn-small btn-danger" id="btn-withdraw">WITHDRAW</button>
                     </div>
