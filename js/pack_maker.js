@@ -34,6 +34,7 @@ const PackMaker = (() => {
         exampleTimer: null,
         pendingSuggestion: null,
         packKind: 'word',
+        reviewCollapsed: false,
         lastLongPackId: '',
         lastPrompt: ''
     };
@@ -1219,12 +1220,28 @@ const PackMaker = (() => {
     }
 
     function renderReviewAlerts() {
-        if (!ui.reviewAlerts) return;
-        ui.reviewAlerts.replaceChildren();
         const packs = stateRef.mine
             .filter(pack => ['pending', 'approved', 'rejected'].includes(pack.status))
             .slice(0, 4);
-        ui.reviewAlerts.classList.toggle('hidden', packs.length === 0);
+        const hasPacks = packs.length > 0;
+
+        if (ui.reviewSummary) {
+            ui.reviewSummary.classList.toggle('hidden', !hasPacks);
+            ui.reviewSummary.classList.toggle('collapsed', stateRef.reviewCollapsed);
+        }
+        if (ui.reviewToggle) {
+            ui.reviewToggle.setAttribute('aria-expanded', String(hasPacks && !stateRef.reviewCollapsed));
+        }
+        if (ui.reviewTitle) {
+            ui.reviewTitle.textContent = t('packMaker.reviewStatusTitle');
+        }
+        if (ui.reviewCount) {
+            ui.reviewCount.textContent = String(packs.length);
+        }
+        if (!ui.reviewAlerts) return;
+
+        ui.reviewAlerts.replaceChildren();
+        ui.reviewAlerts.classList.toggle('hidden', !hasPacks);
         packs.forEach(pack => {
             const card = document.createElement('div');
             card.className = `pack-maker-review-alert ${pack.status || 'pending'}`;
@@ -1243,6 +1260,11 @@ const PackMaker = (() => {
             card.appendChild(detail);
             ui.reviewAlerts.appendChild(card);
         });
+    }
+
+    function toggleReviewAlerts() {
+        stateRef.reviewCollapsed = !stateRef.reviewCollapsed;
+        renderReviewAlerts();
     }
 
     function renderDraft(options = {}) {
@@ -2000,7 +2022,7 @@ const PackMaker = (() => {
 
     async function savePack(submitForReview = false) {
         if (stateRef.packKind === 'long') {
-            saveLongPack();
+            saveLongPack(submitForReview);
             return;
         }
 
@@ -2088,6 +2110,10 @@ const PackMaker = (() => {
         ui.status = $('pack-maker-status');
         ui.title = $('pack-maker-title');
         ui.description = $('pack-maker-description');
+        ui.reviewSummary = $('pack-maker-review-summary');
+        ui.reviewToggle = $('pack-maker-review-toggle');
+        ui.reviewTitle = $('pack-maker-review-title');
+        ui.reviewCount = $('pack-maker-review-count');
         ui.reviewAlerts = $('pack-maker-review-alerts');
         ui.tableWrap = document.querySelector('.pack-maker-table-wrap');
         ui.footer = document.querySelector('.pack-maker-footer');
@@ -2161,6 +2187,7 @@ const PackMaker = (() => {
         });
         ui.wordMode?.addEventListener('click', () => setPackKind('word'));
         ui.longMode?.addEventListener('click', () => setPackKind('long'));
+        ui.reviewToggle?.addEventListener('click', toggleReviewAlerts);
         ui.longApplyCleanup?.addEventListener('click', applyLongCleanupPreview);
         ui.saveLong?.addEventListener('click', () => saveLongPack(false));
         ui.submitLong?.addEventListener('click', () => saveLongPack(true));

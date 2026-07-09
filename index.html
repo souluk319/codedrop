@@ -2242,6 +2242,15 @@
             grid-template-columns: 0.8fr 1.2fr;
         }
 
+        .pack-maker-editor-scroll {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: auto;
+            scrollbar-gutter: stable both-edges;
+        }
+
         #pack-maker-title,
         #pack-maker-description {
             height: 58px;
@@ -2255,8 +2264,8 @@
         }
 
         .pack-maker-table-wrap {
-            flex: 1;
-            min-height: 0;
+            flex: 1 1 260px;
+            min-height: 220px;
             overflow: auto;
             scrollbar-gutter: stable both-edges;
             padding: 14px;
@@ -2482,8 +2491,78 @@
             letter-spacing: 0.6px;
         }
 
+        .pack-maker-review-summary {
+            flex: 0 0 auto;
+            margin: 0 14px 12px;
+            border: 1px solid rgba(255, 190, 0, 0.28);
+            border-radius: 8px;
+            background: rgba(255, 190, 0, 0.035);
+            overflow: hidden;
+        }
+
+        .pack-maker-review-summary.hidden {
+            display: none;
+        }
+
+        .pack-maker-review-toggle {
+            width: 100%;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 12px;
+            border: 0;
+            border-bottom: 1px solid rgba(255, 190, 0, 0.18);
+            background: linear-gradient(90deg, rgba(255, 190, 0, 0.12), rgba(5, 5, 10, 0.55));
+            color: #ffcf57;
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 1.2px;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .pack-maker-review-toggle:focus-visible {
+            outline: 2px solid var(--primary-neon);
+            outline-offset: -2px;
+        }
+
+        .pack-maker-review-toggle-label {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pack-maker-review-count {
+            min-width: 28px;
+            padding: 3px 8px;
+            border: 1px solid rgba(255, 190, 0, 0.44);
+            border-radius: 999px;
+            color: #ffe39a;
+            background: rgba(0, 0, 0, 0.38);
+            text-align: center;
+        }
+
+        .pack-maker-review-chevron {
+            color: var(--primary-neon);
+            transition: transform 0.16s ease;
+        }
+
+        .pack-maker-review-summary.collapsed .pack-maker-review-chevron {
+            transform: rotate(180deg);
+        }
+
+        .pack-maker-review-summary.collapsed .pack-maker-review-alerts {
+            display: none;
+        }
+
         .pack-maker-review-alerts {
-            margin: 0 20px 14px;
+            max-height: min(220px, 28vh);
+            overflow: auto;
+            scrollbar-gutter: stable;
+            padding: 10px;
             display: grid;
             gap: 8px;
         }
@@ -3222,14 +3301,15 @@
         @media (max-width: 900px) {
             #pack-maker-screen {
                 justify-content: flex-start;
-                overflow: hidden;
+                overflow-y: auto;
             }
 
             .pack-maker-shell {
                 width: 94vw;
-                height: min(720px, calc(100vh - var(--pack-maker-safe-bottom) - 95px));
+                height: auto;
                 grid-template-columns: 1fr;
-                grid-template-rows: minmax(260px, 1.05fr) minmax(220px, 0.95fr);
+                grid-template-rows: clamp(320px, 42dvh, 440px) clamp(420px, 52dvh, 560px);
+                flex-shrink: 0;
                 min-height: 0;
             }
 
@@ -8048,71 +8128,80 @@
             </section>
 
             <section class="pack-maker-panel" aria-label="Pack draft editor">
-                <div class="pack-maker-draft-head">
-                    <input id="pack-maker-title" maxlength="60" placeholder="PACK TITLE">
-                    <textarea id="pack-maker-description" maxlength="240" placeholder="PACK DESCRIPTION"></textarea>
-                </div>
-                <div class="pack-maker-review-alerts hidden" id="pack-maker-review-alerts"></div>
-                <div class="pack-maker-table-wrap">
-                    <table class="pack-maker-table" id="pack-maker-item-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>TERM</th>
-                                <th>한줄 설명</th>
-                                <th>SOURCE</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="pack-maker-items-body"></tbody>
-                    </table>
-                </div>
-                <div class="pack-maker-long-editor hidden" id="pack-maker-long-editor">
-                    <div class="pack-maker-long-hint">
-                        LONG PACK은 사용자가 직접 입력한 긴 글을 장문 연습팩으로 저장합니다. 저작권 있는 가사는 기본 제공하거나 검색해 가져오지 않고, 직접 붙여넣기 텍스트로만 다룹니다. 저장된 글은 USER PROVIDED로 표시됩니다.
+                <div class="pack-maker-editor-scroll">
+                    <div class="pack-maker-draft-head">
+                        <input id="pack-maker-title" maxlength="60" placeholder="PACK TITLE">
+                        <textarea id="pack-maker-description" maxlength="240" placeholder="PACK DESCRIPTION"></textarea>
                     </div>
-                    <div class="pack-maker-long-options" aria-label="Long pack preprocessing options">
-                        <label class="pack-maker-long-option">
-                            <input id="pack-maker-long-normalize-quotes" type="checkbox" checked>
-                            따옴표 정리
-                        </label>
-                        <label class="pack-maker-long-option">
-                            <input id="pack-maker-long-strip-brackets" type="checkbox" checked>
-                            괄호 껍데기 제거
-                        </label>
-                        <label class="pack-maker-long-option">
-                            <input id="pack-maker-long-strip-songform" type="checkbox" checked>
-                            송폼 라벨 제거
-                        </label>
-                        <label class="pack-maker-long-option">
-                            <input id="pack-maker-long-strip-punctuation" type="checkbox">
-                            쉼표·마침표 제거
-                        </label>
-                        <label class="pack-maker-long-option">
-                            <input id="pack-maker-long-four-lines" type="checkbox" checked>
-                            4줄 단위 제시
-                        </label>
-                        <button class="pack-maker-long-option action" id="pack-maker-long-apply-cleanup" type="button">
-                            APPLY CLEANUP
+                    <section class="pack-maker-review-summary hidden" id="pack-maker-review-summary" aria-label="Public pack request status">
+                        <button class="pack-maker-review-toggle" id="pack-maker-review-toggle" type="button" aria-expanded="true" aria-controls="pack-maker-review-alerts">
+                            <span class="pack-maker-review-toggle-label" id="pack-maker-review-title">PUBLIC REQUEST STATUS</span>
+                            <span class="pack-maker-review-count" id="pack-maker-review-count">0</span>
+                            <span class="pack-maker-review-chevron" aria-hidden="true">⌃</span>
                         </button>
+                        <div class="pack-maker-review-alerts" id="pack-maker-review-alerts"></div>
+                    </section>
+                    <div class="pack-maker-table-wrap">
+                        <table class="pack-maker-table" id="pack-maker-item-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>TERM</th>
+                                    <th>한줄 설명</th>
+                                    <th>SOURCE</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="pack-maker-items-body"></tbody>
+                        </table>
                     </div>
-                    <textarea id="pack-maker-long-text" placeholder="여기에 장문 연습용 텍스트를 붙여넣으세요. 저장 후 LONG PRACTICE에서 바로 선택할 수 있습니다."></textarea>
-                    <div class="pack-maker-long-saved hidden" id="pack-maker-long-saved" aria-live="polite"></div>
-                    <div class="pack-maker-long-actions">
-                        <button class="btn-small" id="pack-maker-save-long" type="button">SAVE LONG PACK</button>
-                        <button class="btn-small" id="pack-maker-submit-long" type="button">REQUEST PUBLIC LISTING</button>
-                        <button class="btn-small" id="pack-maker-open-long" type="button">OPEN LONG PRACTICE</button>
+                    <div class="pack-maker-long-editor hidden" id="pack-maker-long-editor">
+                        <div class="pack-maker-long-hint">
+                            LONG PACK은 사용자가 직접 입력한 긴 글을 장문 연습팩으로 저장합니다. 저작권 있는 가사는 기본 제공하거나 검색해 가져오지 않고, 직접 붙여넣기 텍스트로만 다룹니다. 저장된 글은 USER PROVIDED로 표시됩니다.
+                        </div>
+                        <div class="pack-maker-long-options" aria-label="Long pack preprocessing options">
+                            <label class="pack-maker-long-option">
+                                <input id="pack-maker-long-normalize-quotes" type="checkbox" checked>
+                                따옴표 정리
+                            </label>
+                            <label class="pack-maker-long-option">
+                                <input id="pack-maker-long-strip-brackets" type="checkbox" checked>
+                                괄호 껍데기 제거
+                            </label>
+                            <label class="pack-maker-long-option">
+                                <input id="pack-maker-long-strip-songform" type="checkbox" checked>
+                                송폼 라벨 제거
+                            </label>
+                            <label class="pack-maker-long-option">
+                                <input id="pack-maker-long-strip-punctuation" type="checkbox">
+                                쉼표·마침표 제거
+                            </label>
+                            <label class="pack-maker-long-option">
+                                <input id="pack-maker-long-four-lines" type="checkbox" checked>
+                                4줄 단위 제시
+                            </label>
+                            <button class="pack-maker-long-option action" id="pack-maker-long-apply-cleanup" type="button">
+                                APPLY CLEANUP
+                            </button>
+                        </div>
+                        <textarea id="pack-maker-long-text" placeholder="여기에 장문 연습용 텍스트를 붙여넣으세요. 저장 후 LONG PRACTICE에서 바로 선택할 수 있습니다."></textarea>
+                        <div class="pack-maker-long-saved hidden" id="pack-maker-long-saved" aria-live="polite"></div>
+                        <div class="pack-maker-long-actions">
+                            <button class="btn-small" id="pack-maker-save-long" type="button">SAVE LONG PACK</button>
+                            <button class="btn-small" id="pack-maker-submit-long" type="button">REQUEST PUBLIC LISTING</button>
+                            <button class="btn-small" id="pack-maker-open-long" type="button">OPEN LONG PRACTICE</button>
+                        </div>
                     </div>
-                </div>
-                <div class="pack-maker-footer">
-                    <button class="btn-small" id="pack-maker-add-item" type="button">ADD ITEM</button>
-                    <div class="pack-maker-review-note">
-                        SAVE MY PACK is playable immediately. REQUEST PUBLIC LISTING appears in Public Packs
-                        after operator review.
-                    </div>
-                    <div class="pack-maker-action-group">
-                        <button class="btn-small" id="pack-maker-save" type="button">SAVE MY PACK</button>
-                        <button class="btn-small" id="pack-maker-submit" type="button">REQUEST PUBLIC LISTING</button>
+                    <div class="pack-maker-footer">
+                        <button class="btn-small" id="pack-maker-add-item" type="button">ADD ITEM</button>
+                        <div class="pack-maker-review-note">
+                            SAVE MY PACK is playable immediately. REQUEST PUBLIC LISTING appears in Public Packs
+                            after operator review.
+                        </div>
+                        <div class="pack-maker-action-group">
+                            <button class="btn-small" id="pack-maker-save" type="button">SAVE MY PACK</button>
+                            <button class="btn-small" id="pack-maker-submit" type="button">REQUEST PUBLIC LISTING</button>
+                        </div>
                     </div>
                 </div>
             </section>
