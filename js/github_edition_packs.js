@@ -1237,67 +1237,69 @@ const GITHUB_MOCK_LABS = [
 const GITHUB_LESSON_TRACKS = [
     {
         id: "gh-track-foundations",
-        title: "GitHub Foundations 루틴",
-        subtitle: "저장소, 브랜치, PR, 릴리스 기본 흐름",
+        title: "1단계 Git/PR 실무 기본",
+        subtitle: "clone, branch, commit, push, PR, 보호 규칙",
         lessons: [
             {
-                id: "gh-lesson-auth-repo",
-                title: "인증과 저장소 시작",
-                intro: "GitHub CLI 작업은 인증 상태 확인, 저장소 생성/복제로 시작합니다.",
+                id: "gh-lesson-git-core",
+                title: "1. Git 기본 작업 루틴",
+                intro: "가장 먼저 익혀야 할 흐름은 저장소를 받고, 상태를 보고, 브랜치를 나누고, 커밋을 원격으로 올리는 일입니다.",
                 categories: ["Foundations"],
                 quizFrom: "GH_FOUNDATIONS",
-                quizIds: ["gh-found-01", "gh-found-02", "gh-found-03", "gh-found-10", "gh-found-11"],
+                quizIds: ["gh-found-02", "gh-found-04", "gh-found-06", "gh-found-13", "gh-found-17"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-01", cmd: "gh auth status", desc: "GitHub CLI 인증 상태를 확인합니다.", output: "Logged in to github.com", explain: "CLI 작업의 첫 단계는 인증 상태 확인입니다.", scaffold: "gh auth status" },
-                    { id: "gh-ls-02", cmd: "gh repo create octo-org/app --private", desc: "private 저장소를 생성합니다.", output: "✓ Created repository octo-org/app", explain: "저장소 공개 범위는 협업과 보안에 직접 연결됩니다.", scaffold: "gh repo create octo-org/app --private" },
-                    { id: "gh-ls-03", cmd: "gh repo clone octo-org/app", desc: "저장소를 로컬로 복제합니다.", output: "Cloning into 'app'...", explain: "owner/repo 형식으로 저장소를 복제합니다.", scaffold: "gh repo clone octo-org/app" },
-                    { id: "gh-ls-04a", cmd: "gh repo view octo-org/app", desc: "저장소 기본 정보를 확인합니다.", output: "name: octo-org/app\nvisibility: private", explain: "저장소 설정과 default branch를 빠르게 점검합니다.", scaffold: "gh repo view octo-org/app" },
-                    { id: "gh-ls-04", cmd: "gh project item-list 1 --owner octo-org", desc: "프로젝트 항목을 확인합니다.", output: "Issue  Title  Status", explain: "Projects는 작업 현황을 저장소 밖에서도 관리합니다.", scaffold: "gh project item-list 1 --owner octo-org" }
+                    { id: "gh-ls-01", cmd: "git clone https://github.com/octo-org/app.git", desc: "원격 저장소를 로컬로 복제합니다.", output: "Cloning into 'app'...", explain: "대부분의 GitHub 실무는 저장소를 받고 로컬 작업 환경을 만드는 데서 시작합니다.", scaffold: "git clone https://github.com/octo-org/app.git" },
+                    { id: "gh-ls-02", cmd: "git status", desc: "작업 트리 상태를 확인합니다.", output: "On branch main\nnothing to commit, working tree clean", explain: "수정 전후 상태 확인은 실수 방지의 가장 기본적인 습관입니다.", scaffold: "git status" },
+                    { id: "gh-ls-03", cmd: "git switch -c login-fix", desc: "작업 브랜치를 생성합니다.", output: "Switched to a new branch 'login-fix'", explain: "작업 단위는 main이 아니라 브랜치로 분리합니다.", scaffold: "git switch -c login-fix" },
+                    { id: "gh-ls-04", cmd: "git add .", desc: "변경사항을 스테이징합니다.", output: "changes staged", explain: "커밋에 포함할 변경을 명시적으로 고르는 단계입니다.", scaffold: "git add ." },
+                    { id: "gh-ls-04a", cmd: "git commit -m \"add login flow\"", desc: "작업 내용을 커밋합니다.", output: "[login-fix abc123] add login flow", explain: "작고 설명 가능한 커밋은 리뷰와 롤백을 쉽게 만듭니다.", scaffold: "git commit -m \"add login flow\"" },
+                    { id: "gh-ls-04b", cmd: "git push -u origin login-fix", desc: "브랜치를 원격으로 올립니다.", output: "branch 'login-fix' set up to track 'origin/login-fix'", explain: "원격 브랜치가 있어야 PR 생성과 CI 실행으로 이어집니다.", scaffold: "git push -u origin login-fix" }
                 ]
             },
             {
                 id: "gh-lesson-pr-review",
-                title: "브랜치와 PR 리뷰",
-                intro: "브랜치, 커밋, PR 생성, 리뷰, 병합 흐름을 손에 익힙니다.",
+                title: "2. PR 리뷰와 체크",
+                intro: "다음 우선순위는 PR을 열고, CI 상태를 확인하고, 리뷰와 병합까지 이어지는 협업 루틴입니다.",
                 categories: ["Foundations"],
                 quizFrom: "GH_FOUNDATIONS",
-                quizIds: ["gh-found-04", "gh-found-05", "gh-found-06", "gh-found-07", "gh-found-08"],
+                quizIds: ["gh-found-05", "gh-found-06", "gh-found-07", "gh-found-08", "gh-found-13"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-05", cmd: "git switch -c login-fix", desc: "작업 브랜치를 생성합니다.", output: "Switched to a new branch 'login-fix'", explain: "작업 단위는 브랜치로 분리합니다.", scaffold: "git switch -c login-fix" },
-                    { id: "gh-ls-06", cmd: "gh issue create --title \"login bug\" --body \"token is empty\"", desc: "이슈를 생성합니다.", output: "https://github.com/octo-org/app/issues/12", explain: "Issue는 문제와 작업 맥락을 기록합니다.", scaffold: "gh issue create --title \"login bug\" --body \"token is empty\"" },
-                    { id: "gh-ls-07", cmd: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main", desc: "PR을 생성합니다.", output: "https://github.com/octo-org/app/pull/42", explain: "PR은 리뷰와 자동 검사를 묶는 관문입니다.", scaffold: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main" },
-                    { id: "gh-ls-08", cmd: "gh pr review 42 --approve", desc: "PR을 승인 리뷰합니다.", output: "✓ Approved pull request", explain: "승인 리뷰는 병합 정책의 조건이 될 수 있습니다.", scaffold: "gh pr review 42 --approve" },
-                    { id: "gh-ls-09", cmd: "gh pr merge 42 --squash --delete-branch", desc: "PR을 병합합니다.", output: "✓ Merged pull request #42", explain: "Squash merge와 브랜치 삭제로 히스토리를 정리합니다.", scaffold: "gh pr merge 42 --squash --delete-branch" }
+                    { id: "gh-ls-05", cmd: "gh issue list --label bug", desc: "버그 이슈를 먼저 확인합니다.", output: "12  login bug  bug", explain: "작업 전 이슈와 우선순위를 확인하면 중복 작업을 줄일 수 있습니다.", scaffold: "gh issue list --label bug" },
+                    { id: "gh-ls-06", cmd: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main", desc: "PR을 생성합니다.", output: "https://github.com/octo-org/app/pull/42", explain: "PR은 리뷰와 자동 검사를 묶는 관문입니다.", scaffold: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main" },
+                    { id: "gh-ls-07", cmd: "gh pr checks 42", desc: "PR의 CI 체크 상태를 확인합니다.", output: "build pass\nlint pass", explain: "Required checks가 실패하면 병합이 막히므로 먼저 확인합니다.", scaffold: "gh pr checks 42" },
+                    { id: "gh-ls-08", cmd: "gh pr checkout 42", desc: "리뷰 대상 PR을 로컬로 가져옵니다.", output: "Switched to branch 'contributor/login-fix'", explain: "리뷰나 재현이 필요할 때 PR 브랜치를 직접 체크아웃합니다.", scaffold: "gh pr checkout 42" },
+                    { id: "gh-ls-09", cmd: "gh pr review 42 --approve", desc: "PR을 승인 리뷰합니다.", output: "✓ Approved pull request", explain: "승인 리뷰는 병합 정책의 조건이 될 수 있습니다.", scaffold: "gh pr review 42 --approve" },
+                    { id: "gh-ls-09a", cmd: "gh pr merge 42 --squash --delete-branch", desc: "PR을 병합합니다.", output: "✓ Merged pull request #42", explain: "Squash merge와 브랜치 삭제로 히스토리를 정리합니다.", scaffold: "gh pr merge 42 --squash --delete-branch" }
                 ]
             },
             {
-                id: "gh-lesson-release-projects",
-                title: "릴리스와 프로젝트 정리",
-                intro: "릴리스 노트, 프로젝트 보드, PR 체크를 묶어 배포 전 정리 루틴을 만듭니다.",
+                id: "gh-lesson-repo-guardrails",
+                title: "3. 저장소 기준과 보호 규칙",
+                intro: "PR 흐름 다음에는 저장소 기본 정보, 브랜치 보호, ruleset, 릴리스 노트를 확인하는 운영 기준을 익힙니다.",
                 categories: ["Foundations"],
                 quizFrom: "GH_FOUNDATIONS",
-                quizIds: ["gh-found-01", "gh-found-04", "gh-found-07", "gh-found-09", "gh-found-10"],
+                quizIds: ["gh-found-09", "gh-found-11", "gh-found-14", "gh-found-17", "gh-found-18"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-10", cmd: "gh pr checks 42", desc: "PR 체크 상태를 확인합니다.", output: "build pass\nlint pass", explain: "릴리스 전에는 PR의 자동 검사 상태를 먼저 봅니다.", scaffold: "gh pr checks 42" },
-                    { id: "gh-ls-11", cmd: "gh project item-list 1 --owner octo-org", desc: "프로젝트 보드의 항목을 조회합니다.", output: "Issue  Title  Status", explain: "프로젝트 보드는 릴리스 범위를 추적하는 데 좋습니다.", scaffold: "gh project item-list 1 --owner octo-org" },
-                    { id: "gh-ls-12", cmd: "gh issue create --title \"release checklist\" --body \"verify docs and CI\"", desc: "릴리스 체크리스트 이슈를 만듭니다.", output: "https://github.com/octo-org/app/issues/21", explain: "반복되는 배포 체크는 이슈로 남겨 누락을 줄입니다.", scaffold: "gh issue create --title \"release checklist\" --body \"verify docs and CI\"" },
-                    { id: "gh-ls-13", cmd: "gh release create v1.0.0 --generate-notes", desc: "자동 릴리스 노트와 함께 릴리스를 생성합니다.", output: "✓ Created release v1.0.0", explain: "--generate-notes는 병합된 PR과 커밋을 기반으로 초안을 만듭니다.", scaffold: "gh release create v1.0.0 --generate-notes" },
-                    { id: "gh-ls-14", cmd: "gh release view v1.0.0", desc: "생성된 릴리스를 확인합니다.", output: "title: v1.0.0", explain: "릴리스 생성 후에는 태그와 노트가 의도대로 보이는지 확인합니다.", scaffold: "gh release view v1.0.0" }
+                    { id: "gh-ls-10", cmd: "gh repo view octo-org/app", desc: "저장소 기본 정보를 확인합니다.", output: "name: octo-org/app\nvisibility: private", explain: "visibility와 default branch는 협업·보안 판단의 기본 정보입니다.", scaffold: "gh repo view octo-org/app" },
+                    { id: "gh-ls-11", cmd: "gh api repos/octo-org/app/community/profile", desc: "커뮤니티 프로필을 확인합니다.", output: "{\"health_percentage\":75}", explain: "README, LICENSE, CONTRIBUTING, CODEOWNERS, SECURITY 같은 기본 파일 상태를 봅니다.", scaffold: "gh api repos/octo-org/app/community/profile" },
+                    { id: "gh-ls-12", cmd: "gh api repos/octo-org/app/branches/main/protection", desc: "main 브랜치 보호 설정을 확인합니다.", output: "{\"required_status_checks\":{}}", explain: "브랜치 보호는 리뷰, required checks, force push 제한의 중심입니다.", scaffold: "gh api repos/octo-org/app/branches/main/protection" },
+                    { id: "gh-ls-13", cmd: "gh api repos/octo-org/app/rulesets", desc: "저장소 rulesets를 확인합니다.", output: "[{\"name\":\"main protection\"}]", explain: "Ruleset은 저장소 정책을 명시적으로 적용하는 최신 운영 단위입니다.", scaffold: "gh api repos/octo-org/app/rulesets" },
+                    { id: "gh-ls-14", cmd: "gh release create v1.0.0 --generate-notes", desc: "자동 릴리스 노트와 함께 릴리스를 생성합니다.", output: "✓ Created release v1.0.0", explain: "릴리스 노트는 배포 변경사항을 팀과 사용자에게 전달하는 실무 기록입니다.", scaffold: "gh release create v1.0.0 --generate-notes" }
                 ]
             }
         ]
     },
     {
         id: "gh-track-actions",
-        title: "GitHub Actions 운용",
+        title: "2단계 GitHub Actions 운영",
         subtitle: "워크플로 실행, 로그, Secret, artifact",
         lessons: [
             {
                 id: "gh-lesson-actions-basic",
-                title: "워크플로 실행 루틴",
+                title: "4. Actions YAML과 실행",
                 intro: "Actions 워크플로는 파일 위치, 수동 실행, run 목록, 로그 조회 흐름이 기본입니다.",
                 categories: ["Actions"],
                 quizFrom: "GH_ACTIONS",
@@ -1313,7 +1315,7 @@ const GITHUB_LESSON_TRACKS = [
             },
             {
                 id: "gh-lesson-actions-ops",
-                title: "Secret과 산출물",
+                title: "5. Secret과 실패 대응",
                 intro: "Secret, variable, artifact, rerun/cancel/watch를 반복합니다.",
                 categories: ["Actions"],
                 quizFrom: "GH_ACTIONS",
@@ -1329,7 +1331,7 @@ const GITHUB_LESSON_TRACKS = [
             },
             {
                 id: "gh-lesson-actions-security",
-                title: "Actions 보안 경계",
+                title: "6. Actions 보안 경계",
                 intro: "재사용 워크플로, GITHUB_TOKEN 권한, environment, OIDC, cache를 운영 관점에서 점검합니다.",
                 categories: ["Actions"],
                 quizFrom: "GH_ACTIONS",
@@ -1347,12 +1349,12 @@ const GITHUB_LESSON_TRACKS = [
     },
     {
         id: "gh-track-security-admin",
-        title: "Security와 Administration",
+        title: "3단계 보안과 조직 운영",
         subtitle: "GHAS 알림, 조직 관리, rulesets",
         lessons: [
             {
                 id: "gh-lesson-ghas",
-                title: "Advanced Security 알림",
+                title: "7. 보안 알림 triage",
                 intro: "Code scanning, Secret scanning, Dependabot, SBOM, CodeQL을 구분합니다.",
                 categories: ["Advanced Security"],
                 quizFrom: "GH_SECURITY",
@@ -1369,7 +1371,7 @@ const GITHUB_LESSON_TRACKS = [
             },
             {
                 id: "gh-lesson-admin",
-                title: "조직 관리와 정책",
+                title: "8. 조직 권한과 저장소 정책",
                 intro: "팀, 멤버, 외부 협업자, rulesets, runner group을 점검합니다.",
                 categories: ["Administration"],
                 quizFrom: "GH_ADMIN",
@@ -1386,7 +1388,7 @@ const GITHUB_LESSON_TRACKS = [
             },
             {
                 id: "gh-lesson-admin-policy",
-                title: "조직 정책과 감사",
+                title: "9. 감사와 조직 정책",
                 intro: "SSO credential, Actions 정책, custom properties, audit log, 조직 rulesets를 점검합니다.",
                 categories: ["Administration"],
                 quizFrom: "GH_ADMIN",
@@ -1404,12 +1406,12 @@ const GITHUB_LESSON_TRACKS = [
     },
     {
         id: "gh-track-copilot",
-        title: "GitHub Copilot 운영",
+        title: "4단계 Copilot 운영",
         subtitle: "CLI 사용, 책임 있는 사용, seat/usage 관리",
         lessons: [
             {
                 id: "gh-lesson-copilot-cli",
-                title: "Copilot CLI와 사용량 관리",
+                title: "10. Copilot 운영과 사용량",
                 intro: "Copilot은 제안/설명/조직 seat/usage/정책 이해가 핵심입니다.",
                 categories: ["Copilot"],
                 quizFrom: "GH_COPILOT",

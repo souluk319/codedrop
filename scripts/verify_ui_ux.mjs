@@ -518,6 +518,17 @@ const githubLessons = githubEditionData.GITHUB_LESSON_TRACKS.flatMap(track => tr
 assert(githubLessons.length >= 10, 'GitHub learn mode should have a full lesson track, not a shallow picker');
 const githubLessonSteps = githubLessons.flatMap(lesson => lesson.steps || []);
 assert(githubLessonSteps.length >= 50, 'GitHub learn mode should include enough follow-along typing steps');
+const githubLessonOrder = githubLessons.map(lesson => lesson.id);
+assert(githubLessonOrder[0] === 'gh-lesson-git-core', 'GitHub learn mode should start with the highest-priority Git work loop');
+assert(githubLessonOrder[1] === 'gh-lesson-pr-review', 'GitHub learn mode should teach PR review/checks immediately after Git basics');
+assert(githubLessonOrder[2] === 'gh-lesson-repo-guardrails', 'GitHub learn mode should cover repository guardrails before Actions/Admin extras');
+['gh-lesson-actions-basic', 'gh-lesson-actions-ops', 'gh-lesson-actions-security', 'gh-lesson-ghas', 'gh-lesson-admin', 'gh-lesson-admin-policy', 'gh-lesson-copilot-cli'].forEach((lessonId, expectedIndex) => {
+    assert(githubLessonOrder[expectedIndex + 3] === lessonId, `GitHub learn priority order is wrong at ${lessonId}`);
+});
+const githubFirstLessonCommands = githubLessons[0].steps.map(step => step.cmd);
+['git clone https://github.com/octo-org/app.git', 'git status', 'git switch -c login-fix', 'git add .', 'git commit -m "add login flow"', 'git push -u origin login-fix'].forEach(cmd => {
+    assert(githubFirstLessonCommands.includes(cmd), `GitHub first lesson should include practical Git command: ${cmd}`);
+});
 githubLessons.forEach(lesson => {
     assert(lesson.quizCount >= 5, `GitHub lesson ${lesson.id} should include enough quiz practice`);
     assert(githubCertCategories.includes(lesson.quizFrom), `GitHub lesson ${lesson.id} should quiz from a certification category`);
