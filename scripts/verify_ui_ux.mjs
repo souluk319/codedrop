@@ -1205,6 +1205,8 @@ assert(packMaker.includes('LONG PACK 직접입력 모드로 전환했습니다')
 assert(index.includes('id="admin-pack-screen"'), 'admin pack review overlay is missing');
 assert(index.includes('id="admin-pack-close" href="/games/codedrop/"'), 'admin review HOME should be a real home link fallback');
 assert(game.includes("adminPacks: '/admin/packs'"), 'app router should expose /admin/packs route');
+assert(server.includes('app.get("/admin/packs"'), 'legacy admin review email links should redirect instead of showing Cannot GET /admin/packs');
+assert(server.includes('ensureCodeDropBaseUrl'), 'review email URLs should normalize PUBLIC_APP_URL to the /games/codedrop app base');
 assert(game.includes("window.AdminPacks?.open()"), 'app router should open admin pack review screen');
 assert(adminPacks.includes("requestJson(`/api/admin/packs?status="), 'admin pack review UI should load server review queue');
 assert(adminPacks.includes("requestJson(`/api/packs/${id}/review`"), 'admin pack review UI should call review endpoint');

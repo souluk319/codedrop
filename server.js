@@ -139,6 +139,13 @@ function sendIndexHtml(res) {
     });
 }
 
+function redirectToCodeDropPath(req, res, pathSuffix = "") {
+    const suffix = String(pathSuffix || "");
+    const queryIndex = req.originalUrl.indexOf("?");
+    const query = queryIndex === -1 ? "" : req.originalUrl.slice(queryIndex);
+    res.redirect(302, `${CODEDROP_BASE_PATH}${suffix}${query}`);
+}
+
 if (process.env.REQUEST_LOGS === "1") {
     app.use((req, res, next) => {
         console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
@@ -169,6 +176,10 @@ app.use((req, res, next) => {
 // Serve index.html at root (Explicitly before static)
 app.get('/', (req, res) => {
     sendIndexHtml(res);
+});
+
+app.get("/admin/packs", (req, res) => {
+    redirectToCodeDropPath(req, res, "/admin/packs");
 });
 
 ["privacy.html", "terms.html", "data-deletion.html", "meta-review.html"].forEach(file => {
@@ -813,11 +824,25 @@ function escapeHtml(value) {
 
 function publicAppBaseUrl(req) {
     const configured = envFirst(["PUBLIC_APP_URL"]);
-    if (configured) return configured.replace(/\/+$/, "");
+    if (configured) return ensureCodeDropBaseUrl(configured);
 
     const proto = req.get("x-forwarded-proto") || req.protocol || "http";
     const host = req.get("x-forwarded-host") || req.get("host") || `localhost:${PORT}`;
-    return `${proto}://${host}/games/codedrop`;
+    return `${proto}://${host}${CODEDROP_BASE_PATH}`;
+}
+
+function ensureCodeDropBaseUrl(value) {
+    const raw = String(value || "").trim().replace(/\/+$/, "");
+    if (!raw) return "";
+
+    const url = new URL(raw);
+    const pathName = url.pathname.replace(/\/+$/, "");
+    if (pathName !== CODEDROP_BASE_PATH && !pathName.endsWith(CODEDROP_BASE_PATH)) {
+        url.pathname = `${pathName === "" || pathName === "/" ? "" : pathName}${CODEDROP_BASE_PATH}`;
+    }
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/+$/, "");
 }
 
 function reviewUrlForPack(req, pack, intent = "") {

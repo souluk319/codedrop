@@ -145,6 +145,7 @@ try {
         '/games/codedrop/',
         '/games/codedrop/pack-maker',
         '/games/codedrop/key-test',
+        '/games/codedrop/admin/packs',
         '/games/codedrop/ocp',
         '/games/codedrop/ocp/dashboard',
         '/games/codedrop/ocp/scenario'
@@ -156,6 +157,13 @@ try {
         assert(res.text.includes('CodeDrop: Neon Cyberpunk'), `${path} should return index.html`);
         assert(res.text.includes('<base href="/games/codedrop/">'), `${path} should preserve the deployment base href`);
     }
+
+    const legacyAdminLink = await request('/admin/packs?pack=7&intent=approve', { redirect: 'manual' });
+    assert(legacyAdminLink.status === 302, '/admin/packs email links should redirect to the CodeDrop subpath');
+    assert(
+        legacyAdminLink.headers.get('location') === '/games/codedrop/admin/packs?pack=7&intent=approve',
+        `/admin/packs redirect should preserve review query params, got ${legacyAdminLink.headers.get('location')}`
+    );
 
     const localScripts = extractLocalScripts(root.text);
     const requiredScripts = [
