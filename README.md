@@ -50,6 +50,13 @@ the official packs, so a generated domain pack can move straight into DROP play.
 
 ![CodeDrop falling-word gameplay](assets/readme/codedrop-play.png)
 
+### GitHub Edition
+
+![CodeDrop GitHub Edition main page](assets/readme/github-edition-home.png)
+
+GitHub Edition uses a blue Octocat-flavored control surface for practical Git,
+pull request, Actions, security, administration, and Copilot study.
+
 ### OCP Edition
 
 ![CodeDrop OCP Edition menu](assets/readme/ocp-edition.jpg)
