@@ -440,6 +440,16 @@ assert(pxValue(ocpLeaderboard, 'height') === 760, 'OCP leaderboard should match 
 assert(pxValue(ocpLeaderboard, 'min-height') === 760, 'OCP leaderboard min-height should preserve the aligned desktop frame');
 assert(ocpLeaderboard.includes('max-height: calc(100dvh - 120px);'), 'OCP leaderboard should not overflow short desktop viewports');
 
+const universalScrollbar = cssBlock('*');
+assert(universalScrollbar.includes('scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);'), 'Windows/Firefox scrollbars should use the CodeDrop theme colors');
+assert(universalScrollbar.includes('scrollbar-width: thin;'), 'Windows/Firefox scrollbars should use a thin themed rail');
+const webkitScrollbarThumb = cssBlock('*::-webkit-scrollbar-thumb');
+assert(webkitScrollbarThumb.includes('linear-gradient') && webkitScrollbarThumb.includes('var(--scrollbar-thumb)'), 'Chromium/Edge scrollbars should use a themed neon thumb');
+const ocpScrollbarTheme = cssBlock('body.ocp-edition');
+assert(ocpScrollbarTheme.includes('--scrollbar-thumb: rgba(255, 48, 69') && ocpScrollbarTheme.includes('--scrollbar-track: rgba(16, 2, 6'), 'OCP scrollbars should use the red-black edition theme');
+const githubScrollbarTheme = cssBlock('body.github-edition');
+assert(githubScrollbarTheme.includes('--scrollbar-thumb: rgba(47, 129, 247') && githubScrollbarTheme.includes('--scrollbar-track: rgba(2, 8, 18'), 'GitHub scrollbars should use the blue-black edition theme');
+
 assert(index.includes('<button class="btn-small" id="edition-github-btn" type="button">GITHUB EDITION</button>'), 'GitHub Edition switch button is missing');
 assert(index.includes('<option value="GITHUB_CORE">GitHub</option>'), 'GitHub DROP pack option is missing');
 assert(index.includes('js/github_edition_packs.js'), 'GitHub Edition data script is missing');
