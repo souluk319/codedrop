@@ -9,7 +9,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DEFAULT_CHAT_ENGINE
-        value: kugnus
+        value: gemini
       - key: DB_HOST
         sync: false
       - key: DB_PORT
@@ -36,12 +36,14 @@ services:
         sync: false
       - key: PUBLIC_APP_URL
         sync: false
-      - key: KUGNUS_GATEWAY_BASE_URL
-        sync: false
-      - key: KUGNUS_GATEWAY_API_KEY
-        sync: false
-      - key: KUGNUS_GATEWAY_MODEL
-        value: gemma4:12b-it-qat
+      # Owner/private KUGNUS SERVER path. Uncomment only if you operate
+      # the same OpenAI-compatible gateway.
+      # - key: KUGNUS_GATEWAY_BASE_URL
+      #   sync: false
+      # - key: KUGNUS_GATEWAY_API_KEY
+      #   sync: false
+      # - key: KUGNUS_GATEWAY_MODEL
+      #   value: gemma4:12b-it-qat
       - key: PACK_MAKER_TIMEOUT_MS
         value: "600000"
       - key: PACK_MAKER_BATCH_TIMEOUT_MS

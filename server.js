@@ -43,11 +43,23 @@ function publicHttpsUrlLike(value) {
     }
 }
 
+function envValue(name) {
+    return String(process.env[name] || "").trim();
+}
+
+function normalizedEngineName(value, fallback = "gemini") {
+    const engine = String(value || fallback).toLowerCase().replace(/[\s_]+/g, "-");
+    if (engine === "openai" || engine === "gpt-5-4-mini" || engine === "gpt54-mini") return "openai";
+    if (engine === "kugnus" || engine === "kugnus-ai" || engine === "local") return "kugnus";
+    if (engine === "gemini" || engine === "google" || engine === "gemini-flash") return "gemini";
+    return engine;
+}
+
 function validateProductionConfig() {
     if (!IS_PRODUCTION) return [];
 
     const errors = [];
-    const sessionSecret = String(process.env.SESSION_SECRET || "").trim();
+    const sessionSecret = envValue("SESSION_SECRET");
     if (!sessionSecret) {
         errors.push("SESSION_SECRET is required in production");
     } else if (sessionSecret.length < 32 || /local|dev|change|codedrop-local/i.test(sessionSecret)) {
@@ -65,22 +77,39 @@ function validateProductionConfig() {
     }
 
     for (const name of ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]) {
-        if (!String(process.env[name] || "").trim()) errors.push(`${name} is required in production`);
+        if (!envValue(name)) errors.push(`${name} is required in production`);
     }
 
-    for (const name of ["KUGNUS_GATEWAY_BASE_URL", "KUGNUS_GATEWAY_API_KEY"]) {
-        if (!String(process.env[name] || "").trim()) errors.push(`${name} is required in production`);
-    }
-    if (!["KUGNUS_GATEWAY_MODEL", "KUGNUS_CHAT_MODEL"].some(name => String(process.env[name] || "").trim())) {
-        errors.push("KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL is required in production");
+    const defaultEngine = normalizedEngineName(process.env.DEFAULT_CHAT_ENGINE);
+    if (!["gemini", "openai", "kugnus"].includes(defaultEngine)) {
+        errors.push(`DEFAULT_CHAT_ENGINE must be gemini, openai, or kugnus in production: ${process.env.DEFAULT_CHAT_ENGINE}`);
     }
 
-    const gatewayBase = String(process.env.KUGNUS_GATEWAY_BASE_URL || "").trim();
+    const hasAnyKugnusConfig = ["KUGNUS_GATEWAY_BASE_URL", "KUGNUS_GATEWAY_API_KEY", "KUGNUS_GATEWAY_MODEL", "KUGNUS_CHAT_MODEL"]
+        .some(name => envValue(name));
+    if (defaultEngine === "kugnus" || hasAnyKugnusConfig) {
+        for (const name of ["KUGNUS_GATEWAY_BASE_URL", "KUGNUS_GATEWAY_API_KEY"]) {
+            if (!envValue(name)) errors.push(`${name} is required when KUGNUS is enabled in production`);
+        }
+        if (!["KUGNUS_GATEWAY_MODEL", "KUGNUS_CHAT_MODEL"].some(name => envValue(name))) {
+            errors.push("KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL is required when KUGNUS is enabled in production");
+        }
+    }
+
+    const gatewayBase = envValue("KUGNUS_GATEWAY_BASE_URL");
     if (gatewayBase && !publicHttpsUrlLike(gatewayBase)) {
         errors.push(`KUGNUS_GATEWAY_BASE_URL must be a public https URL: ${gatewayBase}`);
     }
 
-    const openAiModel = String(process.env.OPENAI_MODEL || "").trim();
+    if (defaultEngine === "gemini" && !envValue("GEMINI_API_KEY")) {
+        errors.push("GEMINI_API_KEY is required when DEFAULT_CHAT_ENGINE=gemini in production");
+    }
+
+    if (defaultEngine === "openai" && !envValue("OPENAI_API_KEY")) {
+        errors.push("OPENAI_API_KEY is required when DEFAULT_CHAT_ENGINE=openai in production");
+    }
+
+    const openAiModel = envValue("OPENAI_MODEL");
     if (process.env.OPENAI_API_KEY && openAiModel && !/(^|[-.])mini($|[-.])/i.test(openAiModel)) {
         errors.push(`OPENAI_MODEL fallback must stay mini in production: ${openAiModel}`);
     }
@@ -511,7 +540,7 @@ function sanitizeChatHistory(history) {
 }
 
 function normalizeChatEngine(value) {
-    const engine = String(value || process.env.DEFAULT_CHAT_ENGINE || "kugnus").toLowerCase().replace(/[\s_]+/g, "-");
+    const engine = normalizedEngineName(value || process.env.DEFAULT_CHAT_ENGINE);
     if (engine === "openai" || engine === "gpt-5-4-mini" || engine === "gpt54-mini") return "openai";
     if (engine === "kugnus" || engine === "kugnus-ai" || engine === "local") return "kugnus";
     if (engine === "gemini" || engine === "google" || engine === "gemini-flash") return "gemini";
@@ -710,7 +739,7 @@ function kugnusRouteFromEnvName(envName) {
     return envName === "KUGNUS_GATEWAY_BASE_URL" ? "gateway" : "unknown";
 }
 
-function buildLlmTarget(engine = "kugnus") {
+function buildLlmTarget(engine = "gemini") {
     if (engine === "openai") {
         const baseUrl = "https://api.openai.com/v1";
         const model = normalizeOpenAiMiniModel(process.env.OPENAI_MODEL || "gpt-5.4-mini");

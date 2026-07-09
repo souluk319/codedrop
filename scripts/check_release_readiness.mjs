@@ -122,11 +122,10 @@ function checkRenderBlueprint() {
         'DB_NAME',
         'SESSION_SECRET',
         'ALLOWED_ORIGINS',
-        'KUGNUS_GATEWAY_BASE_URL',
-        'KUGNUS_GATEWAY_API_KEY',
-        'KUGNUS_GATEWAY_MODEL',
         'OPENAI_API_KEY',
         'OPENAI_MODEL',
+        'GEMINI_API_KEY',
+        'GEMINI_MODEL',
         'DUCKDUCKGO_API_KEY'
     ];
     const missingEnvKeys = requiredEnvKeys.filter(key => !renderYamlHasKey(text, key));
@@ -145,9 +144,8 @@ function checkRenderBlueprint() {
         'REVIEW_NOTIFY_EMAIL',
         'MAIL_FROM',
         'PUBLIC_APP_URL',
-        'KUGNUS_GATEWAY_BASE_URL',
-        'KUGNUS_GATEWAY_API_KEY',
         'OPENAI_API_KEY',
+        'GEMINI_API_KEY',
         'DUCKDUCKGO_API_KEY'
     ];
     const unsafeSecretKeys = secretEnvKeys.filter(key => renderYamlHasKey(text, key) && !renderYamlKeyUsesSyncFalse(text, key));
@@ -275,18 +273,32 @@ function allowedMiniModel(model) {
     return /^gpt-?5(\.4)?-mini$/i.test(model);
 }
 
+function normalizedEngine(value, fallback = 'gemini') {
+    const engine = String(value || fallback).toLowerCase().replace(/[\s_]+/g, '-');
+    if (engine === 'openai' || engine === 'gpt-5-4-mini' || engine === 'gpt54-mini') return 'openai';
+    if (engine === 'kugnus' || engine === 'kugnus-ai' || engine === 'local') return 'kugnus';
+    if (engine === 'gemini' || engine === 'google' || engine === 'gemini-flash') return 'gemini';
+    return engine;
+}
+
 function checkCommon() {
-    const defaultEngine = value('DEFAULT_CHAT_ENGINE');
-    if (defaultEngine && defaultEngine !== 'kugnus') {
-        errors.push(`DEFAULT_CHAT_ENGINE must be kugnus for release, got ${defaultEngine}`);
+    const defaultEngine = normalizedEngine(value('DEFAULT_CHAT_ENGINE'));
+    if (!['gemini', 'openai', 'kugnus'].includes(defaultEngine)) {
+        errors.push(`DEFAULT_CHAT_ENGINE must be gemini, openai, or kugnus for release, got ${value('DEFAULT_CHAT_ENGINE')}`);
     }
 
     const hasExplicitGateway = hasAny(KUGNUS_GATEWAY_BASE_NAMES)
         && hasAny(KUGNUS_GATEWAY_KEY_NAMES)
         && hasAny(KUGNUS_GATEWAY_MODEL_NAMES);
-    if (!hasExplicitGateway) {
-        errors.push('KUGNUS release requires KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL');
-        addAction('Set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat or KUGNUS_CHAT_MODEL=gemma4:12b-it-qat in the deployment environment.');
+    const hasAnyKugnusConfig = hasAny([
+        ...KUGNUS_GATEWAY_BASE_NAMES,
+        ...KUGNUS_GATEWAY_KEY_NAMES,
+        ...KUGNUS_GATEWAY_MODEL_NAMES
+    ]);
+    if ((defaultEngine === 'kugnus' || hasAnyKugnusConfig) && !hasExplicitGateway) {
+        errors.push('KUGNUS release requires KUGNUS_GATEWAY_BASE_URL, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL or KUGNUS_CHAT_MODEL when KUGNUS is enabled');
+        addAction('Only enable KUGNUS if you operate the owner/private OpenAI-compatible gateway; otherwise use DEFAULT_CHAT_ENGINE=gemini or openai.');
+        addAction('For KUGNUS, set KUGNUS_GATEWAY_BASE_URL=https://<public-gateway>/v1, KUGNUS_GATEWAY_API_KEY, and KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat or KUGNUS_CHAT_MODEL=gemma4:12b-it-qat in the deployment environment.');
         addAction('After setting gateway env, run npm run verify:kugnus-live -- --env-file=<release-env-file> and require route=gateway.');
     }
 
@@ -298,8 +310,18 @@ function checkCommon() {
     }
 
     const hasGenericOpenAiFallback = has('OPENAI_API_KEY');
-    if (!hasGenericOpenAiFallback) {
-        warnings.push('GPT fallback API key is not configured; KUGNUS-only release is possible but fallback UX will not work');
+    if (defaultEngine === 'gemini' && !has('GEMINI_API_KEY')) {
+        errors.push('GEMINI_API_KEY is required when DEFAULT_CHAT_ENGINE=gemini');
+        addAction('Set GEMINI_API_KEY in the deployment environment, or switch DEFAULT_CHAT_ENGINE to openai and set OPENAI_API_KEY.');
+    }
+
+    if (defaultEngine === 'openai' && !hasGenericOpenAiFallback) {
+        errors.push('OPENAI_API_KEY is required when DEFAULT_CHAT_ENGINE=openai');
+        addAction('Set OPENAI_API_KEY in the deployment environment, or switch DEFAULT_CHAT_ENGINE to gemini and set GEMINI_API_KEY.');
+    }
+
+    if (!hasGenericOpenAiFallback && defaultEngine !== 'openai') {
+        warnings.push('OPENAI_API_KEY is not configured; GPT mini fallback will not be available');
     }
 
     if (hasGenericOpenAiFallback && has('OPENAI_MODEL') && !allowedMiniModel(value('OPENAI_MODEL'))) {

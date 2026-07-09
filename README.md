@@ -5,8 +5,8 @@
 CodeDrop began as a falling-code typing game. It is now a compact study system:
 official typing packs for muscle memory, an OCP Edition for EX280 hands-on
 practice, a GitHub Edition for practical GitHub workflows, and a Pack Maker that
-turns natural-language topics into playable data packs through KUGNUS SERVER,
-Gemini, or GPT fallback.
+turns natural-language topics into playable data packs through Gemini, OpenAI,
+or an optional owner-operated KUGNUS SERVER.
 
 The production app is a Node/Express service with MySQL-compatible storage.
 The frontend stays guest-first: players can open the app and play official DROP
@@ -79,8 +79,8 @@ pull request, Actions, security, administration, and Copilot study.
 - **Pack Maker**: search-grounded data-pack drafting, editable term/description
   table, private pack save, operator-reviewed public listing, and generated packs
   that appear in the SELECT PACK cartridge picker.
-- **LLM choices**: KUGNUS SERVER by default, Gemini Flash for fast free fallback,
-  and GPT mini as the paid backup path.
+- **LLM choices**: Gemini Flash or GPT mini work for public clones with ordinary
+  API keys; KUGNUS SERVER is an owner/private OpenAI-compatible path.
 - **Guest-first UX**: official packs and screens are explorable without account
   creation; protected actions show contextual login prompts.
 - **Retro control surface**: README manual, MUSIC island player, keyboard tester,
@@ -146,7 +146,7 @@ Environment templates are committed only as generic guides:
 
 - `.env.local.example`: local Docker/MySQL development defaults.
 - `.env.production.example`: deployment checklist with placeholder public URLs.
-- `.env.kugnus-gateway.example`: KUGNUS gateway handoff variables.
+- `.env.kugnus-gateway.example`: commented owner/private KUGNUS reference.
 
 Do not commit real `.env`, `.env.local`, production env files, API keys, admin
 emails, or deployment-specific domains.
@@ -169,35 +169,33 @@ DB_SSL=false
 SESSION_SECRET=codedrop-local-dev-session-secret-change-for-release
 ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001
 PACK_ADMIN_NICKNAMES=admin
-DEFAULT_CHAT_ENGINE=kugnus
+DEFAULT_CHAT_ENGINE=gemini
 ```
 
-KUGNUS SERVER uses the public OpenAI-compatible gateway. CodeDrop prefers the
-canonical `KUGNUS_GATEWAY_*` variables for this path:
-
-```env
-KUGNUS_GATEWAY_BASE_URL=https://llm.yourdomain.com/v1
-KUGNUS_GATEWAY_API_KEY=<KUGNUS_GATEWAY_API_KEY>
-KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat
-```
-
-`KUGNUS_CHAT_MODEL` is accepted as an alias for `KUGNUS_GATEWAY_MODEL` when
-copying values from the public gateway project. The exact KUGNUS gateway handoff
-template is `.env.kugnus-gateway.example`.
-
-GPT fallback is separate and mini-only:
-
-```env
-OPENAI_API_KEY=<OPENAI_API_KEY>
-OPENAI_MODEL=gpt-5.4-mini
-```
-
-Gemini can be enabled as a third comparison engine in Learn Chat and Pack Maker:
+For public clones, configure one of these ordinary API paths:
 
 ```env
 GEMINI_API_KEY=<GEMINI_API_KEY>
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_TIMEOUT_MS=120000
+```
+
+or:
+
+```env
+DEFAULT_CHAT_ENGINE=openai
+OPENAI_API_KEY=<OPENAI_API_KEY>
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+KUGNUS SERVER is Kim Sung-uk's owner/private LLM path, not a required public
+setup path. The reference template is intentionally commented:
+
+```env
+# DEFAULT_CHAT_ENGINE=kugnus
+# KUGNUS_GATEWAY_BASE_URL=https://llm.example.com/v1
+# KUGNUS_GATEWAY_API_KEY=<KUGNUS_GATEWAY_API_KEY>
+# KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat
 ```
 
 Pack Maker search and future embedding/RAG settings:
@@ -208,17 +206,19 @@ EMBEDDING_MODEL=embeddinggemma:latest
 EMBEDDING_DIMENSIONS=768
 ```
 
-`KUGNUS_EMBED_MODEL` is accepted as an alias for future embedding/RAG wiring.
+`KUGNUS_EMBED_MODEL` is an owner/private alias for future embedding/RAG wiring.
 
-The server rejects non-mini OpenAI models for chat fallback. Keep high-end models out of this app path.
+The server rejects non-mini OpenAI chat models. Keep high-end models out of this
+app path.
 
 ## KUGNUS Routing
 
-The server resolves KUGNUS from exactly one contract:
+KUGNUS is optional and owner/private. If enabled, the server resolves it from
+exactly one contract:
 `KUGNUS_GATEWAY_BASE_URL`, `KUGNUS_GATEWAY_API_KEY`, and
 `KUGNUS_GATEWAY_MODEL` or its public-gateway alias `KUGNUS_CHAT_MODEL`.
-`OPENAI_*` is GPT fallback only. Direct Ollama/private environment names are
-intentionally not part of the app contract anymore.
+`OPENAI_*` remains the ordinary GPT mini path. Direct Ollama/private environment
+names are intentionally not part of the public app contract.
 
 `npm run verify` includes `scripts/verify_kugnus_gateway_contract.mjs`, which
 starts a fake OpenAI-compatible KUGNUS gateway and proves the explicit
@@ -228,7 +228,7 @@ starts a fake OpenAI-compatible KUGNUS gateway and proves the explicit
 npm run verify:kugnus-gateway
 ```
 
-After real gateway env values are present, run a live gateway check before release:
+After real owner/private gateway env values are present, run a live gateway check:
 
 ```bash
 npm run verify:kugnus-live -- --env-file=.env.production
@@ -297,11 +297,11 @@ Current production-compatible shape:
 ```text
 Node/Express server
 MySQL-compatible DB
-KUGNUS public gateway
-GPT mini fallback
+Gemini Flash or GPT mini
+Optional owner/private KUGNUS gateway
 ```
 
-KUGNUS routing must go through the configured gateway contract.
+Public clones do not need KUGNUS. Use Gemini or OpenAI API keys first.
 
 Render/Docker deployment is described by `render.yaml` at the repository root.
 It builds the checked-in `Dockerfile`, probes `/health`, and waits for CI checks
@@ -316,14 +316,12 @@ DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSL
 SESSION_SECRET
 ALLOWED_ORIGINS
 PACK_ADMIN_NICKNAMES
-KUGNUS_GATEWAY_BASE_URL
-KUGNUS_GATEWAY_API_KEY
-OPENAI_API_KEY
+GEMINI_API_KEY or OPENAI_API_KEY
 DUCKDUCKGO_API_KEY
 ```
 
-`KUGNUS_GATEWAY_BASE_URL` must be the public HTTPS gateway URL, not a Tailscale,
-localhost, or direct Ollama address.
+If you enable the owner/private KUGNUS path, `KUGNUS_GATEWAY_BASE_URL` must be a
+public HTTPS gateway URL, not a Tailscale, localhost, or direct Ollama address.
 
 ### Deploy under a subpath
 
@@ -406,7 +404,7 @@ Firebase migration target:
 Firebase Hosting  -> static UI
 Firebase Auth     -> anonymous/member identity
 Firestore         -> profiles, leaderboards, pack metadata
-Cloud Functions   -> Pack Maker search, KUGNUS/GPT calls, private API keys
+Cloud Functions   -> Pack Maker search, Gemini/OpenAI calls, private API keys
 ```
 
 Do not move LLM keys or DuckDuckGo/search credentials into browser code.

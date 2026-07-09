@@ -178,7 +178,7 @@ const PackMaker = (() => {
     };
 
     function normalizeEngineValue(value) {
-        return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'kugnus';
+        return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'gemini';
     }
 
     function preferredEngine() {
@@ -186,7 +186,7 @@ const PackMaker = (() => {
     }
 
     function engineLabel() {
-        return ENGINE_LABELS[normalizeEngineValue(ui.engine && ui.engine.value)] || ENGINE_LABELS.kugnus;
+        return ENGINE_LABELS[normalizeEngineValue(ui.engine && ui.engine.value)] || ENGINE_LABELS.gemini;
     }
 
     function currentAppLanguage() {

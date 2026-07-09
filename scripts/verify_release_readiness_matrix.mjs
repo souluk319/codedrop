@@ -24,7 +24,9 @@ process.on('exit', () => {
 });
 
 const BASE_RELEASE_ENV = {
-    DEFAULT_CHAT_ENGINE: 'kugnus',
+    DEFAULT_CHAT_ENGINE: 'gemini',
+    GEMINI_API_KEY: 'gemini-key',
+    GEMINI_MODEL: 'gemini-2.5-flash',
     DB_HOST: 'db.example.com',
     DB_USER: 'codedrop',
     DB_PASSWORD: 'secret',
@@ -43,6 +45,8 @@ const CLEAN_ENV_NAMES = [
     'KUGNUS_CHAT_MODEL',
     'OPENAI_API_KEY',
     'OPENAI_MODEL',
+    'GEMINI_API_KEY',
+    'GEMINI_MODEL',
     'DB_HOST',
     'DB_USER',
     'DB_PASSWORD',
@@ -83,8 +87,13 @@ function includes(list, text) {
 
 const cases = [
     {
-        name: 'explicit KUGNUS gateway passes',
+        name: 'Gemini default release passes',
+        expectOk: true
+    },
+    {
+        name: 'optional KUGNUS gateway passes',
         env: {
+            DEFAULT_CHAT_ENGINE: 'kugnus',
             KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
             KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
             KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat'
@@ -94,6 +103,7 @@ const cases = [
     {
         name: 'KUGNUS chat model alias passes',
         env: {
+            DEFAULT_CHAT_ENGINE: 'kugnus',
             KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
             KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
             KUGNUS_CHAT_MODEL: 'gemma4:12b-it-qat'
@@ -103,6 +113,7 @@ const cases = [
     {
         name: 'private gateway URL is blocked',
         env: {
+            DEFAULT_CHAT_ENGINE: 'kugnus',
             KUGNUS_GATEWAY_BASE_URL: 'http://127.0.0.1:11434/v1',
             KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
             KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat'
@@ -113,9 +124,6 @@ const cases = [
     {
         name: 'generic OpenAI fallback must remain mini',
         env: {
-            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
-            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
             OPENAI_API_KEY: 'openai-key',
             OPENAI_MODEL: 'gpt-4o'
         },
@@ -123,11 +131,9 @@ const cases = [
         expectError: 'Generic OPENAI_MODEL fallback must stay gpt-5.4-mini'
     },
     {
-        name: 'generic OpenAI fallback mini passes with explicit KUGNUS gateway',
+        name: 'OpenAI engine mini passes',
         env: {
-            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
-            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
+            DEFAULT_CHAT_ENGINE: 'openai',
             OPENAI_API_KEY: 'openai-key',
             OPENAI_MODEL: 'gpt-5.4-mini'
         },
@@ -136,9 +142,6 @@ const cases = [
     {
         name: 'local session secret is blocked',
         env: {
-            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
-            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
             SESSION_SECRET: 'codedrop-local-dev-session-secret-change-for-release'
         },
         expectOk: false,
@@ -147,9 +150,6 @@ const cases = [
     {
         name: 'localhost allowed origin is blocked',
         env: {
-            KUGNUS_GATEWAY_BASE_URL: 'https://llm.example.com/v1',
-            KUGNUS_GATEWAY_API_KEY: 'kugnus-key',
-            KUGNUS_GATEWAY_MODEL: 'gemma4:12b-it-qat',
             ALLOWED_ORIGINS: 'http://localhost:3001'
         },
         expectOk: false,
