@@ -192,6 +192,10 @@ try {
     assert(asset.status === 200 && asset.text.includes('<svg'), 'red hat SVG should be public');
     const subpathAsset = await request('/games/codedrop/assets/red-hat-logo.svg');
     assert(subpathAsset.status === 200 && subpathAsset.text.includes('<svg'), 'red hat SVG should be public under /games/codedrop assets');
+    const octocatAsset = await request('/assets/octocat-typing.png');
+    assert(octocatAsset.status === 200 && octocatAsset.headers.get('content-type').includes('image/png'), 'octocat PNG should be public');
+    const subpathOctocatAsset = await request('/games/codedrop/assets/octocat-typing.png');
+    assert(subpathOctocatAsset.status === 200 && subpathOctocatAsset.headers.get('content-type').includes('image/png'), 'octocat PNG should be public under /games/codedrop assets');
     const favicon = await request('/assets/favicon.svg');
     assert(favicon.status === 200 && favicon.text.includes('CodeDrop CD favicon'), 'favicon SVG should be public');
     const subpathFavicon = await request('/games/codedrop/assets/favicon.svg');
@@ -284,7 +288,7 @@ try {
     console.log(JSON.stringify({
         port: PORT,
         server: 'ok',
-        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg', '/assets/favicon.svg', '/games/codedrop/assets/favicon.svg'],
+        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg', '/assets/octocat-typing.png', '/games/codedrop/assets/octocat-typing.png', '/assets/favicon.svg', '/games/codedrop/assets/favicon.svg'],
         protectedPaths: denied.length,
         authSmoke: 'ok',
         learnChatSmoke: 'ok',

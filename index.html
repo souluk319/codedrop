@@ -5110,6 +5110,44 @@
             padding-top: 0.08em;
         }
 
+        .brand-word-github {
+            display: none;
+        }
+
+        .brand-octocat-o {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1em;
+            height: 1em;
+            margin: 0 0.015em;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            box-shadow: none;
+            overflow: hidden;
+            transform: translateY(0.18em);
+        }
+
+        .brand-octocat-o img {
+            display: block;
+            width: 112%;
+            height: 112%;
+            object-fit: cover;
+            object-position: center;
+            filter: invert(1) grayscale(1) contrast(1.28) brightness(1.12);
+            opacity: 0.92;
+        }
+
+        body.github-edition .brand-word-standard {
+            display: none;
+        }
+
+        body.github-edition .brand-word-github {
+            display: inline-flex;
+            align-items: baseline;
+        }
+
         .ocp-hat {
             position: absolute;
             left: 50%;
@@ -7602,8 +7640,8 @@
     <!-- Start Screen -->
     <!-- Start Screen -->
     <div id="start-screen" class="overlay">
-        <h1 class="brand-title">
-            <span class="logo-c">C<span class="ocp-hat" aria-hidden="true"><img src="assets/red-hat-logo.svg" alt=""></span></span>ODEDROP
+        <h1 class="brand-title" aria-label="CODEDROP">
+            <span class="logo-c" aria-hidden="true">C<span class="ocp-hat" aria-hidden="true"><img src="assets/red-hat-logo.svg" alt=""></span></span><span class="brand-word-standard" aria-hidden="true">ODEDROP</span><span class="brand-word-github" aria-hidden="true">ODEDR<span class="brand-octocat-o"><img src="assets/octocat-typing.png" alt=""></span>P</span>
         </h1>
 
         <div class="start-layout">
