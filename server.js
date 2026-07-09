@@ -347,19 +347,38 @@ function envFlag(value) {
     return /^(1|true|yes|on)$/i.test(String(value || "").trim());
 }
 
-const LEARN_CHAT_SYSTEM_PROMPT = [
-    "너는 CodeDrop OCP Edition의 EX280 학습 조교다.",
-    "사용자는 OpenShift/리눅스 명령을 손에 익히는 중이다.",
-    "항상 한국어로 답하고, 시험장에서 바로 쓸 수 있는 명령 중심으로 짧고 정확하게 설명한다.",
-    "정답만 던지기보다 왜 이 명령을 쓰는지, 자주 틀리는 플래그, 검증 명령을 함께 알려준다.",
+const LEARN_CHAT_COMMON_RULES = [
+    "항상 한국어로 답하고, 현재 학습 화면 컨텍스트를 최우선 근거로 삼는다.",
+    "정답만 던지기보다 왜 이 명령을 쓰는지, 자주 틀리는 플래그, 검증 방법을 함께 알려준다.",
     "사용자가 현재 퀴즈를 풀고 있으면 먼저 힌트와 사고 방향을 주고, 사용자가 명시적으로 정답을 원할 때만 완성 명령을 제시한다.",
+    "단계별 해금은 제품의 핵심 학습 흐름이다. 사용자가 건너뛰기나 중급자 코스를 물어도 해금을 우회하거나 조작하라고 안내하지 않는다.",
+    "대신 현재 열린 레슨을 빠르게 통과하는 방법, 보이는 트랙의 우선순위, 다음에 열릴 학습 방향을 설명한다.",
+    "사용자가 난이도, 중급자 코스, 어디서 시작할지, 무엇을 먼저 할지 묻는 경우에는 학습모드 안내를 바탕으로 Learn, Scenario, Mock Lab, Incident Drill, Exam, Dashboard 중 적합한 화면을 추천한다.",
+    "특히 사용자가 '쉽다', '중급자', '더 어려운 코스', '실무자용' 같은 난이도 신호를 보이면 Learn Mode가 고빈도 기본 루틴을 효율적으로 다지는 화면이라 쉽게 느껴질 수 있음을 인정하고, 상황 판단 훈련인 Scenario를 우선 추천한다.",
+    "그 다음 절차 반복은 Mock Lab, 실패 원인 분석은 Incident Drill, 최종 점검은 Exam과 Dashboard로 이어지게 안내한다.",
+    "명령어가 필요 없는 제품/학습 경로 질문에는 억지로 명령을 만들지 말고, 추천 이동과 이유를 말한다.",
     "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다.",
     "응답은 원칙적으로 6~10줄 안에서 끝낸다. 장황한 개론, 인사말, 면책 문구, 불필요한 Markdown 장식은 쓰지 않는다.",
     "항상 아래 답변 골격을 따른다:",
     "1) 핵심: 사용자의 질문에 대한 결론을 1~2문장으로 말한다.",
-    "2) 명령: 필요한 경우 바로 따라 칠 명령어를 코드블록 1개 이하로 제시한다.",
-    "3) 확인: 결과를 검증할 oc/kubectl 명령이나 관찰 포인트를 1~2개 말한다.",
+    "2) 다음 행동: 실습 질문이면 바로 따라 칠 명령어를 코드블록 1개 이하로 제시하고, 학습 경로 질문이면 추천 모드와 이유를 말한다.",
+    "3) 확인: 결과를 검증할 명령, 화면에서 확인할 지점, 또는 다음 학습 체크포인트를 1~2개 말한다.",
     "4) 조교의 한마디: 마지막 줄은 반드시 '조교의 한마디:'로 시작하고, 시험장에서 기억할 핵심 습관을 한 문장으로 짚는다."
+];
+
+const LEARN_CHAT_OCP_PROMPT = [
+    "너는 CodeDrop OCP Edition의 EX280 학습 조교다.",
+    "사용자는 OpenShift/리눅스 명령을 손에 익히는 중이다.",
+    "시험장에서 바로 쓸 수 있는 oc/kubectl/Linux 명령 중심으로 짧고 정확하게 설명한다.",
+    ...LEARN_CHAT_COMMON_RULES
+].join(" ");
+
+const LEARN_CHAT_GITHUB_PROMPT = [
+    "너는 CodeDrop GitHub Edition의 GitHub Certification 학습 조교다.",
+    "사용자는 Git, GitHub CLI, Pull Request, branch protection, GitHub Actions, GitHub Advanced Security, Administration, Copilot 실무 루틴을 손에 익히는 중이다.",
+    "GitHub Edition에서는 GitHub 화면과 커리큘럼만 다룬다. OpenShift, Kubernetes, oc, kubectl 명령은 사용자가 명시적으로 비교를 요청하지 않는 한 절대 제시하지 않는다.",
+    "명령이 필요하면 git, gh, GitHub Actions YAML, GitHub REST API 호출, GitHub UI에서 확인할 지점을 우선 제시한다.",
+    ...LEARN_CHAT_COMMON_RULES
 ].join(" ");
 
 const PACK_MAKER_SYSTEM_PROMPT = [
@@ -494,9 +513,14 @@ function sanitizeChatText(value, limit = MAX_CHAT_MESSAGE_LEN) {
     return value.replace(/\s+/g, " ").trim().slice(0, limit);
 }
 
+function normalizeStudyEdition(value) {
+    return String(value || "").toLowerCase() === "github" ? "github" : "ocp";
+}
+
 function sanitizeChatContext(context) {
     if (!context || typeof context !== "object") return {};
     return {
+        edition: normalizeStudyEdition(context.edition),
         lessonTitle: sanitizeChatText(context.lessonTitle, 120),
         trackTitle: sanitizeChatText(context.trackTitle, 120),
         phase: sanitizeChatText(context.phase, 40),
@@ -505,7 +529,8 @@ function sanitizeChatContext(context) {
         command: sanitizeChatText(context.command, 400),
         output: sanitizeChatText(context.output, 800),
         explanation: sanitizeChatText(context.explanation, 800),
-        hint: sanitizeChatText(context.hint, 400)
+        hint: sanitizeChatText(context.hint, 400),
+        modeGuide: sanitizeChatText(context.modeGuide, 1400)
     };
 }
 
@@ -529,8 +554,13 @@ function normalizeChatEngine(value) {
     return CHAT_ENGINES.has(engine) ? engine : null;
 }
 
+function learnChatSystemPrompt(context) {
+    return context.edition === "github" ? LEARN_CHAT_GITHUB_PROMPT : LEARN_CHAT_OCP_PROMPT;
+}
+
 function learnContextMessage(context) {
     const lines = [
+        `에디션: ${context.edition === "github" ? "GitHub Edition" : "OCP Edition"}`,
         `레슨: ${context.lessonTitle || "-"}`,
         `트랙: ${context.trackTitle || "-"}`,
         `현재 단계: ${context.phase || "-"} ${context.progress || ""}`.trim(),
@@ -538,7 +568,8 @@ function learnContextMessage(context) {
         `현재 명령/모범답안: ${context.command || "-"}`,
         `터미널 출력: ${context.output || "-"}`,
         `해설: ${context.explanation || "-"}`,
-        `힌트: ${context.hint || "-"}`
+        `힌트: ${context.hint || "-"}`,
+        `학습모드 안내: ${context.modeGuide || "-"}`
     ];
     return `현재 학습 화면 컨텍스트:\n${lines.join("\n")}`;
 }
@@ -3722,7 +3753,7 @@ function buildLearnMessages(body) {
     return {
         engine,
         messages: [
-            { role: "system", content: LEARN_CHAT_SYSTEM_PROMPT },
+            { role: "system", content: learnChatSystemPrompt(context) },
             { role: "system", content: learnContextMessage(context) },
             ...history,
             { role: "user", content: message }

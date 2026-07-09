@@ -19,6 +19,7 @@ const LearnMode = (() => {
     let runtime = {
         tracks: () => (typeof LESSON_TRACKS !== 'undefined') ? LESSON_TRACKS : [],
         scenarioPacks: () => (typeof SCENARIO_PACKS !== 'undefined') ? SCENARIO_PACKS : {},
+        edition: 'ocp',
         progressKey: 'codedrop_learn_progress'
     };
 
@@ -184,7 +185,8 @@ const LearnMode = (() => {
             ? window.CodeDropModeControls.currentConfig()
             : null;
 
-        if (config && config.key === 'github') {
+        const activeEdition = normalizeStudyEdition((config && config.key) || runtime.edition);
+        if (activeEdition === 'github') {
             return {
                 key: 'github',
                 surface: '현재 GitHub Edition 학습 화면',
@@ -193,7 +195,8 @@ const LearnMode = (() => {
                 pickerIntro: '따라 치면서 배우는 GitHub Certification 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.',
                 prompt: 'GitHub Certification 학습 커리큘럼 목록 화면입니다. 사용자가 Foundations, Actions, Security, Administration, Copilot 중 어디서 시작할지 질문할 수 있습니다.',
                 explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
-                hint: '처음이면 이어서 학습 버튼이나 Foundations 첫 레슨부터 시작하는 것이 좋습니다.'
+                hint: '처음이면 이어서 학습 버튼이나 Foundations 첫 레슨부터 시작하는 것이 좋습니다.',
+                modeGuide: 'GitHub Edition 구조: Learn Mode는 실무자가 가장 자주 쓰는 Git, PR, 보호 규칙, Actions, 보안, 조직 관리, Copilot 루틴을 효율 우선으로 손에 익히는 기본 코스라 경험자에게는 초반이 쉽게 느껴질 수 있다. 단계별 해금은 유지한다. 중급자는 열린 Learn 레슨을 빠르게 통과해 흐름을 확인하고, 상황 판단은 Scenario, 절차형 훈련은 Mock Lab, Actions 실패와 secret/권한/보안 알림 진단은 Incident Drill, 실전 점검은 Exam과 Dashboard를 추천한다.'
             };
         }
 
@@ -205,8 +208,13 @@ const LearnMode = (() => {
             pickerIntro: '따라 치면서 배우는 EX280 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.',
             prompt: 'EX280 학습 커리큘럼 목록 화면입니다. 사용자가 어떤 레슨부터 보면 좋을지, 현재 보이는 학습 흐름을 질문할 수 있습니다.',
             explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
-            hint: '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.'
+            hint: '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.',
+            modeGuide: 'OCP Edition 구조: Learn Mode는 EX280 실무와 시험에서 반복되는 oc, kubectl, 리소스 점검, 권한, 트러블슈팅 기본 루틴을 효율 우선으로 손에 익히는 기본 코스라 경험자에게는 초반이 쉽게 느껴질 수 있다. 단계별 해금은 유지한다. 중급자는 열린 Learn 레슨을 빠르게 통과해 명령 습관을 확인하고, 상황 판단은 Scenario, 절차형 훈련은 Mock Lab, 장애 원인 분석은 Incident Drill, 실전 점검은 Exam과 Dashboard를 추천한다.'
         };
+    }
+
+    function normalizeStudyEdition(value) {
+        return String(value || '').toLowerCase() === 'github' ? 'github' : 'ocp';
     }
 
     function lessonsForCategory(cat) {
@@ -651,18 +659,21 @@ const LearnMode = (() => {
             .replace(/[^a-z0-9_-]+/gi, '_')
             .replace(/^_+|_+$/g, '')
             .slice(0, 90) || 'external';
+        const edition = normalizeStudyEdition(context.edition || (safeKey.startsWith('github') ? 'github' : runtime.edition));
         return {
             key: safeKey,
+            edition,
             label: String(context.label || '따라치기 화면').slice(0, 160),
-            lessonTitle: String(context.lessonTitle || context.title || 'OCP 따라치기').slice(0, 160),
-            trackTitle: String(context.trackTitle || context.track || 'OCP Edition').slice(0, 120),
+            lessonTitle: String(context.lessonTitle || context.title || (edition === 'github' ? 'GitHub 따라치기' : 'OCP 따라치기')).slice(0, 160),
+            trackTitle: String(context.trackTitle || context.track || (edition === 'github' ? 'GitHub Edition' : 'OCP Edition')).slice(0, 120),
             phase: String(context.phase || 'follow').slice(0, 60),
             progress: String(context.progress || '').slice(0, 80),
             prompt: String(context.prompt || '').slice(0, 2000),
             command: String(context.command || '').slice(0, 1200),
             output: String(context.output || '').slice(0, 2000),
             explanation: String(context.explanation || '').slice(0, 2000),
-            hint: String(context.hint || '').slice(0, 1000)
+            hint: String(context.hint || '').slice(0, 1000),
+            modeGuide: String(context.modeGuide || '').slice(0, 1600)
         };
     }
 
@@ -674,8 +685,14 @@ const LearnMode = (() => {
         return `codedrop_learn_chat_history_${lessonId}`;
     }
 
+    function activeChatEdition() {
+        if (session.externalContext && session.externalContext.edition) return normalizeStudyEdition(session.externalContext.edition);
+        return normalizeStudyEdition(runtime.edition);
+    }
+
     function normalizeChatEntries(value) {
         if (!Array.isArray(value)) return [];
+        const edition = activeChatEdition();
         const entries = value
             .map(item => ({
                 role: item && item.role === 'assistant' ? 'assistant' : 'user',
@@ -686,6 +703,14 @@ const LearnMode = (() => {
         const cleaned = [];
         entries.forEach(item => {
             if (isObsoleteKugnusRouteEntry(item)) {
+                const previous = cleaned[cleaned.length - 1];
+                if (previous && previous.role === 'user'
+                    && (!item.question || previous.content.trim() === item.question.trim())) {
+                    cleaned.pop();
+                }
+                return;
+            }
+            if (isCrossEditionAssistantEntry(item, edition)) {
                 const previous = cleaned[cleaned.length - 1];
                 if (previous && previous.role === 'user'
                     && (!item.question || previous.content.trim() === item.question.trim())) {
@@ -711,6 +736,15 @@ const LearnMode = (() => {
             || /\bOPENAI GATEWAY\b/i.test(content)
             || /\bProvider:\s*OLLAMA\b/i.test(content)
             || /\b경로:\s*LOCAL DIRECT\b/i.test(content);
+    }
+
+    function isCrossEditionAssistantEntry(item, edition) {
+        if (!item || item.role !== 'assistant') return false;
+        const content = String(item.content || '');
+        if (edition === 'github') {
+            return /\b(?:oc|kubectl)\s+|OpenShift|EX280|Kubernetes|클러스터|네임스페이스/i.test(content);
+        }
+        return /\bgh\s+(?:auth|repo|issue|pr|api|workflow|run|release)|GitHub Actions|branch protection|Copilot|pull request/i.test(content);
     }
 
     function loadChatHistory() {
@@ -1211,6 +1245,7 @@ const LearnMode = (() => {
     function currentChatContext() {
         if (session.externalContext) {
             return {
+                edition: session.externalContext.edition,
                 lessonTitle: session.externalContext.lessonTitle,
                 trackTitle: session.externalContext.trackTitle,
                 phase: session.externalContext.phase,
@@ -1219,11 +1254,14 @@ const LearnMode = (() => {
                 command: session.externalContext.command,
                 output: session.externalContext.output,
                 explanation: session.externalContext.explanation,
-                hint: session.externalContext.hint
+                hint: session.externalContext.hint,
+                modeGuide: session.externalContext.modeGuide
             };
         }
 
+        const editionCopy = currentStudyEditionText();
         const ctx = {
+            edition: normalizeStudyEdition(runtime.edition),
             lessonTitle: session.lesson ? session.lesson.title : '',
             trackTitle: session.track ? session.track.title : '',
             phase: session.phase,
@@ -1232,7 +1270,8 @@ const LearnMode = (() => {
             command: '',
             output: '',
             explanation: '',
-            hint: ''
+            hint: '',
+            modeGuide: editionCopy.modeGuide
         };
 
         if (!session.lesson) return ctx;
@@ -1515,6 +1554,7 @@ const LearnMode = (() => {
             mobileOpen: options.mobileOpen !== undefined ? options.mobileOpen : options.focus !== false,
             externalContext: {
                 key: `${copy.key}-learn-picker`,
+                edition: copy.key,
                 label: copy.listLabel,
                 lessonTitle: copy.listLabel,
                 trackTitle: copy.trackTitle,
@@ -1524,7 +1564,8 @@ const LearnMode = (() => {
                 command: '',
                 output: '',
                 explanation: copy.explanation,
-                hint: copy.hint
+                hint: copy.hint,
+                modeGuide: copy.modeGuide
             }
         });
         if (options.focus !== false && ui.chatInput) ui.chatInput.focus();

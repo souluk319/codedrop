@@ -16,41 +16,41 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-found-02",
-                scenario: "octo-org/app 저장소를 로컬로 복제합니다.",
-                answers: ["^gh\\s+repo\\s+clone\\s+octo-org/app$", "^git\\s+clone\\s+https://github\\.com/octo-org/app(\\.git)?$"],
-                canonical: "gh repo clone octo-org/app",
+                scenario: "souluk319/codedrop 저장소를 로컬로 복제합니다.",
+                answers: ["^gh\\s+repo\\s+clone\\s+souluk319/codedrop$", "^git\\s+clone\\s+https://github\\.com/souluk319/codedrop(\\.git)?$"],
+                canonical: "gh repo clone souluk319/codedrop",
                 hint: "GitHub CLI라면 gh repo clone OWNER/REPO 형태입니다.",
                 explain: "GitHub CLI는 저장소 URL을 외우지 않아도 owner/repo 형식으로 복제할 수 있습니다."
             },
             {
                 id: "gh-found-03",
-                scenario: "새 private 저장소 octo-org/app을 생성합니다.",
-                answers: ["^gh\\s+repo\\s+create\\s+octo-org/app\\s+--private$"],
-                canonical: "gh repo create octo-org/app --private",
+                scenario: "새 private 저장소 souluk319/codedrop-lab을 생성합니다.",
+                answers: ["^gh\\s+repo\\s+create\\s+souluk319/codedrop-lab\\s+--private$"],
+                canonical: "gh repo create souluk319/codedrop-lab --private",
                 hint: "repo create 뒤에 owner/repo와 --private를 붙입니다.",
                 explain: "공개 범위는 저장소 생성 시 중요한 보안/협업 설정입니다."
             },
             {
                 id: "gh-found-04",
-                scenario: "login-fix 브랜치를 새로 만들고 이동합니다.",
-                answers: ["^git\\s+(checkout\\s+-b|switch\\s+-c)\\s+login-fix$"],
-                canonical: "git switch -c login-fix",
+                scenario: "feat/codedrop-dev 브랜치를 새로 만들고 이동합니다.",
+                answers: ["^git\\s+(checkout\\s+-b|switch\\s+-c)\\s+feat/codedrop-dev$"],
+                canonical: "git switch -c feat/codedrop-dev",
                 hint: "최신 Git에서는 switch -c를 많이 씁니다.",
                 explain: "브랜치는 작업 단위를 분리해 PR 리뷰와 병합 흐름을 안전하게 만듭니다."
             },
             {
                 id: "gh-found-05",
-                scenario: "제목이 'login bug'이고 본문이 'token is empty'인 이슈를 생성합니다.",
-                answers: ["^gh\\s+issue\\s+create\\s+.*--title\\s+['\"]login bug['\"].*--body\\s+['\"]token is empty['\"].*$"],
-                canonical: "gh issue create --title \"login bug\" --body \"token is empty\"",
+                scenario: "제목이 'codedrop polish'이고 본문이 'mobile panel overlaps'인 이슈를 생성합니다.",
+                answers: ["^gh\\s+issue\\s+create\\s+.*--title\\s+['\"]codedrop polish['\"].*--body\\s+['\"]mobile panel overlaps['\"].*$"],
+                canonical: "gh issue create --title \"codedrop polish\" --body \"mobile panel overlaps\"",
                 hint: "gh issue create에 --title과 --body를 붙입니다.",
                 explain: "Issue는 작업, 버그, 논의의 단위를 저장소 안에 남기는 기본 협업 도구입니다."
             },
             {
                 id: "gh-found-06",
-                scenario: "제목이 'fix login'이고 본문이 'handle empty token'인 PR을 main 대상으로 생성합니다.",
-                answers: ["^gh\\s+pr\\s+create\\s+.*--title\\s+['\"]fix login['\"].*--body\\s+['\"]handle empty token['\"].*--base\\s+main.*$"],
-                canonical: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main",
+                scenario: "제목이 'polish codedrop UX'이고 본문이 'align mobile panels'인 PR을 main 대상으로 생성합니다.",
+                answers: ["^gh\\s+pr\\s+create\\s+.*--title\\s+['\"]polish codedrop UX['\"].*--body\\s+['\"]align mobile panels['\"].*--base\\s+main.*$"],
+                canonical: "gh pr create --title \"polish codedrop UX\" --body \"align mobile panels\" --base main",
                 hint: "gh pr create에 --title, --body, --base를 붙입니다.",
                 explain: "PR은 코드 리뷰, 자동 검사, 변경 이력을 묶는 GitHub 협업의 중심 단위입니다."
             },
@@ -88,9 +88,9 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-found-11",
-                scenario: "octo-org/app 저장소의 기본 정보를 확인합니다.",
-                answers: ["^gh\\s+repo\\s+view\\s+octo-org/app$"],
-                canonical: "gh repo view octo-org/app",
+                scenario: "souluk319/codedrop 저장소의 기본 정보를 확인합니다.",
+                answers: ["^gh\\s+repo\\s+view\\s+souluk319/codedrop$"],
+                canonical: "gh repo view souluk319/codedrop",
                 hint: "repo view OWNER/REPO",
                 explain: "저장소 visibility, default branch, description 같은 기본 정보를 빠르게 확인합니다."
             },
@@ -112,41 +112,41 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-found-14",
-                scenario: "octo-org/app 저장소의 community profile 상태를 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/community/profile$"],
-                canonical: "gh api repos/octo-org/app/community/profile",
+                scenario: "souluk319/codedrop 저장소의 community profile 상태를 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/community/profile$"],
+                canonical: "gh api repos/souluk319/codedrop/community/profile",
                 hint: "README, LICENSE, CONTRIBUTING, CODEOWNERS, SECURITY 같은 핵심 파일 상태를 보는 엔드포인트입니다.",
                 explain: "Foundations 범위에서는 저장소의 핵심 파일과 커뮤니티 프로필이 협업 품질에 어떤 영향을 주는지 알아야 합니다."
             },
             {
                 id: "gh-found-15",
-                scenario: "octo-org/app 저장소의 repository topics를 JSON으로 확인합니다.",
-                answers: ["^gh\\s+repo\\s+view\\s+octo-org/app\\s+--json\\s+repositoryTopics$"],
-                canonical: "gh repo view octo-org/app --json repositoryTopics",
+                scenario: "souluk319/codedrop 저장소의 repository topics를 JSON으로 확인합니다.",
+                answers: ["^gh\\s+repo\\s+view\\s+souluk319/codedrop\\s+--json\\s+repositoryTopics$"],
+                canonical: "gh repo view souluk319/codedrop --json repositoryTopics",
                 hint: "repo view에서 --json repositoryTopics를 요청합니다.",
                 explain: "Topics는 저장소를 발견 가능하게 만들고 프로젝트의 성격을 분류하는 메타데이터입니다."
             },
             {
                 id: "gh-found-16",
-                scenario: "octo-org/app 저장소의 milestones 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/milestones$"],
-                canonical: "gh api repos/octo-org/app/milestones",
+                scenario: "souluk319/codedrop 저장소의 milestones 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/milestones$"],
+                canonical: "gh api repos/souluk319/codedrop/milestones",
                 hint: "repos/OWNER/REPO/milestones",
                 explain: "Milestones는 이슈와 PR을 릴리스나 목표 단위로 묶어 진행 상황을 추적하는 협업 기능입니다."
             },
             {
                 id: "gh-found-17",
-                scenario: "octo-org/app 저장소의 branch protection 설정을 main 브랜치 기준으로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/branches/main/protection$"],
-                canonical: "gh api repos/octo-org/app/branches/main/protection",
+                scenario: "souluk319/codedrop 저장소의 branch protection 설정을 main 브랜치 기준으로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/branches/main/protection$"],
+                canonical: "gh api repos/souluk319/codedrop/branches/main/protection",
                 hint: "branches/main/protection",
                 explain: "Branch protection은 리뷰, required checks, force push 제한 같은 협업 안전장치를 설정합니다."
             },
             {
                 id: "gh-found-18",
-                scenario: "octo-org/app 저장소의 wiki 활성 여부를 확인합니다.",
-                answers: ["^gh\\s+repo\\s+view\\s+octo-org/app\\s+--json\\s+hasWikiEnabled$"],
-                canonical: "gh repo view octo-org/app --json hasWikiEnabled",
+                scenario: "souluk319/codedrop 저장소의 wiki 활성 여부를 확인합니다.",
+                answers: ["^gh\\s+repo\\s+view\\s+souluk319/codedrop\\s+--json\\s+hasWikiEnabled$"],
+                canonical: "gh repo view souluk319/codedrop --json hasWikiEnabled",
                 hint: "repo view --json hasWikiEnabled",
                 explain: "Wiki, Pages, Discussions, Gists는 GitHub에서 문서와 지식 공유를 할 때 쓰는 기능입니다."
             }
@@ -245,33 +245,33 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-act-12",
-                scenario: "octo-org/app 저장소의 Actions cache 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/caches$"],
-                canonical: "gh api repos/octo-org/app/actions/caches",
+                scenario: "souluk319/codedrop 저장소의 Actions cache 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/caches$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/caches",
                 hint: "actions/caches 엔드포인트를 조회합니다.",
                 explain: "Cache는 CI 속도를 높이지만 stale cache나 용량 문제를 만들 수 있어 운영 점검 대상입니다."
             },
             {
                 id: "gh-act-13",
-                scenario: "octo-org/app 저장소의 environment 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/environments$"],
-                canonical: "gh api repos/octo-org/app/environments",
+                scenario: "souluk319/codedrop 저장소의 environment 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/environments$"],
+                canonical: "gh api repos/souluk319/codedrop/environments",
                 hint: "repos/OWNER/REPO/environments",
                 explain: "Environment는 배포 승인, 보호 규칙, 환경별 secret을 관리하는 Actions 운영 단위입니다."
             },
             {
                 id: "gh-act-14",
-                scenario: "octo-org/app 저장소의 workflow 권한 설정을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/permissions/workflow$"],
-                canonical: "gh api repos/octo-org/app/actions/permissions/workflow",
+                scenario: "souluk319/codedrop 저장소의 workflow 권한 설정을 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/permissions/workflow$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/permissions/workflow",
                 hint: "actions/permissions/workflow",
                 explain: "GITHUB_TOKEN 권한은 least privilege 관점에서 read/write 범위를 확인해야 합니다."
             },
             {
                 id: "gh-act-15",
-                scenario: "octo-org/app 저장소의 OIDC subject customization 설정을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/oidc/customization/sub$"],
-                canonical: "gh api repos/octo-org/app/actions/oidc/customization/sub",
+                scenario: "souluk319/codedrop 저장소의 OIDC subject customization 설정을 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/oidc/customization/sub$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/oidc/customization/sub",
                 hint: "actions/oidc/customization/sub",
                 explain: "OIDC subject claim은 클라우드 배포 권한을 어떤 워크플로/브랜치에 묶을지 결정합니다."
             },
@@ -286,38 +286,38 @@ const GITHUB_SCENARIO_PACKS = {
             {
                 id: "gh-act-17",
                 scenario: "run id 123456의 job 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/runs/123456/jobs$"],
-                canonical: "gh api repos/octo-org/app/actions/runs/123456/jobs",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/runs/123456/jobs$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/runs/123456/jobs",
                 hint: "actions/runs/<run_id>/jobs",
                 explain: "Matrix나 needs 관계가 있는 워크플로에서는 실패한 job과 step을 정확히 찾는 것이 첫 진단입니다."
             },
             {
                 id: "gh-act-18",
-                scenario: "octo-org/app 저장소의 artifact 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/artifacts$"],
-                canonical: "gh api repos/octo-org/app/actions/artifacts",
+                scenario: "souluk319/codedrop 저장소의 artifact 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/artifacts$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/artifacts",
                 hint: "actions/artifacts",
                 explain: "Artifacts는 테스트 리포트, 빌드 결과, 배포 산출물을 실행 사이에 전달하거나 보관할 때 사용합니다."
             },
             {
                 id: "gh-act-19",
-                scenario: "octo-org/app 저장소의 self-hosted runner 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/runners$"],
-                canonical: "gh api repos/octo-org/app/actions/runners",
+                scenario: "souluk319/codedrop 저장소의 self-hosted runner 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/runners$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/runners",
                 hint: "repos/OWNER/REPO/actions/runners",
                 explain: "Self-hosted runner는 라벨, 네트워크, 보안 격리까지 함께 관리해야 하는 Actions 운영 대상입니다."
             },
             {
                 id: "gh-act-20",
-                scenario: "octo-org/app 저장소의 workflow run retention 설정을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/permissions$"],
-                canonical: "gh api repos/octo-org/app/actions/permissions",
+                scenario: "souluk319/codedrop 저장소의 workflow run retention 설정을 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/permissions$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/permissions",
                 hint: "actions/permissions",
                 explain: "Actions 운영에서는 권한, artifact/log 보존 기간, 허용 action 정책을 비용과 보안 관점에서 관리합니다."
             },
             {
                 id: "gh-act-21",
-                scenario: "octo-org/app 저장소의 failed run만 조회합니다.",
+                scenario: "souluk319/codedrop 저장소의 failed run만 조회합니다.",
                 answers: ["^gh\\s+run\\s+list\\s+--status\\s+failure$"],
                 canonical: "gh run list --status failure",
                 hint: "run list --status failure",
@@ -331,40 +331,40 @@ const GITHUB_SCENARIO_PACKS = {
             {
                 id: "gh-sec-01",
                 scenario: "저장소의 code scanning alert 목록을 API로 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/code-scanning/alerts$"],
-                canonical: "gh api repos/octo-org/app/code-scanning/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/code-scanning/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/code-scanning/alerts",
                 hint: "gh api repos/OWNER/REPO/code-scanning/alerts",
                 explain: "Code scanning은 CodeQL 등 정적 분석 결과를 alert로 관리합니다."
             },
             {
                 id: "gh-sec-02",
                 scenario: "Secret scanning alert 목록을 API로 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/secret-scanning/alerts$"],
-                canonical: "gh api repos/octo-org/app/secret-scanning/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/secret-scanning/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/secret-scanning/alerts",
                 hint: "secret-scanning/alerts 엔드포인트를 씁니다.",
                 explain: "토큰 유출은 빠르게 탐지하고 revoke하는 운영 절차가 중요합니다."
             },
             {
                 id: "gh-sec-03",
                 scenario: "Dependabot alert 목록을 API로 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/dependabot/alerts$"],
-                canonical: "gh api repos/octo-org/app/dependabot/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/dependabot/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/dependabot/alerts",
                 hint: "dependabot/alerts 엔드포인트를 씁니다.",
                 explain: "Dependabot alerts는 취약한 의존성을 발견하고 업데이트 PR로 연결합니다."
             },
             {
                 id: "gh-sec-04",
                 scenario: "저장소 dependency graph의 SBOM을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/dependency-graph/sbom$"],
-                canonical: "gh api repos/octo-org/app/dependency-graph/sbom",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/dependency-graph/sbom$"],
+                canonical: "gh api repos/souluk319/codedrop/dependency-graph/sbom",
                 hint: "dependency-graph/sbom 엔드포인트를 씁니다.",
                 explain: "SBOM은 소프트웨어 구성 요소를 추적하고 공급망 리스크를 파악하는 자료입니다."
             },
             {
                 id: "gh-sec-05",
                 scenario: "저장소 security advisory 목록을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/security-advisories$"],
-                canonical: "gh api repos/octo-org/app/security-advisories",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/security-advisories$"],
+                canonical: "gh api repos/souluk319/codedrop/security-advisories",
                 hint: "security-advisories 엔드포인트입니다.",
                 explain: "Private vulnerability reporting과 security advisory는 취약점 공개/조율 프로세스와 연결됩니다."
             },
@@ -395,24 +395,24 @@ const GITHUB_SCENARIO_PACKS = {
             {
                 id: "gh-sec-09",
                 scenario: "저장소의 vulnerability alerts 설정 엔드포인트를 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/vulnerability-alerts$"],
-                canonical: "gh api repos/octo-org/app/vulnerability-alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/vulnerability-alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/vulnerability-alerts",
                 hint: "vulnerability-alerts 엔드포인트입니다.",
                 explain: "취약한 의존성 알림은 dependency graph와 Dependabot 운영의 기초입니다."
             },
             {
                 id: "gh-sec-10",
-                scenario: "octo-org/app 저장소의 code scanning default setup 설정을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/code-scanning/default-setup$"],
-                canonical: "gh api repos/octo-org/app/code-scanning/default-setup",
+                scenario: "souluk319/codedrop 저장소의 code scanning default setup 설정을 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/code-scanning/default-setup$"],
+                canonical: "gh api repos/souluk319/codedrop/code-scanning/default-setup",
                 hint: "code-scanning/default-setup",
                 explain: "Default setup은 CodeQL을 빠르게 활성화하는 경로이며 언어/쿼리 설정 확인이 필요합니다."
             },
             {
                 id: "gh-sec-11",
                 scenario: "열린 secret scanning alert만 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/secret-scanning/alerts\\s+--field\\s+state=open$"],
-                canonical: "gh api repos/octo-org/app/secret-scanning/alerts --field state=open",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/secret-scanning/alerts\\s+--field\\s+state=open$"],
+                canonical: "gh api repos/souluk319/codedrop/secret-scanning/alerts --field state=open",
                 hint: "--field state=open으로 열린 alert만 필터링합니다.",
                 explain: "Secret scanning과 push protection은 노출된 토큰이 코드에 들어오거나 남는 것을 막는 핵심 기능입니다."
             },
@@ -426,15 +426,15 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-sec-13",
-                scenario: "octo-org/app 저장소의 Dependabot secret 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/dependabot/secrets$"],
-                canonical: "gh api repos/octo-org/app/dependabot/secrets",
+                scenario: "souluk319/codedrop 저장소의 Dependabot secret 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/dependabot/secrets$"],
+                canonical: "gh api repos/souluk319/codedrop/dependabot/secrets",
                 hint: "dependabot/secrets",
                 explain: "Dependabot secrets는 dependency update 과정에서 private registry 등에 접근할 때 필요합니다."
             },
             {
                 id: "gh-sec-14",
-                scenario: "octo-org/app 저장소의 dependency review 설정 파일을 확인합니다.",
+                scenario: "souluk319/codedrop 저장소의 dependency review 설정 파일을 확인합니다.",
                 answers: ["^cat\\s+\\.github/dependency-review-config\\.ya?ml$"],
                 canonical: "cat .github/dependency-review-config.yml",
                 hint: "dependency-review-config.yml",
@@ -442,9 +442,9 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-sec-15",
-                scenario: "octo-org/app 저장소의 CodeQL analysis 목록을 API로 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/code-scanning/analyses$"],
-                canonical: "gh api repos/octo-org/app/code-scanning/analyses",
+                scenario: "souluk319/codedrop 저장소의 CodeQL analysis 목록을 API로 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/code-scanning/analyses$"],
+                canonical: "gh api repos/souluk319/codedrop/code-scanning/analyses",
                 hint: "code-scanning/analyses",
                 explain: "분석 이력은 어떤 언어, ref, category로 CodeQL이 실행됐는지 확인하는 데 필요합니다."
             },
@@ -466,9 +466,9 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-sec-18",
-                scenario: "octo-org/app 저장소의 secret scanning alert 42를 resolved 상태로 닫습니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/secret-scanning/alerts/42\\s+--method\\s+PATCH\\s+--field\\s+state=resolved\\s+--field\\s+resolution=revoked$"],
-                canonical: "gh api repos/octo-org/app/secret-scanning/alerts/42 --method PATCH --field state=resolved --field resolution=revoked",
+                scenario: "souluk319/codedrop 저장소의 secret scanning alert 42를 resolved 상태로 닫습니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/secret-scanning/alerts/42\\s+--method\\s+PATCH\\s+--field\\s+state=resolved\\s+--field\\s+resolution=revoked$"],
+                canonical: "gh api repos/souluk319/codedrop/secret-scanning/alerts/42 --method PATCH --field state=resolved --field resolution=revoked",
                 hint: "PATCH alert id 42에 state=resolved, resolution=revoked",
                 explain: "Secret alert는 토큰 폐기, 영향 범위 확인, 해결 사유 기록까지 마쳐야 닫을 수 있습니다."
             }
@@ -503,17 +503,17 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-admin-04",
-                scenario: "octo-org/app 저장소의 rulesets를 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/rulesets$"],
-                canonical: "gh api repos/octo-org/app/rulesets",
+                scenario: "souluk319/codedrop 저장소의 rulesets를 조회합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/rulesets$"],
+                canonical: "gh api repos/souluk319/codedrop/rulesets",
                 hint: "repos/OWNER/REPO/rulesets",
                 explain: "Rulesets는 브랜치 보호보다 넓은 정책을 저장소/조직에 적용합니다."
             },
             {
                 id: "gh-admin-05",
-                scenario: "dev1 사용자의 octo-org/app 저장소 권한을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/collaborators/dev1/permission$"],
-                canonical: "gh api repos/octo-org/app/collaborators/dev1/permission",
+                scenario: "dev1 사용자의 souluk319/codedrop 저장소 권한을 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/collaborators/dev1/permission$"],
+                canonical: "gh api repos/souluk319/codedrop/collaborators/dev1/permission",
                 hint: "collaborators/<user>/permission",
                 explain: "권한 확인은 접근 문제를 진단할 때 먼저 확인해야 하는 축입니다."
             },
@@ -615,9 +615,9 @@ const GITHUB_SCENARIO_PACKS = {
             },
             {
                 id: "gh-admin-18",
-                scenario: "octo-org/app 저장소의 transfer 요청 상태를 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/transfer$"],
-                canonical: "gh api repos/octo-org/app/transfer",
+                scenario: "souluk319/codedrop 저장소의 transfer 요청 상태를 확인합니다.",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/transfer$"],
+                canonical: "gh api repos/souluk319/codedrop/transfer",
                 hint: "repos/OWNER/REPO/transfer",
                 explain: "저장소 이전은 소유권, 접근 권한, 조직 정책에 영향을 주므로 admin 범위에서 추적해야 합니다."
             },
@@ -813,24 +813,24 @@ const GITHUB_SCENARIO_PACKS = {
             {
                 id: "gh-inc-04",
                 scenario: "dev1이 저장소에 접근할 수 없습니다. 권한을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/collaborators/dev1/permission$"],
-                canonical: "gh api repos/octo-org/app/collaborators/dev1/permission",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/collaborators/dev1/permission$"],
+                canonical: "gh api repos/souluk319/codedrop/collaborators/dev1/permission",
                 hint: "collaborators/dev1/permission",
                 explain: "사용자 권한, 팀 권한, 조직 정책을 분리해서 확인해야 합니다."
             },
             {
                 id: "gh-inc-05",
                 scenario: "Secret scanning이 토큰 유출을 감지했습니다. 알림 목록을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/secret-scanning/alerts$"],
-                canonical: "gh api repos/octo-org/app/secret-scanning/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/secret-scanning/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/secret-scanning/alerts",
                 hint: "secret-scanning/alerts",
                 explain: "유출 대응은 탐지, 토큰 폐기, 영향 범위 확인, 재발 방지 순서로 진행합니다."
             },
             {
                 id: "gh-inc-06",
                 scenario: "Dependabot이 critical 취약점을 보고했습니다. 알림 목록을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/dependabot/alerts$"],
-                canonical: "gh api repos/octo-org/app/dependabot/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/dependabot/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/dependabot/alerts",
                 hint: "dependabot/alerts",
                 explain: "취약 의존성은 severity, affected range, patched version을 보고 업데이트 전략을 정합니다."
             },
@@ -845,32 +845,32 @@ const GITHUB_SCENARIO_PACKS = {
             {
                 id: "gh-inc-08",
                 scenario: "Ruleset 때문에 직접 push가 막혔습니다. 저장소 rulesets를 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/rulesets$"],
-                canonical: "gh api repos/octo-org/app/rulesets",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/rulesets$"],
+                canonical: "gh api repos/souluk319/codedrop/rulesets",
                 hint: "rulesets",
                 explain: "Ruleset 위반은 우회가 아니라 PR/check/review 흐름을 맞추는 방식으로 해결해야 합니다."
             },
             {
                 id: "gh-inc-09",
                 scenario: "CI가 갑자기 느려졌습니다. Actions cache 목록을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/caches$"],
-                canonical: "gh api repos/octo-org/app/actions/caches",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/caches$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/caches",
                 hint: "actions/caches",
                 explain: "Cache 용량, key 충돌, 오래된 cache는 CI 속도와 재현성 문제를 만들 수 있습니다."
             },
             {
                 id: "gh-inc-10",
                 scenario: "배포 승인이 걸려 진행되지 않습니다. 저장소 environment 설정을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/environments$"],
-                canonical: "gh api repos/octo-org/app/environments",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/environments$"],
+                canonical: "gh api repos/souluk319/codedrop/environments",
                 hint: "environments",
                 explain: "Environment protection rule은 승인자, 대기 시간, 브랜치 제한으로 배포를 막을 수 있습니다."
             },
             {
                 id: "gh-inc-11",
                 scenario: "클라우드 배포 OIDC 인증이 실패했습니다. subject customization을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/oidc/customization/sub$"],
-                canonical: "gh api repos/octo-org/app/actions/oidc/customization/sub",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/oidc/customization/sub$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/oidc/customization/sub",
                 hint: "actions/oidc/customization/sub",
                 explain: "OIDC subject claim이 클라우드 trust policy와 맞지 않으면 토큰 교환이 실패합니다."
             },
@@ -902,9 +902,9 @@ const GITHUB_MOCK_LABS = [
         steps: [
             {
                 id: "gh-lab-01-01",
-                scenario: "작업 브랜치 feature/login을 생성하고 이동합니다.",
-                answers: ["^git\\s+(switch\\s+-c|checkout\\s+-b)\\s+feature/login$"],
-                canonical: "git switch -c feature/login",
+                scenario: "작업 브랜치 feat/codedrop-dev를 생성하고 이동합니다.",
+                answers: ["^git\\s+(switch\\s+-c|checkout\\s+-b)\\s+feat/codedrop-dev$"],
+                canonical: "git switch -c feat/codedrop-dev",
                 hint: "switch -c 또는 checkout -b",
                 explain: "작업은 main에서 직접 하지 않고 브랜치로 분리합니다."
             },
@@ -918,9 +918,9 @@ const GITHUB_MOCK_LABS = [
             },
             {
                 id: "gh-lab-01-03",
-                scenario: "메시지 'add login flow'로 커밋합니다.",
-                answers: ["^git\\s+commit\\s+-m\\s+['\"]add login flow['\"]$"],
-                canonical: "git commit -m \"add login flow\"",
+                scenario: "메시지 'polish codedrop dev'로 커밋합니다.",
+                answers: ["^git\\s+commit\\s+-m\\s+['\"]polish codedrop dev['\"]$"],
+                canonical: "git commit -m \"polish codedrop dev\"",
                 hint: "commit -m",
                 explain: "커밋 메시지는 변경 의도를 짧게 설명해야 합니다."
             },
@@ -928,7 +928,7 @@ const GITHUB_MOCK_LABS = [
                 id: "gh-lab-01-04",
                 scenario: "main 대상으로 PR을 생성합니다.",
                 answers: ["^gh\\s+pr\\s+create\\s+.*--base\\s+main.*$"],
-                canonical: "gh pr create --title \"add login flow\" --body \"implements login\" --base main",
+                canonical: "gh pr create --title \"polish codedrop dev\" --body \"updates GitHub Edition UX\" --base main",
                 hint: "gh pr create --base main",
                 explain: "PR은 리뷰와 CI를 거쳐 main에 합류하는 관문입니다."
             },
@@ -1005,32 +1005,32 @@ const GITHUB_MOCK_LABS = [
             {
                 id: "gh-lab-03-01",
                 scenario: "Code scanning alert 목록을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/code-scanning/alerts$"],
-                canonical: "gh api repos/octo-org/app/code-scanning/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/code-scanning/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/code-scanning/alerts",
                 hint: "code-scanning/alerts",
                 explain: "코드 취약점 분석 결과는 code scanning alert로 관리됩니다."
             },
             {
                 id: "gh-lab-03-02",
                 scenario: "Secret scanning alert 목록을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/secret-scanning/alerts$"],
-                canonical: "gh api repos/octo-org/app/secret-scanning/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/secret-scanning/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/secret-scanning/alerts",
                 hint: "secret-scanning/alerts",
                 explain: "유출 토큰 탐지는 실제 운영에서 즉시 대응해야 하는 영역입니다."
             },
             {
                 id: "gh-lab-03-03",
                 scenario: "Dependabot alert 목록을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/dependabot/alerts$"],
-                canonical: "gh api repos/octo-org/app/dependabot/alerts",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/dependabot/alerts$"],
+                canonical: "gh api repos/souluk319/codedrop/dependabot/alerts",
                 hint: "dependabot/alerts",
                 explain: "의존성 취약점은 업데이트 PR과 릴리스 노트 검토로 이어집니다."
             },
             {
                 id: "gh-lab-03-04",
                 scenario: "SBOM을 조회합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/dependency-graph/sbom$"],
-                canonical: "gh api repos/octo-org/app/dependency-graph/sbom",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/dependency-graph/sbom$"],
+                canonical: "gh api repos/souluk319/codedrop/dependency-graph/sbom",
                 hint: "dependency-graph/sbom",
                 explain: "공급망 보안은 의존성 목록과 출처 파악에서 출발합니다."
             },
@@ -1076,8 +1076,8 @@ const GITHUB_MOCK_LABS = [
             {
                 id: "gh-lab-04-04",
                 scenario: "dev1의 저장소 권한을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/collaborators/dev1/permission$"],
-                canonical: "gh api repos/octo-org/app/collaborators/dev1/permission",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/collaborators/dev1/permission$"],
+                canonical: "gh api repos/souluk319/codedrop/collaborators/dev1/permission",
                 hint: "collaborators/dev1/permission",
                 explain: "접근 장애는 사용자 권한과 팀 권한을 함께 추적합니다."
             },
@@ -1099,9 +1099,9 @@ const GITHUB_MOCK_LABS = [
             {
                 id: "gh-lab-05-01",
                 scenario: "저장소 rulesets를 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/rulesets$"],
-                canonical: "gh api repos/octo-org/app/rulesets",
-                hint: "repos/octo-org/app/rulesets",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/rulesets$"],
+                canonical: "gh api repos/souluk319/codedrop/rulesets",
+                hint: "repos/souluk319/codedrop/rulesets",
                 explain: "Rulesets는 직접 push, required review, required status check 같은 정책을 강제합니다."
             },
             {
@@ -1193,40 +1193,40 @@ const GITHUB_MOCK_LABS = [
             {
                 id: "gh-lab-07-02",
                 scenario: "저장소 workflow 권한 설정을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/permissions/workflow$"],
-                canonical: "gh api repos/octo-org/app/actions/permissions/workflow",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/permissions/workflow$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/permissions/workflow",
                 hint: "actions/permissions/workflow",
                 explain: "GITHUB_TOKEN 권한은 워크플로가 저장소에 무엇을 쓸 수 있는지 제한합니다."
             },
             {
                 id: "gh-lab-07-03",
                 scenario: "배포 environment 목록을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/environments$"],
-                canonical: "gh api repos/octo-org/app/environments",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/environments$"],
+                canonical: "gh api repos/souluk319/codedrop/environments",
                 hint: "environments",
                 explain: "Environment는 배포 승인과 환경별 secret을 묶는 단위입니다."
             },
             {
                 id: "gh-lab-07-04",
                 scenario: "OIDC subject customization을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/oidc/customization/sub$"],
-                canonical: "gh api repos/octo-org/app/actions/oidc/customization/sub",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/oidc/customization/sub$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/oidc/customization/sub",
                 hint: "actions/oidc/customization/sub",
                 explain: "OIDC subject는 클라우드 trust policy와 맞아야 합니다."
             },
             {
                 id: "gh-lab-07-05",
                 scenario: "Actions cache 목록을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/actions/caches$"],
-                canonical: "gh api repos/octo-org/app/actions/caches",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/actions/caches$"],
+                canonical: "gh api repos/souluk319/codedrop/actions/caches",
                 hint: "actions/caches",
                 explain: "Cache는 속도 개선과 장애 원인 양쪽이 될 수 있습니다."
             },
             {
                 id: "gh-lab-07-06",
                 scenario: "Code scanning default setup을 확인합니다.",
-                answers: ["^gh\\s+api\\s+repos/octo-org/app/code-scanning/default-setup$"],
-                canonical: "gh api repos/octo-org/app/code-scanning/default-setup",
+                answers: ["^gh\\s+api\\s+repos/souluk319/codedrop/code-scanning/default-setup$"],
+                canonical: "gh api repos/souluk319/codedrop/code-scanning/default-setup",
                 hint: "code-scanning/default-setup",
                 explain: "Default setup이 켜져 있어야 표준 CodeQL 분석이 자동으로 돌아갑니다."
             }
@@ -1249,12 +1249,12 @@ const GITHUB_LESSON_TRACKS = [
                 quizIds: ["gh-found-02", "gh-found-04", "gh-found-06", "gh-found-13", "gh-found-17"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-01", cmd: "git clone https://github.com/octo-org/app.git", desc: "원격 저장소를 로컬로 복제합니다.", output: "Cloning into 'app'...", explain: "대부분의 GitHub 실무는 저장소를 받고 로컬 작업 환경을 만드는 데서 시작합니다.", scaffold: "git clone https://github.com/octo-org/app.git" },
+                    { id: "gh-ls-01", cmd: "git clone https://github.com/souluk319/codedrop.git", desc: "원격 저장소를 로컬로 복제합니다.", output: "Cloning into 'codedrop'...", explain: "대부분의 GitHub 실무는 저장소를 받고 로컬 작업 환경을 만드는 데서 시작합니다.", scaffold: "git clone https://github.com/souluk319/codedrop.git" },
                     { id: "gh-ls-02", cmd: "git status", desc: "작업 트리 상태를 확인합니다.", output: "On branch main\nnothing to commit, working tree clean", explain: "수정 전후 상태 확인은 실수 방지의 가장 기본적인 습관입니다.", scaffold: "git status" },
-                    { id: "gh-ls-03", cmd: "git switch -c login-fix", desc: "작업 브랜치를 생성합니다.", output: "Switched to a new branch 'login-fix'", explain: "작업 단위는 main이 아니라 브랜치로 분리합니다.", scaffold: "git switch -c login-fix" },
+                    { id: "gh-ls-03", cmd: "git switch -c feat/codedrop-dev", desc: "작업 브랜치를 생성합니다.", output: "Switched to a new branch 'feat/codedrop-dev'", explain: "작업 단위는 main이 아니라 브랜치로 분리합니다.", scaffold: "git switch -c feat/codedrop-dev" },
                     { id: "gh-ls-04", cmd: "git add .", desc: "변경사항을 스테이징합니다.", output: "changes staged", explain: "커밋에 포함할 변경을 명시적으로 고르는 단계입니다.", scaffold: "git add ." },
-                    { id: "gh-ls-04a", cmd: "git commit -m \"add login flow\"", desc: "작업 내용을 커밋합니다.", output: "[login-fix abc123] add login flow", explain: "작고 설명 가능한 커밋은 리뷰와 롤백을 쉽게 만듭니다.", scaffold: "git commit -m \"add login flow\"" },
-                    { id: "gh-ls-04b", cmd: "git push -u origin login-fix", desc: "브랜치를 원격으로 올립니다.", output: "branch 'login-fix' set up to track 'origin/login-fix'", explain: "원격 브랜치가 있어야 PR 생성과 CI 실행으로 이어집니다.", scaffold: "git push -u origin login-fix" }
+                    { id: "gh-ls-04a", cmd: "git commit -m \"polish codedrop dev\"", desc: "작업 내용을 커밋합니다.", output: "[feat/codedrop-dev abc123] polish codedrop dev", explain: "작고 설명 가능한 커밋은 리뷰와 롤백을 쉽게 만듭니다.", scaffold: "git commit -m \"polish codedrop dev\"" },
+                    { id: "gh-ls-04b", cmd: "git push -u origin feat/codedrop-dev", desc: "브랜치를 원격으로 올립니다.", output: "branch 'feat/codedrop-dev' set up to track 'origin/feat/codedrop-dev'", explain: "원격 브랜치가 있어야 PR 생성과 CI 실행으로 이어집니다.", scaffold: "git push -u origin feat/codedrop-dev" }
                 ]
             },
             {
@@ -1266,10 +1266,10 @@ const GITHUB_LESSON_TRACKS = [
                 quizIds: ["gh-found-05", "gh-found-06", "gh-found-07", "gh-found-08", "gh-found-13"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-05", cmd: "gh issue list --label bug", desc: "버그 이슈를 먼저 확인합니다.", output: "12  login bug  bug", explain: "작업 전 이슈와 우선순위를 확인하면 중복 작업을 줄일 수 있습니다.", scaffold: "gh issue list --label bug" },
-                    { id: "gh-ls-06", cmd: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main", desc: "PR을 생성합니다.", output: "https://github.com/octo-org/app/pull/42", explain: "PR은 리뷰와 자동 검사를 묶는 관문입니다.", scaffold: "gh pr create --title \"fix login\" --body \"handle empty token\" --base main" },
+                    { id: "gh-ls-05", cmd: "gh issue list --label bug", desc: "버그 이슈를 먼저 확인합니다.", output: "12  codedrop polish  bug", explain: "작업 전 이슈와 우선순위를 확인하면 중복 작업을 줄일 수 있습니다.", scaffold: "gh issue list --label bug" },
+                    { id: "gh-ls-06", cmd: "gh pr create --title \"polish codedrop UX\" --body \"align mobile panels\" --base main", desc: "PR을 생성합니다.", output: "https://github.com/souluk319/codedrop/pull/42", explain: "PR은 리뷰와 자동 검사를 묶는 관문입니다.", scaffold: "gh pr create --title \"polish codedrop UX\" --body \"align mobile panels\" --base main" },
                     { id: "gh-ls-07", cmd: "gh pr checks 42", desc: "PR의 CI 체크 상태를 확인합니다.", output: "build pass\nlint pass", explain: "Required checks가 실패하면 병합이 막히므로 먼저 확인합니다.", scaffold: "gh pr checks 42" },
-                    { id: "gh-ls-08", cmd: "gh pr checkout 42", desc: "리뷰 대상 PR을 로컬로 가져옵니다.", output: "Switched to branch 'contributor/login-fix'", explain: "리뷰나 재현이 필요할 때 PR 브랜치를 직접 체크아웃합니다.", scaffold: "gh pr checkout 42" },
+                    { id: "gh-ls-08", cmd: "gh pr checkout 42", desc: "리뷰 대상 PR을 로컬로 가져옵니다.", output: "Switched to branch 'contributor/feat/codedrop-dev'", explain: "리뷰나 재현이 필요할 때 PR 브랜치를 직접 체크아웃합니다.", scaffold: "gh pr checkout 42" },
                     { id: "gh-ls-09", cmd: "gh pr review 42 --approve", desc: "PR을 승인 리뷰합니다.", output: "✓ Approved pull request", explain: "승인 리뷰는 병합 정책의 조건이 될 수 있습니다.", scaffold: "gh pr review 42 --approve" },
                     { id: "gh-ls-09a", cmd: "gh pr merge 42 --squash --delete-branch", desc: "PR을 병합합니다.", output: "✓ Merged pull request #42", explain: "Squash merge와 브랜치 삭제로 히스토리를 정리합니다.", scaffold: "gh pr merge 42 --squash --delete-branch" }
                 ]
@@ -1283,10 +1283,10 @@ const GITHUB_LESSON_TRACKS = [
                 quizIds: ["gh-found-09", "gh-found-11", "gh-found-14", "gh-found-17", "gh-found-18"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-10", cmd: "gh repo view octo-org/app", desc: "저장소 기본 정보를 확인합니다.", output: "name: octo-org/app\nvisibility: private", explain: "visibility와 default branch는 협업·보안 판단의 기본 정보입니다.", scaffold: "gh repo view octo-org/app" },
-                    { id: "gh-ls-11", cmd: "gh api repos/octo-org/app/community/profile", desc: "커뮤니티 프로필을 확인합니다.", output: "{\"health_percentage\":75}", explain: "README, LICENSE, CONTRIBUTING, CODEOWNERS, SECURITY 같은 기본 파일 상태를 봅니다.", scaffold: "gh api repos/octo-org/app/community/profile" },
-                    { id: "gh-ls-12", cmd: "gh api repos/octo-org/app/branches/main/protection", desc: "main 브랜치 보호 설정을 확인합니다.", output: "{\"required_status_checks\":{}}", explain: "브랜치 보호는 리뷰, required checks, force push 제한의 중심입니다.", scaffold: "gh api repos/octo-org/app/branches/main/protection" },
-                    { id: "gh-ls-13", cmd: "gh api repos/octo-org/app/rulesets", desc: "저장소 rulesets를 확인합니다.", output: "[{\"name\":\"main protection\"}]", explain: "Ruleset은 저장소 정책을 명시적으로 적용하는 최신 운영 단위입니다.", scaffold: "gh api repos/octo-org/app/rulesets" },
+                    { id: "gh-ls-10", cmd: "gh repo view souluk319/codedrop", desc: "저장소 기본 정보를 확인합니다.", output: "name: souluk319/codedrop\nvisibility: public", explain: "visibility와 default branch는 협업·보안 판단의 기본 정보입니다.", scaffold: "gh repo view souluk319/codedrop" },
+                    { id: "gh-ls-11", cmd: "gh api repos/souluk319/codedrop/community/profile", desc: "커뮤니티 프로필을 확인합니다.", output: "{\"health_percentage\":75}", explain: "README, LICENSE, CONTRIBUTING, CODEOWNERS, SECURITY 같은 기본 파일 상태를 봅니다.", scaffold: "gh api repos/souluk319/codedrop/community/profile" },
+                    { id: "gh-ls-12", cmd: "gh api repos/souluk319/codedrop/branches/main/protection", desc: "main 브랜치 보호 설정을 확인합니다.", output: "{\"required_status_checks\":{}}", explain: "브랜치 보호는 리뷰, required checks, force push 제한의 중심입니다.", scaffold: "gh api repos/souluk319/codedrop/branches/main/protection" },
+                    { id: "gh-ls-13", cmd: "gh api repos/souluk319/codedrop/rulesets", desc: "저장소 rulesets를 확인합니다.", output: "[{\"name\":\"main protection\"}]", explain: "Ruleset은 저장소 정책을 명시적으로 적용하는 최신 운영 단위입니다.", scaffold: "gh api repos/souluk319/codedrop/rulesets" },
                     { id: "gh-ls-14", cmd: "gh release create v1.0.0 --generate-notes", desc: "자동 릴리스 노트와 함께 릴리스를 생성합니다.", output: "✓ Created release v1.0.0", explain: "릴리스 노트는 배포 변경사항을 팀과 사용자에게 전달하는 실무 기록입니다.", scaffold: "gh release create v1.0.0 --generate-notes" }
                 ]
             }
@@ -1339,10 +1339,10 @@ const GITHUB_LESSON_TRACKS = [
                 quizCount: 5,
                 steps: [
                     { id: "gh-ls-43", cmd: "gh workflow view reusable.yml --yaml", desc: "재사용 워크플로 계약을 확인합니다.", output: "on:\n  workflow_call:", explain: "workflow_call이 있어야 다른 워크플로에서 호출할 수 있습니다.", scaffold: "gh workflow view reusable.yml --yaml" },
-                    { id: "gh-ls-44", cmd: "gh api repos/octo-org/app/actions/permissions/workflow", desc: "workflow 권한을 확인합니다.", output: "{\"default_workflow_permissions\":\"read\"}", explain: "기본 권한은 최소 권한 원칙으로 점검합니다.", scaffold: "gh api repos/octo-org/app/actions/permissions/workflow" },
-                    { id: "gh-ls-45", cmd: "gh api repos/octo-org/app/environments", desc: "environment를 확인합니다.", output: "{\"environments\":[{\"name\":\"production\"}]}", explain: "보호된 배포 환경은 승인을 요구할 수 있습니다.", scaffold: "gh api repos/octo-org/app/environments" },
-                    { id: "gh-ls-46", cmd: "gh api repos/octo-org/app/actions/oidc/customization/sub", desc: "OIDC subject 설정을 확인합니다.", output: "{\"use_default\":false}", explain: "OIDC claim은 외부 클라우드 권한과 직접 연결됩니다.", scaffold: "gh api repos/octo-org/app/actions/oidc/customization/sub" },
-                    { id: "gh-ls-47", cmd: "gh api repos/octo-org/app/actions/caches", desc: "Actions cache를 확인합니다.", output: "{\"actions_caches\":[]}", explain: "Cache 상태는 CI 성능과 장애 재현성을 좌우합니다.", scaffold: "gh api repos/octo-org/app/actions/caches" }
+                    { id: "gh-ls-44", cmd: "gh api repos/souluk319/codedrop/actions/permissions/workflow", desc: "workflow 권한을 확인합니다.", output: "{\"default_workflow_permissions\":\"read\"}", explain: "기본 권한은 최소 권한 원칙으로 점검합니다.", scaffold: "gh api repos/souluk319/codedrop/actions/permissions/workflow" },
+                    { id: "gh-ls-45", cmd: "gh api repos/souluk319/codedrop/environments", desc: "environment를 확인합니다.", output: "{\"environments\":[{\"name\":\"production\"}]}", explain: "보호된 배포 환경은 승인을 요구할 수 있습니다.", scaffold: "gh api repos/souluk319/codedrop/environments" },
+                    { id: "gh-ls-46", cmd: "gh api repos/souluk319/codedrop/actions/oidc/customization/sub", desc: "OIDC subject 설정을 확인합니다.", output: "{\"use_default\":false}", explain: "OIDC claim은 외부 클라우드 권한과 직접 연결됩니다.", scaffold: "gh api repos/souluk319/codedrop/actions/oidc/customization/sub" },
+                    { id: "gh-ls-47", cmd: "gh api repos/souluk319/codedrop/actions/caches", desc: "Actions cache를 확인합니다.", output: "{\"actions_caches\":[]}", explain: "Cache 상태는 CI 성능과 장애 재현성을 좌우합니다.", scaffold: "gh api repos/souluk319/codedrop/actions/caches" }
                 ]
             }
         ]
@@ -1361,10 +1361,10 @@ const GITHUB_LESSON_TRACKS = [
                 quizIds: ["gh-sec-01", "gh-sec-02", "gh-sec-03", "gh-sec-04", "gh-sec-06", "gh-sec-07"],
                 quizCount: 5,
                 steps: [
-                    { id: "gh-ls-25", cmd: "gh api repos/octo-org/app/code-scanning/alerts", desc: "Code scanning alert를 조회합니다.", output: "[{\"rule\":\"js/sql-injection\"}]", explain: "코드 분석 기반 보안 알림입니다.", scaffold: "gh api repos/octo-org/app/code-scanning/alerts" },
-                    { id: "gh-ls-26", cmd: "gh api repos/octo-org/app/secret-scanning/alerts", desc: "Secret scanning alert를 조회합니다.", output: "[{\"secret_type\":\"github_token\"}]", explain: "유출된 토큰 탐지 알림입니다.", scaffold: "gh api repos/octo-org/app/secret-scanning/alerts" },
-                    { id: "gh-ls-27", cmd: "gh api repos/octo-org/app/dependabot/alerts", desc: "Dependabot alert를 조회합니다.", output: "[{\"dependency\":\"lodash\"}]", explain: "의존성 취약점 알림입니다.", scaffold: "gh api repos/octo-org/app/dependabot/alerts" },
-                    { id: "gh-ls-28", cmd: "gh api repos/octo-org/app/dependency-graph/sbom", desc: "SBOM을 확인합니다.", output: "{\"sbom\":{\"packages\":[]}}", explain: "공급망 분석의 근거 자료입니다.", scaffold: "gh api repos/octo-org/app/dependency-graph/sbom" },
+                    { id: "gh-ls-25", cmd: "gh api repos/souluk319/codedrop/code-scanning/alerts", desc: "Code scanning alert를 조회합니다.", output: "[{\"rule\":\"js/sql-injection\"}]", explain: "코드 분석 기반 보안 알림입니다.", scaffold: "gh api repos/souluk319/codedrop/code-scanning/alerts" },
+                    { id: "gh-ls-26", cmd: "gh api repos/souluk319/codedrop/secret-scanning/alerts", desc: "Secret scanning alert를 조회합니다.", output: "[{\"secret_type\":\"github_token\"}]", explain: "유출된 토큰 탐지 알림입니다.", scaffold: "gh api repos/souluk319/codedrop/secret-scanning/alerts" },
+                    { id: "gh-ls-27", cmd: "gh api repos/souluk319/codedrop/dependabot/alerts", desc: "Dependabot alert를 조회합니다.", output: "[{\"dependency\":\"lodash\"}]", explain: "의존성 취약점 알림입니다.", scaffold: "gh api repos/souluk319/codedrop/dependabot/alerts" },
+                    { id: "gh-ls-28", cmd: "gh api repos/souluk319/codedrop/dependency-graph/sbom", desc: "SBOM을 확인합니다.", output: "{\"sbom\":{\"packages\":[]}}", explain: "공급망 분석의 근거 자료입니다.", scaffold: "gh api repos/souluk319/codedrop/dependency-graph/sbom" },
                     { id: "gh-ls-29", cmd: "codeql database create codeql-db", desc: "CodeQL DB를 만듭니다.", output: "Successfully created database", explain: "로컬 CodeQL 분석의 준비 단계입니다.", scaffold: "codeql database create codeql-db" },
                     { id: "gh-ls-30", cmd: "codeql database analyze codeql-db codeql/javascript-queries", desc: "CodeQL 분석을 실행합니다.", output: "Analysis complete", explain: "쿼리 팩으로 취약 패턴을 분석합니다.", scaffold: "codeql database analyze codeql-db codeql/javascript-queries" }
                 ]
@@ -1381,7 +1381,7 @@ const GITHUB_LESSON_TRACKS = [
                     { id: "gh-ls-31", cmd: "gh api orgs/octo-org/teams", desc: "팀 목록을 조회합니다.", output: "[{\"name\":\"platform\"}]", explain: "팀 기반 권한 관리의 출발점입니다.", scaffold: "gh api orgs/octo-org/teams" },
                     { id: "gh-ls-32", cmd: "gh api orgs/octo-org/members", desc: "멤버 목록을 조회합니다.", output: "[{\"login\":\"dev1\"}]", explain: "조직 구성원을 먼저 파악합니다.", scaffold: "gh api orgs/octo-org/members" },
                     { id: "gh-ls-33", cmd: "gh api orgs/octo-org/outside_collaborators", desc: "외부 협업자를 확인합니다.", output: "[{\"login\":\"contractor1\"}]", explain: "외부 접근은 주기적으로 검토해야 합니다.", scaffold: "gh api orgs/octo-org/outside_collaborators" },
-                    { id: "gh-ls-34", cmd: "gh api repos/octo-org/app/rulesets", desc: "저장소 rulesets를 조회합니다.", output: "[{\"name\":\"main protection\"}]", explain: "규칙 기반 보호 정책을 확인합니다.", scaffold: "gh api repos/octo-org/app/rulesets" },
+                    { id: "gh-ls-34", cmd: "gh api repos/souluk319/codedrop/rulesets", desc: "저장소 rulesets를 조회합니다.", output: "[{\"name\":\"main protection\"}]", explain: "규칙 기반 보호 정책을 확인합니다.", scaffold: "gh api repos/souluk319/codedrop/rulesets" },
                     { id: "gh-ls-35", cmd: "gh api orgs/octo-org/actions/runner-groups", desc: "runner group을 확인합니다.", output: "[{\"name\":\"prod-runners\"}]", explain: "runner 접근 제어는 Actions 보안의 핵심입니다.", scaffold: "gh api orgs/octo-org/actions/runner-groups" },
                     { id: "gh-ls-36", cmd: "gh api orgs/octo-org/audit-log", desc: "audit log를 확인합니다.", output: "[{\"action\":\"repo.add_member\"}]", explain: "변경 이력 추적은 조직 관리의 안전망입니다.", scaffold: "gh api orgs/octo-org/audit-log" }
                 ]
