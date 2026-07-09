@@ -7999,27 +7999,27 @@
                     <div class="pack-maker-engine-select" id="pack-maker-engine-shell">
                         <button class="pack-maker-engine-toggle" id="pack-maker-engine-toggle" type="button"
                             aria-haspopup="listbox" aria-expanded="false">
-                            <span id="pack-maker-engine-label">GEMINI 2.5 FLASH</span>
+                            <span id="pack-maker-engine-label">KUGNUS SERVER</span>
                             <span class="pack-maker-engine-chevron">⌄</span>
                         </button>
                         <div class="pack-maker-engine-menu hidden" id="pack-maker-engine-menu" role="listbox"
                             aria-label="Pack Maker LLM engine">
                             <button class="pack-maker-engine-option" type="button" role="option" data-engine="kugnus"
-                                aria-selected="false">KUGNUS SERVER</button>
+                                aria-selected="true">KUGNUS SERVER</button>
                             <button class="pack-maker-engine-option" type="button" role="option" data-engine="gemini"
-                                aria-selected="true">GEMINI 2.5 FLASH</button>
+                                aria-selected="false">GEMINI 2.5 FLASH</button>
                             <button class="pack-maker-engine-option" type="button" role="option" data-engine="openai"
                                 aria-selected="false">GPT 5.4 MINI</button>
                         </div>
                     </div>
                     <select id="pack-maker-engine" aria-label="Pack maker engine" aria-hidden="true" tabindex="-1">
-                        <option value="kugnus">KUGNUS SERVER</option>
-                        <option value="gemini" selected>GEMINI 2.5 FLASH</option>
+                        <option value="kugnus" selected>KUGNUS SERVER</option>
+                        <option value="gemini">GEMINI 2.5 FLASH</option>
                         <option value="openai">GPT 5.4 MINI</option>
                     </select>
                     <button class="btn-small" id="pack-maker-clear" type="button">CLR</button>
                 </div>
-                <div class="llm-route-status" id="pack-maker-route">GOOGLE ROUTE: GEMINI API</div>
+                <div class="llm-route-status" id="pack-maker-route">KUGNUS ROUTE: CHECKING</div>
                 <div class="pack-maker-chat-wrap">
                     <div class="pack-maker-chat-log" id="pack-maker-chat-log"></div>
                     <button class="learn-chat-bottom hidden" id="pack-maker-chat-bottom" type="button">↓ NEW</button>
@@ -8348,30 +8348,30 @@
         <aside class="learn-chat-panel hidden" id="learn-chat-panel" aria-label="학습 질문 챗">
             <div class="learn-chat-head">
                 <div class="learn-chat-meta">
-                    <div class="learn-chat-title" id="learn-chat-title">ASK TO GEMINI 2.5 FLASH</div>
+                    <div class="learn-chat-title" id="learn-chat-title">ASK TO KUGNUS SERVER</div>
                     <div class="learn-engine-select" id="learn-chat-engine-shell">
                         <button class="learn-engine-toggle" id="learn-chat-engine-toggle" type="button"
                             aria-haspopup="listbox" aria-expanded="false">
-                            <span id="learn-chat-engine-label">GEMINI 2.5 FLASH</span>
+                            <span id="learn-chat-engine-label">KUGNUS SERVER</span>
                             <span class="learn-engine-chevron">⌄</span>
                         </button>
                         <div class="learn-engine-menu hidden" id="learn-chat-engine-menu" role="listbox"
                             aria-label="LLM 엔진 선택">
                             <button class="learn-engine-option" type="button" role="option" data-engine="kugnus"
-                                aria-selected="false">KUGNUS SERVER</button>
+                                aria-selected="true">KUGNUS SERVER</button>
                             <button class="learn-engine-option" type="button" role="option" data-engine="gemini"
-                                aria-selected="true">GEMINI 2.5 FLASH</button>
+                                aria-selected="false">GEMINI 2.5 FLASH</button>
                             <button class="learn-engine-option" type="button" role="option" data-engine="openai"
                                 aria-selected="false">GPT 5.4 MINI</button>
                         </div>
                     </div>
                     <select id="learn-chat-engine" aria-label="LLM 엔진 선택" aria-hidden="true" tabindex="-1">
-                        <option value="kugnus">KUGNUS SERVER</option>
-                        <option value="gemini" selected>GEMINI 2.5 FLASH</option>
+                        <option value="kugnus" selected>KUGNUS SERVER</option>
+                        <option value="gemini">GEMINI 2.5 FLASH</option>
                         <option value="openai">GPT 5.4 MINI</option>
                     </select>
-                    <div class="llm-route-status" id="learn-chat-route">GOOGLE ROUTE: GEMINI API</div>
-                    <div class="learn-chat-status" id="learn-chat-status">GEMINI 2.5 FLASH READY</div>
+                    <div class="llm-route-status" id="learn-chat-route">KUGNUS ROUTE: CHECKING</div>
+                    <div class="learn-chat-status" id="learn-chat-status">KUGNUS SERVER READY</div>
                 </div>
                 <button class="btn-small" id="learn-chat-clear" type="button">CLR</button>
             </div>

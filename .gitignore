@@ -17,6 +17,12 @@ Thumbs.db
 .vscode/
 .idea/
 .claude/
+.codex/
+.cursor/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+CODEX.md
 
 # 5. md 파일제외
 docs/

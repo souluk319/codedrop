@@ -599,7 +599,7 @@ assert(learn.includes("ui.hintBtn.classList.toggle('hidden', review || !hasStepH
 assert(learn.includes('session.stepHintOpen = !') || learn.includes('if (session.stepHintOpen)'), 'learn step hints should be closable after opening');
 assert(learn.includes('session.quizHintOpen = !') || learn.includes('if (session.quizHintOpen)'), 'learn quiz hints should be closable after opening');
 assert(learn.includes("ui.peekBtn.textContent = session.peeked ? '정답 닫기' : '정답 보기';"), 'learn answer peek should toggle open and closed');
-assert(index.includes('ASK TO GEMINI 2.5 FLASH'), 'learn chat should default the assistant title to Gemini for public clones');
+assert(index.includes('ASK TO KUGNUS SERVER'), 'learn chat should default the assistant title to KUGNUS SERVER');
 assert(index.includes('data-engine="kugnus"') && index.includes('KUGNUS SERVER'), 'learn chat should expose KUGNUS SERVER as the local engine choice');
 assert(index.includes('data-engine="openai"') && index.includes('GPT 5.4 MINI'), 'learn chat should expose GPT 5.4 MINI as an engine choice');
 assert(index.includes('id="scenario-chat"'), 'scenario/exam/incident screens should expose the shared OCP chat button');
@@ -619,7 +619,7 @@ assert(lab.includes("openStudyChat({ focus: false });"), 'mock lab screens shoul
 assert(lab.includes("LearnMode.openContextChat(chatContextForCurrentStep(), options)"), 'lab screens should open the shared LearnMode chat panel');
 assert(lab.includes("if (ui.chatBtn) ui.chatBtn.classList.remove('hidden');"), 'lab chat button should stay visible outside guided mode');
 assert(index.includes('data-engine="gemini"') && index.includes('GEMINI 2.5 FLASH'), 'learn chat and Pack Maker should expose Gemini 2.5 Flash as an engine choice');
-assert(index.includes('<option value="gemini" selected>GEMINI 2.5 FLASH</option>'), 'learn chat hidden select should default to Gemini');
+assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'learn chat hidden select should default to KUGNUS SERVER');
 assert(learn.includes('LEARN_API_BASE') && learn.includes('`${LEARN_API_BASE}/api/learn-chat/stream`'), 'learn chat should call the base-prefixed streaming server-side LLM proxy');
 assert(learn.includes("engine: ui.chatEngine.value"), 'learn chat should send the selected LLM engine');
 assert(!learn.includes('TEST_CHAT_ENGINE'), 'localhost GPT test lock should be removed');
@@ -654,10 +654,10 @@ assert(learn.includes('appendInline'), 'learn chat markdown renderer should buil
 assert(learn.includes('createAssistantActions'), 'assistant answers should expose copy/retry/regenerate actions');
 assert(learn.includes('persistChatHistory()'), 'learn chat should persist lesson history');
 assert(!/innerHTML\s*=\s*(markdown|answer|text|data\.answer)/.test(learn), 'markdown/chat answers must not be assigned through raw innerHTML');
-assert(server.includes('KUGNUS_GATEWAY_BASE_URL'), 'KUGNUS SERVER should prefer the public gateway base URL');
-assert(server.includes('KUGNUS_GATEWAY_API_KEY'), 'KUGNUS SERVER should read the public gateway API key');
+assert(server.includes('KUGNUS_GATEWAY_BASE_URL'), 'KUGNUS SERVER should prefer the configured gateway base URL');
+assert(server.includes('KUGNUS_GATEWAY_API_KEY'), 'KUGNUS SERVER should read the configured gateway API key');
 assert(server.includes('KUGNUS_GATEWAY_MODEL'), 'KUGNUS SERVER should read the gateway model id');
-assert(server.includes('KUGNUS_CHAT_MODEL'), 'KUGNUS SERVER should accept the public gateway chat model alias');
+assert(server.includes('KUGNUS_CHAT_MODEL'), 'KUGNUS SERVER should accept the configured gateway chat model alias');
 assert(server.includes('GEMINI_API_KEY'), 'server should support Gemini as an optional comparison engine');
 assert(server.includes('streamGenerateContent?alt=sse'), 'server should stream Gemini through the official SSE endpoint');
 assert(server.includes('LLM_TARGET_DIAGNOSTICS'), 'KUGNUS health target host diagnostics should be gated in production');
@@ -673,7 +673,7 @@ assert(index.includes('id="learn-chat-route"'), 'learn chat should show the acti
 assert(learn.includes('function updateChatRouteStatus'), 'learn chat should update the visible KUGNUS route indicator');
 assert(learn.includes("if (value === 'direct') return 'LOCAL DIRECT';"), 'learn chat should label direct KUGNUS routing as local-only');
 assert(server.includes('normalizeOpenAiMiniModel'), 'OpenAI model ids should be normalized before use');
-assert(server.includes('function normalizedEngineName(value, fallback = "gemini")'), 'server chat engine default should prefer Gemini for public clones');
+assert(server.includes('value || process.env.DEFAULT_CHAT_ENGINE || "kugnus"'), 'server chat engine default should prefer KUGNUS SERVER');
 assert(server.includes('app.get("/api/llm/kugnus/health"'), 'KUGNUS health endpoint is missing');
 assert(game.includes('startKugnusHealthCheck()'), 'app should start a background KUGNUS health check');
 assert(game.includes('maybeSwitchFromOfflineKugnus'), 'app should expose KUGNUS fallback confirmation helper');
@@ -943,11 +943,11 @@ assert(localSchema.includes('CREATE TABLE IF NOT EXISTS users'), 'local Docker s
 assert(localSchema.includes('CREATE TABLE IF NOT EXISTS custom_packs'), 'local Docker schema should initialize custom pack tables');
 assert(localSchema.includes('CREATE TABLE IF NOT EXISTS custom_pack_scores'), 'local Docker schema should initialize custom pack score tables');
 assert(localEnvExample.includes('DB_SSL=false'), 'local env example should disable TLS for local Docker MySQL');
-assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=gemini'), 'local env example should default chat to Gemini for public clones');
-assert(localEnvExample.includes('# KUGNUS_GATEWAY_BASE_URL='), 'local env example should document KUGNUS as a commented owner/private gateway path');
+assert(localEnvExample.includes('DEFAULT_CHAT_ENGINE=kugnus'), 'local env example should default chat to KUGNUS SERVER');
+assert(localEnvExample.includes('# KUGNUS_GATEWAY_BASE_URL=https://llm.example.com/v1'), 'local env example should document KUGNUS gateway as an owner/private commented path');
 assert(localEnvExample.includes('# KUGNUS_GATEWAY_API_KEY='), 'local env example should document the commented KUGNUS gateway API key');
 assert(localEnvExample.includes('# KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'local env example should document the commented KUGNUS gateway chat model');
-assert(localEnvExample.includes('# KUGNUS_CHAT_MODEL=gemma4:12b-it-qat'), 'local env example should document the commented KUGNUS chat model alias');
+assert(localEnvExample.includes('KUGNUS_CHAT_MODEL=gemma4:12b-it-qat'), 'local env example should document the KUGNUS chat model alias');
 assert(localEnvExample.includes('EMBEDDING_MODEL=embeddinggemma:latest'), 'local env example should document the embedding model as a future optional path');
 assert(localEnvExample.includes('KUGNUS_EMBED_MODEL=embeddinggemma:latest'), 'local env example should document the KUGNUS embedding model alias');
 assert(fs.existsSync(path.join(root, 'scripts/verify_kugnus_gateway_live.mjs')), 'live KUGNUS gateway verifier script is missing');
@@ -991,12 +991,12 @@ assert(dockerImageVerifier.includes('100\\\\.99\\\\.'), 'Docker verifier should 
 assert(dockerImageVerifier.includes('sk-[A-Za-z0-9_-]{16,}'), 'Docker verifier should reject secret-like OpenAI keys in the image');
 assert(kugnusGatewayContract.includes('verifyOpenAiEnvDoesNotConfigureKugnus'), 'KUGNUS gateway contract should prove OPENAI_* remains GPT fallback only');
 assert(kugnusGatewayContract.includes('verifyCanonicalGatewayRequired'), 'KUGNUS gateway contract should require canonical KUGNUS gateway env');
-assert(readme.includes('GEMINI_API_KEY=<GEMINI_API_KEY>'), 'README should document Gemini as the public clone LLM setup path');
-assert(readme.includes('# KUGNUS_GATEWAY_BASE_URL=https://llm.example.com/v1'), 'README should document KUGNUS as a commented owner/private gateway path');
-assert(readme.includes('.env.kugnus-gateway.example'), 'README should point to the commented KUGNUS owner/private reference template');
+assert(readme.includes('Play now: https://www.kugnus.com/games/codedrop/'), 'README should expose the public game URL at the top');
+assert(readme.includes('# KUGNUS_GATEWAY_BASE_URL=https://llm.example.com/v1'), 'README should document the owner/private KUGNUS gateway as a commented example');
+assert(readme.includes('.env.kugnus-gateway.example'), 'README should point to the owner/private KUGNUS gateway reference env template');
 assert(readme.includes('npm run verify:kugnus-gateway'), 'README should document the KUGNUS gateway contract verifier command');
 assert(readme.includes('verify:release-runtime -- --env-file=.env.production'), 'README should document runtime route verification before release');
-assert(readme.includes('`OPENAI_*` remains the ordinary GPT mini path'), 'README should make OPENAI_* the ordinary GPT mini path');
+assert(readme.includes('`OPENAI_*` is GPT fallback only'), 'README should make OPENAI_* fallback-only explicit');
 assert(readme.includes('release tooling treats that'), 'README should document explicit release env files as authoritative');
 assert(verifyAll.includes('scripts/verify_release_readiness_matrix.mjs'), 'main verification should exercise the release readiness matrix');
 assert(verifyAll.includes('scripts/verify_release_runtime_contract.mjs'), 'main verification should exercise the release runtime contract');
@@ -1019,9 +1019,7 @@ assert(systemDoctor.includes("'http://127.0.0.1:3001'"), 'system doctor default 
 assert(liveGatewayVerifier.includes('override: false'), 'live KUGNUS verifier should let process env override env-file values');
 assert(releaseCheck.includes('SESSION_SECRET must be a long random production secret'), 'release check should reject local/dev session secrets');
 assert(releaseCheck.includes('ALLOWED_ORIGINS must contain only public https origins'), 'release check should reject localhost/private release origins');
-assert(releaseCheck.includes('DEFAULT_CHAT_ENGINE must be gemini, openai, or kugnus'), 'release check should allow Gemini, OpenAI, or optional owner/private KUGNUS engines');
-assert(releaseCheck.includes('GEMINI_API_KEY is required when DEFAULT_CHAT_ENGINE=gemini'), 'release check should require Gemini API key for Gemini releases');
-assert(releaseCheck.includes('hasGenericOpenAiFallback'), 'release check should accept generic OPENAI_* as the GPT mini path');
+assert(releaseCheck.includes('hasGenericOpenAiFallback'), 'release check should accept generic OPENAI_* as GPT fallback when it is not KUGNUS');
 assert(releaseCheck.includes('Generic OPENAI_MODEL fallback must stay gpt-5.4-mini'), 'release check should enforce mini-only generic GPT fallback');
 assert(releaseCheck.includes('Firebase Hosting must rewrite /api/** to Cloud Run or Functions'), 'release check should require Firebase API rewrites');
 assert(releaseCheck.includes('.firebaserc projects.default must be the real Firebase project id'), 'release check should reject placeholder Firebase project ids');
@@ -1045,7 +1043,8 @@ assert(renderYaml.includes('autoDeployTrigger: checksPass'), 'render.yaml should
     'REVIEW_NOTIFY_EMAIL',
     'MAIL_FROM',
     'PUBLIC_APP_URL',
-    'GEMINI_API_KEY',
+    'KUGNUS_GATEWAY_BASE_URL',
+    'KUGNUS_GATEWAY_API_KEY',
     'OPENAI_API_KEY',
     'DUCKDUCKGO_API_KEY'
 ].forEach(key => {
@@ -1054,7 +1053,7 @@ assert(renderYaml.includes('autoDeployTrigger: checksPass'), 'render.yaml should
 });
 assert(readme.includes('Render/Docker deployment is described by `render.yaml`'), 'README should document the Render Blueprint path');
 assert(readme.includes('Deployment-specific values are intentionally `sync: false`'), 'README should explain Render secret env prompting');
-assert(readme.includes('If you enable the owner/private KUGNUS path'), 'README should frame KUGNUS as an optional owner/private path');
+assert(readme.includes('KUGNUS_GATEWAY_BASE_URL` must be a reachable HTTPS gateway URL'), 'README should reject private KUGNUS gateway URLs for Render release');
 assert(!releaseCheck.includes('function openAiAliasLooksLikeKugnus'), 'release check should not treat OPENAI_* as KUGNUS');
 assert(!systemDoctor.includes('function openAiAliasLooksLikeKugnus'), 'system doctor should not treat OPENAI_* as KUGNUS');
 assert(systemDoctor.includes('if (strict && !releaseSummary.ok)'), 'strict release doctor should stop before slow/mutating checks when release preflight is blocked');
@@ -1249,7 +1248,7 @@ assert(keyboardTest.includes('window.KeyboardTest'), 'keyboard test should expos
 ].forEach(code => assert(keyboardTest.includes(`'${code}'`), `keyboard test is missing key code ${code}`));
 assert(keyboardTest.includes('MAIN_ROWS') && keyboardTest.includes('NAV_KEYS') && keyboardTest.includes('NUM_KEYS'), 'keyboard test should keep main/nav/numpad zones explicit');
 assert(index.includes('min-width: 1120px;'), 'keyboard test board should preserve a stable desktop keyboard width inside its scroll area');
-assert(index.includes('<option value="gemini" selected>GEMINI 2.5 FLASH</option>'), 'pack maker should default to Gemini');
+assert(index.includes('<option value="kugnus" selected>KUGNUS SERVER</option>'), 'pack maker should default to KUGNUS SERVER');
 assert(index.includes('id="pack-maker-engine-shell"'), 'pack maker should use a themed engine picker shell');
 assert(index.includes('id="pack-maker-engine-toggle"'), 'pack maker should use a themed engine picker toggle');
 assert(index.includes('id="pack-maker-engine-menu"'), 'pack maker should use a themed engine picker popover');
@@ -1487,7 +1486,7 @@ assert(productionEnvExample.includes('RESEND_API_KEY='), '.env.production.exampl
 assert(productionEnvExample.includes('PUBLIC_APP_URL=https://codedrop.example.com/games/codedrop'), '.env.production.example should document public app URL with a generic example domain');
 assert(!/@gmail\.com/i.test(productionEnvExample), '.env.production.example should not include a personal review email');
 assert(!/(^|\n)KUGNUS_GATEWAY_BASE_URL=/m.test(localEnvExample), '.env.local.example should not activate KUGNUS gateway env by default');
-assert(localEnvExample.includes('# KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document KUGNUS gateway key only as a comment');
+assert(localEnvExample.includes('# KUGNUS_GATEWAY_API_KEY='), '.env.local.example should document the KUGNUS gateway key only as a comment');
 assert(productionEnvExample.includes('NODE_ENV=production'), '.env.production.example should be explicitly production-scoped');
 assert(productionEnvExample.includes('SESSION_SECRET='), '.env.production.example should require a session secret');
 assert(productionEnvExample.includes('npm run release:secret'), '.env.production.example should point to the session secret generator');
@@ -1495,15 +1494,15 @@ assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://'), '.env.producti
 assert(productionEnvExample.includes('https://codedrop.example.com/games/codedrop/'), '.env.production.example should document a generic CodeDrop subpath');
 assert(productionEnvExample.includes('ALLOWED_ORIGINS=https://codedrop.example.com'), '.env.production.example should use a generic production origin');
 assert(productionEnvExample.includes('DB_SSL=true'), '.env.production.example should default production DB SSL on');
-assert(productionEnvExample.includes('DEFAULT_CHAT_ENGINE=gemini'), '.env.production.example should default to Gemini for public clones');
-assert(!/(^|\n)KUGNUS_GATEWAY_BASE_URL=/m.test(productionEnvExample), '.env.production.example should not require KUGNUS gateway env by default');
+assert(!/(^|\n)KUGNUS_GATEWAY_BASE_URL=/m.test(productionEnvExample), '.env.production.example should not activate KUGNUS gateway env by default');
 assert(productionEnvExample.includes('DUCKDUCKGO_API_KEY='), '.env.production.example should document search grounding credentials');
 assert(productionEnvExample.includes('GEMINI_API_KEY='), '.env.production.example should document the optional Gemini API key');
 assert(renderYaml.includes('GEMINI_API_KEY') && renderYaml.includes('GEMINI_MODEL'), 'render.yaml should expose optional Gemini deployment env vars');
 assert(kugnusGatewayEnvExample.includes('# KUGNUS_GATEWAY_BASE_URL=https://llm.example.com/v1'), 'KUGNUS gateway reference should comment the owner/private gateway URL');
 assert(kugnusGatewayEnvExample.includes('# KUGNUS_GATEWAY_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway reference should comment the Gemma 4 12B model');
 assert(kugnusGatewayEnvExample.includes('# KUGNUS_CHAT_MODEL=gemma4:12b-it-qat'), 'KUGNUS gateway reference should document the chat model alias as a comment');
-assert(!/(^|\n)KUGNUS_GATEWAY_BASE_URL=/m.test(kugnusGatewayEnvExample), 'KUGNUS gateway reference should not contain active env assignments');
+assert(!/(^|\n)KUGNUS_GATEWAY_BASE_URL=/m.test(kugnusGatewayEnvExample), 'KUGNUS gateway reference should not contain active gateway assignments');
+assert(kugnusGatewayEnvExample.includes('OPENAI_MODEL=gpt-5.4-mini'), 'KUGNUS gateway env reference template should keep GPT fallback mini-only');
 const firebaseMigration = read('FIREBASE_MIGRATION.md');
 assert(firebaseMigration.includes('Firebase Hosting rewrite from `/api/**` to Cloud Run or Functions'), 'Firebase migration doc should require API rewrites');
 assert(firebaseMigration.includes('without\n  open development `allow read, write: if true`'), 'Firebase migration doc should reject open Firestore rules');

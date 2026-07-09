@@ -483,7 +483,7 @@ const LearnMode = (() => {
     };
 
     function normalizeChatEngineValue(value) {
-        return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'gemini';
+        return value === 'openai' || value === 'gemini' || value === 'kugnus' ? value : 'kugnus';
     }
 
     function preferredChatEngine() {
@@ -491,7 +491,7 @@ const LearnMode = (() => {
     }
 
     function chatEngineLabel() {
-        return CHAT_ENGINE_LABELS[normalizeChatEngineValue(ui.chatEngine && ui.chatEngine.value)] || CHAT_ENGINE_LABELS.gemini;
+        return CHAT_ENGINE_LABELS[normalizeChatEngineValue(ui.chatEngine && ui.chatEngine.value)] || CHAT_ENGINE_LABELS.kugnus;
     }
 
     function chatTitleLabel() {
