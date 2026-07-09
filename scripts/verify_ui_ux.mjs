@@ -609,6 +609,7 @@ assert(learn.includes('ui.pickerChat.addEventListener') && learn.includes('funct
 assert(learn.includes('openPickerChat({ focus: false });'), 'learn picker should auto-place the shared chat panel without stealing curriculum focus');
 assert(learn.includes('mobileOpen: options.mobileOpen !== undefined ? options.mobileOpen : options.focus !== false'), 'learn picker should keep mobile chat collapsed when focus:false is requested');
 assert(learn.includes('function openContextChat(context = {}, options = {})'), 'shared OCP chat should support non-focus auto placement');
+assert(learn.includes("ownerClass: 'chat-session-active',\n            externalContext: context,\n            mobileOpen: options.mobileOpen !== undefined ? options.mobileOpen : options.focus !== false"), 'shared study chat should keep mobile scenario/lab/exam chat collapsed when focus:false is requested');
 assert(index.includes('id="learn-mobile-chat"'), 'mobile learn lesson cards should expose an ASK KUGNUS launcher');
 assert(index.includes('id="learn-chat-close"'), 'mobile learn chat should expose a collapse button');
 assert(learn.includes('function closeMobileChatPanel'), 'mobile learn chat should collapse without closing the lesson');
@@ -884,6 +885,8 @@ assert(index.includes('padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 var
 assert(index.includes('body.game-active #readme-widget') && index.includes('top: calc(env(safe-area-inset-top, 0px) + 132px);'), 'mobile DROP play widgets should move below the HUD instead of covering score controls');
 assert(index.includes('class="study-account-actions"'), 'logout/withdraw controls should have a stable account action class instead of relying on last-child layout');
 assert(index.includes('body.github-edition .study-account-actions'), 'mobile study edition account actions should stay in normal card flow');
+assert(index.includes('body.github-edition #logged-in-view .study-account-actions') && index.includes('order: 3;'), 'mobile study edition account actions should sit above the mode menu instead of overlapping mode cards');
+assert(index.includes('body.github-edition #logged-in-view .ocp-menu') && index.includes('order: 4;'), 'mobile study edition mode menu should render after account actions in the card flow');
 assert(index.includes('#readme-widget .widget-label') && index.includes('font-size: 0.58rem;'), 'mobile README widget should keep a compact visible label');
 assert(index.includes('body.game-active #readme-widget .widget-label'), 'DROP play may hide the README label only while protecting the HUD');
 assert(index.includes('body.github-edition #ocp-start-btn') && index.includes('font-size: clamp(0.78rem, 3.2vw, 0.94rem);'), 'mobile study start buttons should fit text inside the button frame');

@@ -7570,6 +7570,26 @@
                 padding: 0;
             }
 
+            body.ocp-edition #logged-in-view .welcome-msg,
+            body.github-edition #logged-in-view .welcome-msg {
+                order: 1;
+            }
+
+            body.ocp-edition #logged-in-view .edition-switch,
+            body.github-edition #logged-in-view .edition-switch {
+                order: 2;
+            }
+
+            body.ocp-edition #logged-in-view .study-account-actions,
+            body.github-edition #logged-in-view .study-account-actions {
+                order: 3;
+            }
+
+            body.ocp-edition #logged-in-view .ocp-menu,
+            body.github-edition #logged-in-view .ocp-menu {
+                order: 4;
+            }
+
             .edition-switch,
             .standard-actions,
             .standard-mode-grid,
@@ -7834,7 +7854,6 @@
                 inset: auto;
                 transform: none;
                 align-self: stretch;
-                order: 20;
             }
 
             #logged-in-view>div:last-child .btn-small,
