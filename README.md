@@ -1,11 +1,12 @@
 # CodeDrop
 
-**Cyberpunk typing drills, EX280 practice, and AI-made custom word packs.**
+**Cyberpunk typing drills, EX280 practice, GitHub practice, and AI-made custom word packs.**
 
 CodeDrop began as a falling-code typing game. It is now a compact study system:
 official typing packs for muscle memory, an OCP Edition for EX280 hands-on
-practice, and a Pack Maker that turns natural-language topics into playable
-data packs through KUGNUS SERVER, Gemini, or GPT fallback.
+practice, a GitHub Edition for practical GitHub workflows, and a Pack Maker that
+turns natural-language topics into playable data packs through KUGNUS SERVER,
+Gemini, or GPT fallback.
 
 The production app is a Node/Express service with MySQL-compatible storage.
 The frontend stays guest-first: players can open the app and play official DROP
@@ -23,6 +24,10 @@ starts feeling intimidating.
 OCP Edition is also personal: site owner **Kim Sung-uk** built it because he
 wanted OpenShift / EX280 study to feel less like punishment and more like a game.
 This kind of nerdy fun is exactly the point.
+
+GitHub Edition extends that idea to everyday development work: Git basics, PR
+review, branch protection, Actions, security/admin routines, and Copilot are
+learned as a hands-on sequence instead of a pile of docs to memorize.
 
 ## Product Screens
 
@@ -60,6 +65,10 @@ the official packs, so a generated domain pack can move straight into DROP play.
   leaderboards.
 - **OCP Edition**: EX280-focused Learn Mode, CLI DROP, Scenario, Mock Lab, Exam,
   Study Dashboard, and an OCP chat assistant.
+- **GitHub Edition**: practical GitHub Learn curriculum, GitHub DROP, Scenario,
+  Mock Lab, Incident Drill, Exam, and Study Dashboard. The course starts with
+  Git basics and PR review, then moves through repository guardrails, Actions,
+  security/admin operations, and Copilot.
 - **Pack Maker**: search-grounded data-pack drafting, editable term/description
   table, private pack save, operator-reviewed public listing, and generated packs
   that appear in the SELECT PACK cartridge picker.
@@ -87,7 +96,8 @@ Expected:
 - `/ready` returns `{"server":"ok","db":"ok"}`.
 - KUGNUS health returns `{ "ok": true, ... }`.
 - `doctor:full` runs static checks, server/DB readiness, release diagnostics, and the real KUGNUS Pack Maker E2E. It may still report `BLOCKED` for release if public gateway/session/origin env is not configured.
-- Browser E2E proves Pack Maker generation, save, SELECT PACK selection, DROP play, OCP Learn chat, README, MUSIC, and console errors.
+- Browser E2E proves Pack Maker generation, save, SELECT PACK selection, DROP
+  play, OCP Learn chat, GitHub Learn/DROP, README, MUSIC, and console errors.
 - Use `npm run doctor:release -- --base-url=<deployed-or-local-url> --env-file=<release-env-file>` as the fail-fast release gate. It exits non-zero on `FAIL` or `BLOCKED`.
 
 ## Local Setup
@@ -318,6 +328,10 @@ The app uses browser routes below that base path, for example:
 /games/codedrop/ocp
 /games/codedrop/ocp/dashboard
 /games/codedrop/ocp/scenario
+/games/codedrop/github
+/games/codedrop/github/learn
+/games/codedrop/github/play
+/games/codedrop/github/dashboard
 ```
 
 All of those paths must serve the CodeDrop app. The backend already returns
