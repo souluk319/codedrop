@@ -1862,6 +1862,12 @@
             width: min(1680px, calc(100vw - 88px));
         }
 
+        .pack-maker-mobile-tabs,
+        .learn-mobile-chat-btn,
+        .learn-chat-mobile-close {
+            display: none;
+        }
+
         .pack-maker-title {
             font-family: var(--font-display);
             color: var(--secondary-neon);
@@ -7502,21 +7508,79 @@
         }
 
         @media (max-width: 720px) {
+            :root {
+                --mobile-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+                --mobile-panel-gap: 12px;
+            }
+
+            html,
+            body {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
             .overlay {
                 justify-content: flex-start;
-                padding: 24px 0;
+                align-items: center;
+                padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 var(--mobile-safe-bottom);
+                overflow-x: hidden;
+                overflow-y: auto;
             }
 
             .brand-title {
-                font-size: clamp(2.2rem, 12.5vw, 4rem);
+                font-size: clamp(2rem, 10.5vw, 3.4rem);
+                max-width: 96vw;
+                margin-bottom: 14px;
             }
 
             #start-screen .card {
                 width: min(520px, 92vw);
                 height: auto;
                 min-height: 0;
-                max-height: calc(100dvh - 130px);
+                max-height: none;
                 overflow-y: auto;
+                padding: 22px 18px;
+            }
+
+            body.ocp-edition #start-screen,
+            body.github-edition #start-screen {
+                padding-top: calc(env(safe-area-inset-top, 0px) + 64px);
+            }
+
+            body.ocp-edition #start-screen .card,
+            body.github-edition #start-screen .card {
+                height: auto;
+                min-height: 0;
+                max-height: calc(100dvh - 152px);
+                overflow-y: auto;
+                overflow-x: hidden;
+                padding: 22px 18px;
+            }
+
+            .logged-in-view.active {
+                gap: 14px;
+                width: 100%;
+            }
+
+            body.ocp-edition #logged-in-view,
+            body.github-edition #logged-in-view {
+                height: auto;
+                overflow: visible;
+                padding: 0;
+            }
+
+            .edition-switch,
+            .standard-actions,
+            .standard-mode-grid,
+            .practice-style-toggle,
+            .pack-maker-action-group {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .edition-switch {
+                gap: 8px;
             }
 
             #auth-container {
@@ -7556,9 +7620,10 @@
                 flex-direction: column;
                 justify-content: flex-start;
                 gap: 12px;
-                height: 100%;
-                overflow: hidden;
-                padding: 18px 0 calc(var(--corner-widget-size) + var(--corner-widget-offset) + 18px);
+                min-height: 100dvh;
+                height: auto;
+                overflow-y: auto;
+                padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 calc(var(--mobile-safe-bottom) + 8px);
             }
 
             #learn-screen.learn-session-active #learn-card,
@@ -7566,24 +7631,57 @@
             #scenario-screen.chat-session-active > .scenario-card:not(.hidden),
             #lab-screen.chat-session-active > .scenario-card:not(.hidden) {
                 width: min(640px, 92vw);
-                flex: 0 0 min(260px, 38vh);
+                flex: 0 0 auto;
                 height: auto;
-                max-height: min(260px, 38vh);
-                padding: 24px 22px;
+                max-height: calc(100dvh - 86px);
+                padding: 20px 18px;
                 overflow-y: auto;
+            }
+
+            #learn-screen.learn-session-active #learn-card {
+                max-height: none;
+            }
+
+            .learn-mobile-chat-btn,
+            .learn-chat-mobile-close {
+                display: inline-flex;
+            }
+
+            #learn-picker-chat,
+            .learn-mobile-chat-btn {
+                min-height: 36px;
+                border-color: rgba(47, 129, 247, 0.58);
+                color: #7db6ff;
             }
 
             .learn-chat-panel,
             #scenario-screen.chat-session-active .learn-chat-panel,
             #lab-screen.chat-session-active .learn-chat-panel {
-                width: min(640px, 92vw);
-                flex: 1 1 0;
-                height: auto;
-                min-height: 0;
-                max-height: none;
+                position: fixed;
+                left: 12px;
+                right: 12px;
+                bottom: var(--mobile-safe-bottom);
+                z-index: 230;
+                width: auto;
+                height: min(76dvh, 620px);
+                max-height: calc(100dvh - 64px - var(--mobile-safe-bottom));
+                min-height: min(420px, calc(100dvh - 96px));
                 gap: 8px;
-                padding: 14px;
+                padding: 12px;
                 overflow: hidden;
+                transform: translateY(calc(100% + var(--mobile-safe-bottom) + 24px));
+                opacity: 0;
+                pointer-events: none;
+                transition: transform 0.18s ease, opacity 0.18s ease;
+            }
+
+            .learn-chat-panel.mobile-chat-open,
+            #scenario-screen.chat-session-active .learn-chat-panel.mobile-chat-open,
+            #lab-screen.chat-session-active .learn-chat-panel.mobile-chat-open {
+                transform: translateY(0);
+                opacity: 1;
+                pointer-events: auto;
+                display: flex;
             }
 
             .learn-chat-log-wrap {
@@ -7597,6 +7695,24 @@
             #learn-chat-input {
                 min-height: 52px;
                 max-height: 82px;
+                resize: none;
+            }
+
+            .learn-chat-head {
+                gap: 8px;
+            }
+
+            .learn-chat-meta {
+                min-width: 0;
+            }
+
+            .learn-engine-select {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .learn-chat-title {
+                font-size: 1.2rem;
             }
 
             .learn-step-nav {
@@ -7630,9 +7746,93 @@
                 grid-template-columns: 1fr;
             }
 
+            .ocp-menu,
+            body.ocp-edition .ocp-menu,
+            body.github-edition .ocp-menu {
+                width: 100%;
+                gap: 14px;
+                padding: 14px;
+            }
+
+            .ocp-header,
+            body.ocp-edition .ocp-header,
+            body.github-edition .ocp-header {
+                align-items: flex-start;
+            }
+
+            .mode-grid,
+            body.ocp-edition .mode-grid,
+            body.github-edition .mode-grid {
+                grid-template-columns: 1fr !important;
+                grid-auto-rows: auto;
+                min-height: 0;
+                gap: 10px;
+            }
+
+            body.ocp-edition .ocp-menu,
+            body.github-edition .ocp-menu {
+                display: flex;
+                flex-direction: column;
+            }
+
             body.ocp-edition .mode-grid {
-                grid-auto-rows: minmax(62px, auto);
-                min-height: 280px;
+                grid-auto-rows: auto;
+                min-height: 0;
+            }
+
+            body.github-edition .mode-grid {
+                grid-auto-rows: auto !important;
+                flex: 0 0 auto;
+            }
+
+            .mode-choice,
+            body.ocp-edition .mode-choice,
+            body.github-edition .mode-choice,
+            body.github-edition .mode-choice-wide,
+            body.ocp-edition .mode-choice-wide {
+                grid-column: auto;
+                min-height: 72px;
+                height: auto;
+                padding: 12px 14px;
+                text-align: left;
+            }
+
+            .mode-choice strong,
+            body.github-edition .mode-choice strong,
+            body.ocp-edition .mode-choice strong {
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
+
+            .mode-choice span,
+            body.github-edition .mode-choice span,
+            body.ocp-edition .mode-choice span,
+            .mode-info {
+                white-space: normal;
+                overflow-wrap: anywhere;
+                line-height: 1.5;
+            }
+
+            #ocp-start-btn,
+            #dashboard-btn {
+                width: 100%;
+                margin-top: 8px;
+            }
+
+            #logged-in-view>div:last-child,
+            body.ocp-edition #logged-in-view>div:last-child,
+            body.github-edition #logged-in-view>div:last-child {
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px !important;
+                margin-top: 12px !important;
+                position: static;
+            }
+
+            #logged-in-view>div:last-child .btn-small {
+                width: 100%;
+                min-width: 0;
             }
 
             .exam-cat-row,
@@ -7644,6 +7844,152 @@
             .dashboard-cat-meta,
             .exam-cat-count {
                 text-align: left;
+            }
+
+            #pack-maker-screen {
+                --pack-maker-safe-bottom: var(--mobile-safe-bottom);
+                padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 var(--mobile-safe-bottom);
+                gap: 10px;
+                overflow-y: auto;
+            }
+
+            .pack-maker-head,
+            .pack-maker-shell,
+            .pack-maker-mobile-tabs {
+                width: min(640px, 92vw);
+            }
+
+            .pack-maker-head {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .pack-maker-mobile-tabs {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .pack-maker-mobile-tabs .btn-small {
+                min-width: 0;
+                padding-inline: 8px;
+                font-size: 0.62rem;
+            }
+
+            .pack-maker-mobile-tabs .active {
+                color: #050505;
+                background: var(--primary-neon);
+                box-shadow: 0 0 14px rgba(0, 243, 255, 0.32);
+            }
+
+            .pack-maker-shell {
+                height: min(720px, calc(100dvh - 148px - var(--mobile-safe-bottom)));
+                min-height: 500px;
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(0, 1fr);
+                flex-shrink: 0;
+            }
+
+            .mobile-packmaker-tab-chat #pack-maker-editor-panel,
+            .mobile-packmaker-tab-edit #pack-maker-chat-panel,
+            .mobile-packmaker-tab-review #pack-maker-chat-panel {
+                display: none;
+            }
+
+            .mobile-packmaker-tab-review .pack-maker-draft-head,
+            .mobile-packmaker-tab-review .pack-maker-table-wrap,
+            .mobile-packmaker-tab-review .pack-maker-long-editor,
+            .mobile-packmaker-tab-review .pack-maker-footer {
+                display: none;
+            }
+
+            .mobile-packmaker-tab-review .pack-maker-review-summary {
+                display: block;
+                margin: 14px;
+            }
+
+            .mobile-packmaker-tab-review .pack-maker-review-summary.hidden {
+                display: block;
+            }
+
+            .mobile-packmaker-tab-review .pack-maker-review-alerts:empty::before {
+                content: "No public requests yet.";
+                display: block;
+                padding: 14px;
+                color: rgba(224, 230, 237, 0.62);
+                font-family: var(--font-code);
+                font-size: 0.78rem;
+            }
+
+            .pack-maker-tools,
+            .pack-maker-draft-head,
+            .pack-maker-chat-form,
+            .pack-maker-footer {
+                grid-template-columns: 1fr;
+            }
+
+            .pack-maker-draft-head,
+            .pack-maker-chat-form {
+                display: grid;
+            }
+
+            .pack-maker-language-toggles,
+            .pack-maker-long-actions,
+            .pack-maker-action-group {
+                grid-template-columns: 1fr;
+                display: grid;
+            }
+
+            .pack-maker-table {
+                min-width: 680px;
+            }
+
+            .pack-maker-chat-log {
+                padding: 12px;
+            }
+
+            .pack-maker-long-editor textarea {
+                min-height: 220px;
+            }
+
+            #music-widget.closed,
+            #readme-widget {
+                top: calc(env(safe-area-inset-top, 0px) + 12px);
+                bottom: auto !important;
+                width: 44px !important;
+                height: 44px !important;
+                opacity: 0.82;
+                transform: none;
+            }
+
+            #readme-widget {
+                left: 12px !important;
+            }
+
+            #music-widget.closed {
+                right: 12px;
+            }
+
+            body.game-active #readme-widget,
+            body.game-active #music-widget.closed {
+                top: calc(env(safe-area-inset-top, 0px) + 132px);
+                width: 38px !important;
+                height: 38px !important;
+                opacity: 0.58;
+            }
+
+            #music-widget[data-player-ui="island"].island-open {
+                top: calc(env(safe-area-inset-top, 0px) + 12px);
+                bottom: auto;
+                left: 64px;
+                right: 12px;
+                width: auto;
+            }
+
+            #music-widget.closed .icon-label,
+            #readme-widget .widget-label {
+                display: none;
             }
         }
     </style>
@@ -8069,8 +8415,17 @@
             <button class="btn-small" id="pack-maker-close" type="button">HOME</button>
         </div>
 
+        <nav class="pack-maker-mobile-tabs" aria-label="Pack Maker mobile panels">
+            <button class="btn-small active" id="pack-maker-tab-chat" type="button" data-pack-maker-tab="chat"
+                aria-controls="pack-maker-chat-panel" aria-pressed="true">CHAT</button>
+            <button class="btn-small" id="pack-maker-tab-edit" type="button" data-pack-maker-tab="edit"
+                aria-controls="pack-maker-editor-panel" aria-pressed="false">EDIT</button>
+            <button class="btn-small" id="pack-maker-tab-review" type="button" data-pack-maker-tab="review"
+                aria-controls="pack-maker-review-summary" aria-pressed="false">PUBLIC REQUESTS</button>
+        </nav>
+
         <div class="pack-maker-shell">
-            <section class="pack-maker-panel" aria-label="Pack maker chat">
+            <section class="pack-maker-panel" id="pack-maker-chat-panel" aria-label="Pack maker chat">
                 <div class="pack-maker-tools">
                     <div class="pack-maker-type-toggle" aria-label="Pack Maker type">
                         <button class="btn-small active" id="pack-maker-word-mode" type="button">WORD PACK</button>
@@ -8127,7 +8482,7 @@
                 </form>
             </section>
 
-            <section class="pack-maker-panel" aria-label="Pack draft editor">
+            <section class="pack-maker-panel" id="pack-maker-editor-panel" aria-label="Pack draft editor">
                 <div class="pack-maker-editor-scroll">
                     <div class="pack-maker-draft-head">
                         <input id="pack-maker-title" maxlength="60" placeholder="PACK TITLE">
@@ -8408,6 +8763,7 @@
                     <button class="btn-small" id="learn-prev-step" type="button">← 이전</button>
                     <button class="btn-small" id="learn-next-step" type="button">다음 →</button>
                 </div>
+                <button class="btn-small learn-mobile-chat-btn" id="learn-mobile-chat" type="button">ASK KUGNUS</button>
                 <button class="btn-small" id="learn-quit">레슨 목록</button>
             </div>
 
@@ -8462,6 +8818,7 @@
                     <div class="llm-route-status" id="learn-chat-route">KUGNUS ROUTE: CHECKING</div>
                     <div class="learn-chat-status" id="learn-chat-status">KUGNUS SERVER READY</div>
                 </div>
+                <button class="btn-small learn-chat-mobile-close" id="learn-chat-close" type="button">접기</button>
                 <button class="btn-small" id="learn-chat-clear" type="button">CLR</button>
             </div>
             <div class="learn-chat-context" id="learn-chat-context"></div>

@@ -309,6 +309,7 @@ const LearnMode = (() => {
         ui.quitBtn = $('learn-quit');
         ui.prevStepBtn = $('learn-prev-step');
         ui.nextStepBtn = $('learn-next-step');
+        ui.mobileChatBtn = $('learn-mobile-chat');
         ui.introWrap = $('learn-intro-wrap');
         ui.intro = $('learn-intro');
         ui.beginBtn = $('learn-begin-btn');
@@ -337,6 +338,7 @@ const LearnMode = (() => {
         ui.chatForm = $('learn-chat-form');
         ui.chatInput = $('learn-chat-input');
         ui.chatSend = $('learn-chat-send');
+        ui.chatClose = $('learn-chat-close');
         ui.chatClear = $('learn-chat-clear');
 
         ui.summary = $('learn-summary');
@@ -352,11 +354,11 @@ const LearnMode = (() => {
     function ensureEls() {
         const required = [
             'screen', 'picker', 'pickerProgress', 'pickerHome', 'pickerChat', 'continueBtn', 'trackList',
-            'card', 'lessonTitle', 'progress', 'quitBtn', 'prevStepBtn', 'nextStepBtn', 'introWrap', 'intro', 'beginBtn',
+            'card', 'lessonTitle', 'progress', 'quitBtn', 'prevStepBtn', 'nextStepBtn', 'mobileChatBtn', 'introWrap', 'intro', 'beginBtn',
             'workWrap', 'desc', 'target', 'input', 'output', 'feedback', 'peekBtn',
             'hintBtn', 'skipBtn', 'nextBtn', 'chatPanel', 'chatTitle', 'chatEngine', 'chatEngineShell',
             'chatEngineToggle', 'chatEngineLabel', 'chatEngineMenu', 'chatStatus', 'chatContext',
-            'chatLog', 'chatBottom', 'chatForm', 'chatInput', 'chatSend', 'chatClear',
+            'chatLog', 'chatBottom', 'chatForm', 'chatInput', 'chatSend', 'chatClose', 'chatClear',
             'summary', 'summaryTitle', 'summaryStats',
             'summaryReview', 'retryQuizBtn', 'nextLessonBtn', 'listBtn', 'homeBtn'
         ];
@@ -385,6 +387,10 @@ const LearnMode = (() => {
         }
         if (!window.sfx || typeof window.sfx.playKey !== 'function') return;
         window.sfx.playKey(event.key || 'a');
+    }
+
+    function isMobileViewport() {
+        return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(max-width: 720px)').matches;
     }
 
     function bindEvents() {
@@ -444,12 +450,14 @@ const LearnMode = (() => {
             }
         });
         ui.chatClear.addEventListener('click', () => resetChat(true));
+        ui.chatClose.addEventListener('click', closeMobileChatPanel);
         ui.chatLog.addEventListener('scroll', handleChatScroll);
         ui.chatLog.addEventListener('click', handleChatLogClick);
         ui.chatBottom.addEventListener('click', () => scrollChatToBottom(true));
 
         ui.pickerHome.addEventListener('click', quit);
         ui.pickerChat.addEventListener('click', openPickerChat);
+        ui.mobileChatBtn.addEventListener('click', openCurrentLessonChat);
         ui.continueBtn.addEventListener('click', () => {
             const next = resumeLesson();
             if (next) startLesson(next.lesson.id);
@@ -1394,6 +1402,7 @@ const LearnMode = (() => {
     function showChatPanel(options = {}) {
         const ownerScreen = options.ownerScreen || ui.screen;
         const ownerClass = options.ownerClass || 'learn-session-active';
+        const mobileOpen = options.mobileOpen !== undefined ? Boolean(options.mobileOpen) : options.focus !== false;
         session.externalContext = options.externalContext ? normalizeExternalContext(options.externalContext) : null;
         session.chatOwnerScreen = ownerScreen;
         session.chatOwnerClass = ownerClass;
@@ -1405,9 +1414,31 @@ const LearnMode = (() => {
         syncChatEngineUi();
         if (ownerScreen) ownerScreen.classList.add(ownerClass);
         ui.chatPanel.classList.remove('hidden');
+        ui.chatPanel.classList.toggle('mobile-chat-open', !isMobileViewport() || mobileOpen);
+        if (ui.pickerChat) ui.pickerChat.setAttribute('aria-expanded', String(!isMobileViewport() || mobileOpen));
+        if (ui.mobileChatBtn) ui.mobileChatBtn.setAttribute('aria-expanded', String(!isMobileViewport() || mobileOpen));
         updateChatContext();
         loadChatHistory();
         renderChatHistory();
+    }
+
+    function closeMobileChatPanel() {
+        if (!ui.chatPanel) return;
+        ui.chatPanel.classList.remove('mobile-chat-open');
+        if (ui.pickerChat) ui.pickerChat.setAttribute('aria-expanded', 'false');
+        if (ui.mobileChatBtn) ui.mobileChatBtn.setAttribute('aria-expanded', 'false');
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
+    }
+
+    function openCurrentLessonChat() {
+        showChatPanel({
+            ownerScreen: ui.screen,
+            ownerClass: 'learn-session-active',
+            mobileOpen: true
+        });
+        if (ui.chatInput) ui.chatInput.focus();
     }
 
     function hideChatPanel() {
@@ -1418,6 +1449,9 @@ const LearnMode = (() => {
         }
         ui.screen.classList.remove('learn-session-active');
         if (ui.chatPanel) ui.chatPanel.classList.add('hidden');
+        if (ui.chatPanel) ui.chatPanel.classList.remove('mobile-chat-open');
+        if (ui.pickerChat) ui.pickerChat.setAttribute('aria-expanded', 'false');
+        if (ui.mobileChatBtn) ui.mobileChatBtn.setAttribute('aria-expanded', 'false');
         session.externalContext = null;
         session.chatOwnerScreen = null;
         session.chatOwnerClass = '';
@@ -1437,7 +1471,8 @@ const LearnMode = (() => {
         showChatPanel({
             ownerScreen,
             ownerClass: 'chat-session-active',
-            externalContext: context
+            externalContext: context,
+            mobileOpen: options.mobileOpen !== false
         });
         if (options.focus !== false && ui.chatInput) ui.chatInput.focus();
     }
@@ -1448,6 +1483,7 @@ const LearnMode = (() => {
         showChatPanel({
             ownerScreen: ui.screen,
             ownerClass: 'learn-session-active',
+            mobileOpen: options.mobileOpen !== undefined ? options.mobileOpen : options.focus !== false,
             externalContext: {
                 key: `${copy.key}-learn-picker`,
                 label: copy.listLabel,

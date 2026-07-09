@@ -35,6 +35,7 @@ const PackMaker = (() => {
         pendingSuggestion: null,
         packKind: 'word',
         reviewCollapsed: false,
+        mobileTab: 'chat',
         lastLongPackId: '',
         lastPrompt: ''
     };
@@ -1267,6 +1268,27 @@ const PackMaker = (() => {
         renderReviewAlerts();
     }
 
+    function setMobileTab(tab) {
+        const next = ['chat', 'edit', 'review'].includes(tab) ? tab : 'chat';
+        stateRef.mobileTab = next;
+        if (ui.screen) {
+            ui.screen.classList.toggle('mobile-packmaker-tab-chat', next === 'chat');
+            ui.screen.classList.toggle('mobile-packmaker-tab-edit', next === 'edit');
+            ui.screen.classList.toggle('mobile-packmaker-tab-review', next === 'review');
+        }
+        if (ui.mobileTabButtons) {
+            ui.mobileTabButtons.forEach(button => {
+                const active = button.dataset.packMakerTab === next;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-pressed', String(active));
+            });
+        }
+        if (next === 'review' && stateRef.reviewCollapsed) {
+            stateRef.reviewCollapsed = false;
+            renderReviewAlerts();
+        }
+    }
+
     function renderDraft(options = {}) {
         if (!ui.title || !ui.itemBody) return;
         const updateStatus = options.updateStatus !== false;
@@ -1950,6 +1972,7 @@ const PackMaker = (() => {
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.error || 'Long pack review request failed');
                 await refreshPacks();
+                if (submitForReview) setMobileTab('review');
                 renderStatus('LONG PACK REVIEW REQUESTED');
                 if (ui.longSaved) {
                     ui.longSaved.textContent = `REQUESTED: ${title} · 운영자 승인 후 Public Long Packs에 표시됩니다.`;
@@ -2060,6 +2083,7 @@ const PackMaker = (() => {
                 throw new Error('Saved pack has no playable items');
             }
             await refreshPacks();
+            if (submitForReview) setMobileTab('review');
             const select = document.getElementById('pack-select');
             if (select) {
                 select.value = customPackValue(data.pack.id);
@@ -2105,6 +2129,7 @@ const PackMaker = (() => {
         ui.clear = $('pack-maker-clear');
         ui.wordMode = $('pack-maker-word-mode');
         ui.longMode = $('pack-maker-long-mode');
+        ui.mobileTabButtons = Array.from(document.querySelectorAll('[data-pack-maker-tab]'));
         ui.chatLog = $('pack-maker-chat-log');
         ui.chatBottom = $('pack-maker-chat-bottom');
         ui.status = $('pack-maker-status');
@@ -2187,6 +2212,9 @@ const PackMaker = (() => {
         });
         ui.wordMode?.addEventListener('click', () => setPackKind('word'));
         ui.longMode?.addEventListener('click', () => setPackKind('long'));
+        ui.mobileTabButtons.forEach(button => {
+            button.addEventListener('click', () => setMobileTab(button.dataset.packMakerTab));
+        });
         ui.reviewToggle?.addEventListener('click', toggleReviewAlerts);
         ui.longApplyCleanup?.addEventListener('click', applyLongCleanupPreview);
         ui.saveLong?.addEventListener('click', () => saveLongPack(false));
@@ -2218,6 +2246,7 @@ const PackMaker = (() => {
         loadDraftFromStorage();
         loadChatHistory();
         renderDraft();
+        setMobileTab(stateRef.mobileTab);
         setPackKind(stateRef.packKind);
         renderChatHistory();
         renderReviewAlerts();
