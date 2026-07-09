@@ -672,6 +672,11 @@ assert(learn.includes('modeGuide: editionCopy.modeGuide') && learn.includes('mod
 assert(server.includes('학습모드 안내:') && server.includes('중급자 코스') && server.includes('추천 모드와 이유') && server.includes('상황 판단 훈련인 Scenario'), 'learn chat prompt should guide difficulty/course questions without hard-coded answers');
 assert(server.includes('2) 다음 행동:'), 'learn chat answer skeleton should support route recommendations when no command is needed');
 assert(learn.includes('function isCrossEditionAssistantEntry') && learn.includes('OpenShift|EX280|Kubernetes'), 'learn chat history should purge cross-edition assistant contamination');
+assert(learn.includes('CodeDrop\\s+OCP\\s+Edition') && learn.includes('CodeDrop\\s+GitHub\\s+Edition'), 'learn chat history purge should catch stale assistant identity lines');
+assert(server.includes('function inferStudyEdition') && server.includes('req?.headers?.referer'), 'learn chat server should infer edition from request context when body context is incomplete');
+assert(server.includes('CodeDrop\\s+OCP\\s+Edition') && server.includes('CodeDrop\\s+GitHub\\s+Edition'), 'learn chat server should purge cross-edition identity history');
+assert(server.includes("살아있니") && server.includes("현재 에디션"), 'learn chat prompt should answer identity/status questions from the active edition');
+assert(server.includes('CodeDrop GitHub Edition의 KugBot') && server.includes('CodeDrop OCP Edition의 KugBot'), 'learn chat system prompts should pin identity answers to the active edition');
 assert(learn.includes("edition === 'github' ? 'GitHub 따라치기' : 'OCP 따라치기'"), 'external study chat defaults should not fall back to OCP labels in GitHub mode');
 assert(game.includes('edition: config.key') && scenario.includes("trackTitle: edition === 'github' ? 'GitHub Scenario' : 'OCP Scenario'"), 'scenario/lab shared study chat should be edition-aware');
 assert(server.includes('application/x-ndjson'), 'streaming learn chat should emit NDJSON');

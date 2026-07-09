@@ -357,6 +357,7 @@ const LEARN_CHAT_COMMON_RULES = [
     "특히 사용자가 '쉽다', '중급자', '더 어려운 코스', '실무자용' 같은 난이도 신호를 보이면 Learn Mode가 고빈도 기본 루틴을 효율적으로 다지는 화면이라 쉽게 느껴질 수 있음을 인정하고, 상황 판단 훈련인 Scenario를 우선 추천한다.",
     "그 다음 절차 반복은 Mock Lab, 실패 원인 분석은 Incident Drill, 최종 점검은 Exam과 Dashboard로 이어지게 안내한다.",
     "명령어가 필요 없는 제품/학습 경로 질문에는 억지로 명령을 만들지 말고, 추천 이동과 이유를 말한다.",
+    "사용자가 '살아있니', '너 누구야', '현재 무슨 조교야'처럼 정체성이나 상태를 물으면 반드시 현재 에디션과 현재 학습 화면 컨텍스트 기준으로 답한다.",
     "확실하지 않은 시험 정책이나 버전 의존 내용은 단정하지 말고 확인 필요성을 말한다.",
     "응답은 원칙적으로 6~10줄 안에서 끝낸다. 장황한 개론, 인사말, 면책 문구, 불필요한 Markdown 장식은 쓰지 않는다.",
     "항상 아래 답변 골격을 따른다:",
@@ -368,6 +369,7 @@ const LEARN_CHAT_COMMON_RULES = [
 
 const LEARN_CHAT_OCP_PROMPT = [
     "너는 CodeDrop OCP Edition의 EX280 학습 조교다.",
+    "정체성을 말할 때는 항상 CodeDrop OCP Edition의 KugBot 또는 OCP 학습 조교라고 말한다.",
     "사용자는 OpenShift/리눅스 명령을 손에 익히는 중이다.",
     "시험장에서 바로 쓸 수 있는 oc/kubectl/Linux 명령 중심으로 짧고 정확하게 설명한다.",
     ...LEARN_CHAT_COMMON_RULES
@@ -375,6 +377,7 @@ const LEARN_CHAT_OCP_PROMPT = [
 
 const LEARN_CHAT_GITHUB_PROMPT = [
     "너는 CodeDrop GitHub Edition의 GitHub Certification 학습 조교다.",
+    "정체성을 말할 때는 항상 CodeDrop GitHub Edition의 KugBot 또는 GitHub 학습 조교라고 말한다.",
     "사용자는 Git, GitHub CLI, Pull Request, branch protection, GitHub Actions, GitHub Advanced Security, Administration, Copilot 실무 루틴을 손에 익히는 중이다.",
     "GitHub Edition에서는 GitHub 화면과 커리큘럼만 다룬다. OpenShift, Kubernetes, oc, kubectl 명령은 사용자가 명시적으로 비교를 요청하지 않는 한 절대 제시하지 않는다.",
     "명령이 필요하면 git, gh, GitHub Actions YAML, GitHub REST API 호출, GitHub UI에서 확인할 지점을 우선 제시한다.",
@@ -513,14 +516,46 @@ function sanitizeChatText(value, limit = MAX_CHAT_MESSAGE_LEN) {
     return value.replace(/\s+/g, " ").trim().slice(0, limit);
 }
 
-function normalizeStudyEdition(value) {
-    return String(value || "").toLowerCase() === "github" ? "github" : "ocp";
+function normalizeStudyEdition(value, fallback = "ocp") {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized === "github") return "github";
+    if (normalized === "ocp") return "ocp";
+    return fallback === "github" ? "github" : "ocp";
 }
 
-function sanitizeChatContext(context) {
-    if (!context || typeof context !== "object") return {};
+function inferStudyEdition(context, fallbackText = "") {
+    const explicit = String(context?.edition || "").toLowerCase();
+    if (explicit === "github" || explicit === "ocp") return explicit;
+
+    const text = [
+        fallbackText,
+        context?.lessonTitle,
+        context?.trackTitle,
+        context?.phase,
+        context?.prompt,
+        context?.command,
+        context?.output,
+        context?.explanation,
+        context?.hint,
+        context?.modeGuide
+    ].filter(Boolean).join(" ");
+
+    if (/\/github(?:\/|$)|GitHub\s+Edition|GitHub\s+Certification|souluk319\/codedrop|\bgh\s+(?:auth|repo|issue|pr|api|workflow|run|release)|GitHub Actions|branch protection|Copilot|pull request/i.test(text)) {
+        return "github";
+    }
+    if (/\/ocp(?:\/|$)|OCP\s+Edition|EX280|OpenShift|Kubernetes|\b(?:oc|kubectl)\s+/i.test(text)) {
+        return "ocp";
+    }
+    return "ocp";
+}
+
+function sanitizeChatContext(context, fallbackText = "") {
+    if (!context || typeof context !== "object") {
+        return { edition: inferStudyEdition({}, fallbackText) };
+    }
+    const edition = inferStudyEdition(context, fallbackText);
     return {
-        edition: normalizeStudyEdition(context.edition),
+        edition,
         lessonTitle: sanitizeChatText(context.lessonTitle, 120),
         trackTitle: sanitizeChatText(context.trackTitle, 120),
         phase: sanitizeChatText(context.phase, 40),
@@ -534,16 +569,34 @@ function sanitizeChatContext(context) {
     };
 }
 
-function sanitizeChatHistory(history) {
+function isCrossEditionChatContent(content, edition) {
+    const text = String(content || "");
+    if (edition === "github") {
+        return /\b(?:oc|kubectl)\s+|CodeDrop\s+OCP\s+Edition|OCP\s+Edition|OpenShift|EX280|Kubernetes|클러스터|네임스페이스|오픈시프트|오씨피/i.test(text);
+    }
+    return /CodeDrop\s+GitHub\s+Edition|GitHub\s+Edition|\bgh\s+(?:auth|repo|issue|pr|api|workflow|run|release)|GitHub Actions|branch protection|Copilot|pull request|souluk319\/codedrop/i.test(text);
+}
+
+function sanitizeChatHistory(history, edition = "ocp") {
     if (!Array.isArray(history)) return [];
 
-    return history
+    const sanitized = history
         .slice(-MAX_CHAT_HISTORY)
         .map(item => ({
             role: item && item.role === "assistant" ? "assistant" : "user",
             content: sanitizeChatText(item && item.content, 900)
         }))
         .filter(item => item.content);
+
+    const cleaned = [];
+    for (const item of sanitized) {
+        if (item.role === "assistant" && isCrossEditionChatContent(item.content, edition)) {
+            if (cleaned[cleaned.length - 1]?.role === "user") cleaned.pop();
+            continue;
+        }
+        cleaned.push(item);
+    }
+    return cleaned;
 }
 
 function normalizeChatEngine(value) {
@@ -3733,7 +3786,7 @@ async function callLearnLlm(messages, engine) {
     }
 }
 
-function buildLearnMessages(body) {
+function buildLearnMessages(body, req = null) {
     const message = sanitizeChatText(body?.message);
     if (!message) {
         const err = new Error("Message required");
@@ -3748,8 +3801,13 @@ function buildLearnMessages(body) {
         throw err;
     }
 
-    const context = sanitizeChatContext(body?.context);
-    const history = sanitizeChatHistory(body?.history);
+    const requestContextText = [
+        req?.headers?.referer,
+        req?.headers?.referrer,
+        req?.headers?.origin
+    ].filter(Boolean).join(" ");
+    const context = sanitizeChatContext(body?.context, requestContextText);
+    const history = sanitizeChatHistory(body?.history, context.edition);
     return {
         engine,
         messages: [
@@ -4143,7 +4201,7 @@ app.get("/api/llm/kugnus/health", rateLimit("kugnus-health", 30, 60_000), async 
 app.post("/api/learn-chat", rateLimit("learn-chat", 40, 60_000), async (req, res) => {
     let payload;
     try {
-        payload = buildLearnMessages(req.body);
+        payload = buildLearnMessages(req.body, req);
     } catch (err) {
         return res.status(err.status || 400).json({ error: err.message });
     }
@@ -4170,7 +4228,7 @@ app.post("/api/learn-chat/stream", rateLimit("learn-chat-stream", 40, 60_000), a
     let target;
 
     try {
-        payload = buildLearnMessages(req.body);
+        payload = buildLearnMessages(req.body, req);
         target = buildLlmTarget(payload.engine);
     } catch (err) {
         return res.status(err.status || 400).json({ error: err.message });
