@@ -1472,7 +1472,7 @@ const LearnMode = (() => {
             ownerScreen,
             ownerClass: 'chat-session-active',
             externalContext: context,
-            mobileOpen: options.mobileOpen !== false
+            mobileOpen: options.mobileOpen !== undefined ? options.mobileOpen : options.focus !== false
         });
         if (options.focus !== false && ui.chatInput) ui.chatInput.focus();
     }
