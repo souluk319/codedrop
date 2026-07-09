@@ -540,10 +540,22 @@ const PackMaker = (() => {
         const helper = window.CodeDropLlmStatus;
         if (!helper || typeof helper.maybeSwitchFromOfflineKugnus !== 'function') return false;
 
-        const shouldSwitch = await helper.maybeSwitchFromOfflineKugnus('pack-maker');
-        if (!shouldSwitch) return false;
+        const fallbackEngine = await helper.maybeSwitchFromOfflineKugnus('pack-maker');
+        if (!fallbackEngine) return false;
 
-        setEngine('openai');
+        setEngine(fallbackEngine);
+        renderStatus(engineStatus('READY'));
+        return true;
+    }
+
+    async function offerFailedEngineFallback(engine, err) {
+        const helper = window.CodeDropLlmStatus;
+        if (!helper || typeof helper.maybeSwitchFromFailedEngine !== 'function') return false;
+
+        const fallbackEngine = await helper.maybeSwitchFromFailedEngine('pack-maker', engine, err && err.message);
+        if (!fallbackEngine) return false;
+
+        setEngine(fallbackEngine);
         renderStatus(engineStatus('READY'));
         return true;
     }
@@ -1569,7 +1581,7 @@ const PackMaker = (() => {
         await sendChatText(message);
     }
 
-    async function sendChatText(message) {
+    async function sendChatText(message, options = {}) {
         if (stateRef.busy || stateRef.submitting) return;
         stateRef.lastPrompt = message;
         if (stateRef.packKind !== 'long' && isLongPackIntent(message)) {
@@ -1592,12 +1604,16 @@ const PackMaker = (() => {
         }
 
         stateRef.submitting = true;
+        const renderUserMessage = options.renderUserMessage !== false;
+        const recordUserMessage = options.recordUserMessage !== false;
+        const retryFallbackAttempt = options.retryFallbackAttempt === true;
         let pending = null;
         let requestId = 0;
         let answer = '';
         let finalStatus = '';
         let finalStatusDanger = false;
         let searchNoticeShown = false;
+        let retryAfterFallback = false;
 
         try {
             if (!await ensureRemoteAuth()) {
@@ -1625,10 +1641,12 @@ const PackMaker = (() => {
                 renderStatus('PREPARING NEW PACK');
             }
 
-            stateRef.chat.push({ role: 'user', content: message });
-            stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
-            persistChatHistory();
-            appendChat('user', message);
+            if (recordUserMessage) {
+                stateRef.chat.push({ role: 'user', content: message });
+                stateRef.chat = stateRef.chat.slice(-CHAT_HISTORY_LIMIT);
+                persistChatHistory();
+            }
+            if (renderUserMessage) appendChat('user', message);
             pending = appendChat('assistant', '', { question: message, streaming: true });
             requestId = ++stateRef.requestSeq;
             stateRef.activeRequestId = requestId;
@@ -1699,8 +1717,20 @@ const PackMaker = (() => {
                 if (pending) discardAssistantMessage(pending);
                 await showRemoteLoginRequired();
             } else {
-                if (pending) failAssistantMessage(pending, err.message, message);
-                renderStatus(err.message.startsWith('DRAFT SHORT') ? err.message : 'GENERATION FAILED', true);
+                const failedEngine = normalizeEngineValue(ui.engine && ui.engine.value);
+                const canRetryWithGpt = !retryFallbackAttempt && failedEngine === 'gemini';
+                if (canRetryWithGpt && await offerFailedEngineFallback(failedEngine, err)) {
+                    retryAfterFallback = true;
+                    if (pending) {
+                        discardAssistantMessage(pending);
+                        if (stateRef.activeMessage === pending) stateRef.activeMessage = null;
+                        pending = null;
+                    }
+                    renderStatus(engineStatus('READY'));
+                } else {
+                    if (pending) failAssistantMessage(pending, err.message, message);
+                    renderStatus(err.message.startsWith('DRAFT SHORT') ? err.message : 'GENERATION FAILED', true);
+                }
             }
         } finally {
             if (stateRef.activeMessage === pending) stateRef.activeMessage = null;
@@ -1710,6 +1740,15 @@ const PackMaker = (() => {
             stateRef.submitting = false;
             setBusy(false);
             ui.input.focus();
+            if (retryAfterFallback) {
+                window.setTimeout(() => {
+                    sendChatText(message, {
+                        retryFallbackAttempt: true,
+                        renderUserMessage: false,
+                        recordUserMessage: false
+                    });
+                }, 0);
+            }
         }
     }
 

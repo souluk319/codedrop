@@ -516,7 +516,8 @@ const llmStatus = {
     model: '',
     promise: null,
     promptedScopes: new Set(),
-    fallbackScopes: new Set()
+    fallbackScopes: new Set(),
+    fallbackEngines: new Map()
 };
 let routeApplying = false;
 
@@ -932,42 +933,83 @@ function startKugnusHealthCheck(force = false) {
     return llmStatus.promise;
 }
 
+function clearLlmFallbackScope(scope) {
+    llmStatus.fallbackScopes.delete(scope);
+    llmStatus.fallbackEngines.delete(scope);
+    llmStatus.promptedScopes.delete(scope);
+    llmStatus.promptedScopes.delete(`${scope}:kugnus:gemini`);
+    llmStatus.promptedScopes.delete(`${scope}:gemini:openai`);
+}
+
 async function maybeSwitchFromOfflineKugnus(scope = 'chat') {
     const status = await startKugnusHealthCheck(true);
     if (status.ok !== false) {
-        llmStatus.fallbackScopes.delete(scope);
-        llmStatus.promptedScopes.delete(scope);
-        return false;
+        clearLlmFallbackScope(scope);
+        return null;
     }
-    if (llmStatus.fallbackScopes.has(scope)) return true;
-    if (llmStatus.promptedScopes.has(scope)) return false;
+    const fallbackEngine = llmStatus.fallbackEngines.get(scope);
+    if (fallbackEngine === 'gemini' || fallbackEngine === 'openai') return fallbackEngine;
 
-    llmStatus.promptedScopes.add(scope);
+    const promptKey = `${scope}:kugnus:gemini`;
+    if (llmStatus.promptedScopes.has(promptKey)) return null;
+
+    llmStatus.promptedScopes.add(promptKey);
     const result = await showCommandDialog({
         title: 'KUGNUS SERVER OFFLINE',
-        message: 'KUGNUS SERVER 응답이 없습니다. GPT 5.4 MINI로 전환합니다.',
+        message: 'KUGNUS SERVER 응답이 없습니다. GEMINI 2.5 FLASH로 전환합니다.',
         extraText: status.reason ? `Reason: ${status.reason}` : '',
         okText: 'SWITCH',
         cancelText: 'STAY',
         danger: true
     });
 
-    if (!result.accepted) return false;
+    if (!result.accepted) return null;
 
     llmStatus.fallbackScopes.add(scope);
+    llmStatus.fallbackEngines.set(scope, 'gemini');
+    window.dispatchEvent(new CustomEvent('codedrop:llm-fallback', {
+        detail: { scope, engine: 'gemini' }
+    }));
+    return 'gemini';
+}
+
+async function maybeSwitchFromFailedEngine(scope = 'chat', engine = '', reason = '') {
+    if (engine !== 'gemini') return null;
+
+    const fallbackEngine = llmStatus.fallbackEngines.get(scope);
+    if (fallbackEngine === 'openai') return 'openai';
+
+    const promptKey = `${scope}:gemini:openai`;
+    if (llmStatus.promptedScopes.has(promptKey)) return null;
+    llmStatus.promptedScopes.add(promptKey);
+
+    const result = await showCommandDialog({
+        title: 'GEMINI ROUTE FAILED',
+        message: 'GEMINI 응답이 불안정합니다. GPT 5.4 MINI로 전환하고 같은 질문을 한 번 다시 시도합니다.',
+        extraText: reason ? `Reason: ${reason}` : '',
+        okText: 'GPT 5.4 MINI',
+        cancelText: 'STAY',
+        danger: true
+    });
+
+    if (!result.accepted) return null;
+
+    llmStatus.fallbackScopes.add(scope);
+    llmStatus.fallbackEngines.set(scope, 'openai');
     window.dispatchEvent(new CustomEvent('codedrop:llm-fallback', {
         detail: { scope, engine: 'openai' }
     }));
-    return true;
+    return 'openai';
 }
 
 window.CodeDropLlmStatus = {
     startKugnusHealthCheck,
     maybeSwitchFromOfflineKugnus,
+    maybeSwitchFromFailedEngine,
     isFallbackScope(scope) {
         return llmStatus.fallbackScopes.has(scope);
     },
-    snapshot() {
+    snapshot(scope = '') {
         return {
             checked: llmStatus.checked,
             checking: llmStatus.checking,
@@ -975,7 +1017,8 @@ window.CodeDropLlmStatus = {
             reason: llmStatus.reason,
             provider: llmStatus.provider,
             route: llmStatus.route,
-            model: llmStatus.model
+            model: llmStatus.model,
+            fallbackEngine: llmStatus.fallbackEngines.get(scope) || ''
         };
     }
 };
