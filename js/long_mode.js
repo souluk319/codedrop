@@ -9,6 +9,7 @@ const LongPractice = (() => {
         packs: [],
         remotePacks: [],
         fullText: '',
+        allUnits: [],
         units: [],
         unitIndex: 0,
         completedChars: 0,
@@ -20,6 +21,8 @@ const LongPractice = (() => {
         startedAt: 0,
         completed: false,
         pendingPackId: '',
+        repeatStart: 1,
+        repeatEnd: 1,
         advanceTimer: 0,
         lastKeySoundAt: 0
     };
@@ -34,8 +37,20 @@ const LongPractice = (() => {
         ui.screen = $('long-practice-screen');
         ui.home = $('long-home');
         ui.packSelect = $('long-pack-select');
+        ui.packSelector = $('long-pack-selector');
+        ui.packTrigger = $('long-pack-trigger');
+        ui.packPopover = $('long-pack-popover');
+        ui.packPopoverClose = $('long-pack-popover-close');
+        ui.packCurrentTitle = $('long-pack-current-title');
+        ui.packCurrentChip = $('long-pack-current-chip');
+        ui.packCardGroups = $('long-pack-card-groups');
         ui.meta = $('long-pack-meta');
         ui.customText = $('long-custom-text');
+        ui.repeatEnabled = $('long-repeat-enabled');
+        ui.repeatStart = $('long-repeat-start');
+        ui.repeatEnd = $('long-repeat-end');
+        ui.repeatApply = $('long-repeat-apply');
+        ui.repeatInfo = $('long-repeat-info');
         ui.start = $('long-start');
         ui.reset = $('long-reset');
         ui.status = $('long-status');
@@ -110,6 +125,160 @@ const LongPractice = (() => {
         if (key === 'user' || key === 'my packs') return textForLanguage('My Text Packs', '내 장문팩');
         if (key === 'public packs') return textForLanguage('Public Text Packs', '공개 장문팩');
         return group || textForLanguage('Sentence Packs', '문장팩');
+    }
+
+    function customPackStyle(seed = '') {
+        const styles = ['custom', 'custom-blue', 'custom-green', 'custom-violet', 'custom-amber'];
+        const text = String(seed || 'custom');
+        let hash = 0;
+        for (let index = 0; index < text.length; index += 1) {
+            hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+        }
+        return styles[Math.abs(hash) % styles.length];
+    }
+
+    function longPackStyle(pack) {
+        const group = String(pack?.group || '').toLowerCase();
+        const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ').toLowerCase() : '';
+        if (isUserProvidedPack(pack)) return customPackStyle(`${pack?.id}:${pack?.title || pack?.label || ''}`);
+        if (group.includes('korean') || tags.includes('korean')) return 'vocab';
+        if (group.includes('english') || tags.includes('english')) return 'js';
+        if (group.includes('mixed') || tags.includes('mixed')) return 'http';
+        return 'vocab';
+    }
+
+    function longPackChip(pack) {
+        if (isUserProvidedPack(pack)) return 'USER';
+        const group = String(pack?.group || '').toLowerCase();
+        const tags = Array.isArray(pack?.tags) ? pack.tags.join(' ').toLowerCase() : '';
+        if (group.includes('korean') || tags.includes('korean')) return 'KOR';
+        if (group.includes('english') || tags.includes('english')) return 'ENG';
+        if (group.includes('mixed') || tags.includes('mixed')) return 'MIX';
+        return 'TEXT';
+    }
+
+    function longPackMeta(pack) {
+        if (!pack) {
+            return {
+                id: '',
+                title: textForLanguage('Select a sentence pack', '문장팩을 선택하세요'),
+                chip: 'TEXT',
+                style: 'vocab',
+                group: textForLanguage('Sentence Packs', '문장팩')
+            };
+        }
+        return {
+            id: pack.id,
+            title: pack.title || pack.label || pack.id || 'Long Text',
+            chip: longPackChip(pack),
+            style: longPackStyle(pack),
+            group: selectGroupLabel(pack.group || 'Practice')
+        };
+    }
+
+    function selectorVisiblePacks() {
+        return longState.packs
+            .filter(pack => isVisibleLongPack(pack))
+            .filter(pack => !isTemplatePack(pack));
+    }
+
+    function selectorGroups() {
+        const groups = new Map();
+        selectorVisiblePacks().forEach(pack => {
+            const label = isUserProvidedPack(pack)
+                ? textForLanguage('My Text Packs', '내 장문팩')
+                : selectGroupLabel(pack.group || 'Recommended Practice');
+            if (!groups.has(label)) groups.set(label, []);
+            groups.get(label).push(pack);
+        });
+        return Array.from(groups.entries()).map(([label, packs]) => ({ label, packs }));
+    }
+
+    function createPackLogo(meta) {
+        const logo = document.createElement('span');
+        const logoStyle = String(meta.style || 'vocab').startsWith('custom') ? 'custom' : meta.style;
+        logo.className = `pack-card-logo pack-logo-${logoStyle}`;
+        logo.textContent = meta.chip;
+        return logo;
+    }
+
+    function createLongPackCard(pack) {
+        const meta = longPackMeta(pack);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `pack-cartridge pack-style-${meta.style}`;
+        card.classList.toggle('selected', ui.packSelect?.value === pack.id);
+        card.dataset.longPackId = pack.id;
+        card.setAttribute('aria-label', `${meta.title} 문장팩`);
+
+        const chip = document.createElement('span');
+        chip.className = 'pack-card-chip';
+        chip.textContent = meta.chip;
+
+        const title = document.createElement('span');
+        title.className = 'pack-card-title';
+        title.textContent = meta.title;
+
+        card.append(chip, createPackLogo(meta), title);
+        card.addEventListener('click', () => {
+            if (!ui.packSelect) return;
+            ui.packSelect.value = pack.id;
+            handlePackChange();
+            closeLongPackPopover();
+        });
+        return card;
+    }
+
+    function renderLongPackCards() {
+        if (!ui.packCardGroups) return;
+        ui.packCardGroups.replaceChildren();
+        const groups = selectorGroups();
+        if (!groups.length) {
+            const empty = document.createElement('div');
+            empty.className = 'long-note';
+            empty.textContent = textForLanguage('No saved sentence packs yet. Type your own text below.', '아직 선택할 문장팩이 없습니다. 아래에 직접 문장을 입력하세요.');
+            ui.packCardGroups.appendChild(empty);
+            return;
+        }
+
+        groups.forEach(group => {
+            const wrap = document.createElement('section');
+            wrap.className = 'pack-card-group';
+
+            const title = document.createElement('div');
+            title.className = 'pack-card-group-title';
+            title.textContent = group.label;
+
+            const grid = document.createElement('div');
+            grid.className = 'pack-card-grid';
+            group.packs.forEach(pack => grid.appendChild(createLongPackCard(pack)));
+
+            wrap.append(title, grid);
+            ui.packCardGroups.appendChild(wrap);
+        });
+    }
+
+    function updateLongSelectorUi() {
+        const meta = longPackMeta(selectedPack() || selectorVisiblePacks()[0]);
+        if (ui.packCurrentTitle) ui.packCurrentTitle.textContent = meta.title;
+        if (ui.packCurrentChip) ui.packCurrentChip.textContent = meta.chip;
+        if (ui.packSelector) ui.packSelector.classList.add('long-mode');
+        renderLongPackCards();
+    }
+
+    function closeLongPackPopover() {
+        if (!ui.packSelector || !ui.packPopover || !ui.packTrigger) return;
+        ui.packSelector.classList.remove('open');
+        ui.packPopover.classList.add('hidden');
+        ui.packTrigger.setAttribute('aria-expanded', 'false');
+    }
+
+    function openLongPackPopover() {
+        if (!ui.packSelector || !ui.packPopover || !ui.packTrigger) return;
+        renderLongPackCards();
+        ui.packSelector.classList.add('open');
+        ui.packPopover.classList.remove('hidden');
+        ui.packTrigger.setAttribute('aria-expanded', 'true');
     }
 
     function normalizeText(text) {
@@ -445,6 +614,66 @@ const LongPractice = (() => {
         return units.filter(Boolean);
     }
 
+    function repeatModeEnabled() {
+        return Boolean(ui.repeatEnabled && ui.repeatEnabled.checked);
+    }
+
+    function repeatRange(max = longState.allUnits.length || longState.units.length || 1) {
+        const total = Math.max(1, Number(max) || 1);
+        let start = Math.max(1, Math.min(total, Number(ui.repeatStart?.value) || longState.repeatStart || 1));
+        let end = Math.max(1, Math.min(total, Number(ui.repeatEnd?.value) || longState.repeatEnd || start));
+        if (end < start) end = start;
+        longState.repeatStart = start;
+        longState.repeatEnd = end;
+        if (ui.repeatStart) {
+            ui.repeatStart.max = String(total);
+            ui.repeatStart.value = String(start);
+        }
+        if (ui.repeatEnd) {
+            ui.repeatEnd.max = String(total);
+            ui.repeatEnd.value = String(end);
+        }
+        return { start, end, total };
+    }
+
+    function repeatUnitsFromAll() {
+        if (!longState.allUnits.length) return [];
+        if (!repeatModeEnabled()) return longState.allUnits.slice();
+        const range = repeatRange(longState.allUnits.length);
+        return longState.allUnits.slice(range.start - 1, range.end);
+    }
+
+    function updateRepeatInfo() {
+        if (!ui.repeatInfo) return;
+        const total = longState.allUnits.length || 0;
+        const enabled = repeatModeEnabled();
+        if (!total) {
+            ui.repeatInfo.textContent = enabled
+                ? 'START 후 반복할 구간 번호를 선택할 수 있습니다.'
+                : 'START 후 느린 구간 번호를 선택하면 해당 구간만 반복합니다.';
+            return;
+        }
+        const range = repeatRange(total);
+        ui.repeatInfo.textContent = enabled
+            ? `반복 구간 ${range.start}-${range.end} / 전체 ${range.total}구간`
+            : `전체 ${range.total}구간 · 구간 반복을 켜면 선택 범위만 반복합니다.`;
+    }
+
+    function applyRepeatRange() {
+        if (!longState.allUnits.length) {
+            updateRepeatInfo();
+            return false;
+        }
+        longState.units = repeatUnitsFromAll();
+        longState.unitIndex = 0;
+        longState.completedChars = 0;
+        longState.completedCorrect = 0;
+        setCurrentUnit(0);
+        updateRepeatInfo();
+        setStatus(repeatModeEnabled() ? 'SECTION REPEAT RUNNING' : 'PRACTICE RUNNING');
+        return true;
+    }
+
     function isTemplatePack(pack) {
         return pack?.type === 'template';
     }
@@ -457,7 +686,7 @@ const LongPractice = (() => {
     }
 
     function defaultCustomPlaceholder() {
-        return '사용자가 직접 입력한 글을 연습하려면 여기에 붙여넣으세요. 저작권 있는 가사는 기본팩에 넣지 않고, 이 개인 연습 슬롯에서만 다룹니다.';
+        return '연습하고 싶은 문장을 여기에 입력하세요. Enter로 줄을 나누고 START TEXT를 누르면 즉석 반복 연습이 시작됩니다.';
     }
 
     function applyCustomPlaceholder(pack) {
@@ -549,7 +778,10 @@ const LongPractice = (() => {
         const hasDesiredValue = Array.from(ui.packSelect.options).some(option => option.value === desiredValue);
         if (desiredValue && hasDesiredValue) {
             ui.packSelect.value = desiredValue;
+        } else if (!ui.packSelect.value && visiblePacks.length) {
+            ui.packSelect.value = visiblePacks.find(pack => !isTemplatePack(pack))?.id || visiblePacks[0].id;
         }
+        updateLongSelectorUi();
     }
 
     function selectedPack() {
@@ -562,28 +794,29 @@ const LongPractice = (() => {
         if (!ui.meta) return;
         applyCustomPlaceholder(pack);
         if (!pack) {
-            ui.meta.textContent = '직접 입력 텍스트는 개인 연습용입니다. 기본팩에는 저작권 있는 가사를 번들하지 않습니다.';
+            ui.meta.textContent = '연습하고 싶은 문장을 입력해서 즉석에서 반복 타이핑할 수 있습니다. Pack Maker에서 장문팩으로 만들어 저장할 수도 있습니다.';
             return;
         }
         if (isTemplatePack(pack)) {
-            ui.meta.textContent = `${pack.title || pack.label} · ${sourceLabel(pack)} · 원문은 직접 붙여넣기 슬롯에서만 사용합니다. 기본팩에는 포함하지 않습니다.`;
+            ui.meta.textContent = '연습하고 싶은 문장을 입력해서 즉석에서 반복 타이핑할 수 있습니다. Pack Maker에서 장문팩으로 만들어 저장할 수도 있습니다.';
             return;
         }
-        const tags = Array.isArray(pack.tags) ? pack.tags.join(' · ') : '';
-        ui.meta.textContent = `${pack.label || pack.title} · ${sourceLabel(pack)}${tags ? ` · ${tags}` : ''}`;
+        ui.meta.textContent = `선택된 문장팩: ${pack.label || pack.title}. 아래 입력란에 문장을 넣으면 선택한 팩 대신 즉석 연습합니다.`;
     }
 
     function resetSelectedTarget() {
         const pack = selectedPack();
-        const usesCustomText = ui.packSelect?.value === '__custom__';
-        longState.fullText = usesCustomText || isTemplatePack(pack) ? '' : preprocessPracticeText(pack?.text || '', pack);
-        longState.units = [];
-        longState.unitOptions = { preserveLineStructure: shouldPreserveLineStructure(pack, usesCustomText || isTemplatePack(pack)) };
+        const usesCustomText = ui.packSelect?.value === '__custom__' || isTemplatePack(pack);
+        const text = usesCustomText ? '' : preprocessPracticeText(pack?.text || '', pack);
+        longState.fullText = text;
+        longState.unitOptions = { preserveLineStructure: shouldPreserveLineStructure(pack, usesCustomText) };
+        longState.allUnits = text ? splitPracticeUnits(text, longState.unitOptions) : [];
+        longState.units = repeatUnitsFromAll();
         longState.unitIndex = 0;
         longState.completedChars = 0;
         longState.completedCorrect = 0;
-        longState.target = '';
-        longState.displayTarget = '';
+        longState.displayTarget = longState.units[0] || '';
+        longState.target = typingTargetFromDisplay(longState.displayTarget);
         longState.source = isTemplatePack(pack) ? 'USER PROVIDED' : sourceLabel(pack);
         longState.startedAt = 0;
         longState.completed = false;
@@ -594,13 +827,16 @@ const LongPractice = (() => {
         }
         renderPassage('');
         updateStats();
-        setStatus(usesCustomText || isTemplatePack(pack) ? 'PASTE TEXT TO START' : 'READY');
+        updateLongSelectorUi();
+        updateRepeatInfo();
+        setStatus(usesCustomText ? 'PASTE TEXT TO START' : (longState.target ? 'READY · START TEXT로 시작' : '텍스트팩 내용이 없습니다'), !usesCustomText && !longState.target);
     }
 
     function handlePackChange() {
         longState.pendingPackId = ui.packSelect?.value || '';
         updatePackMeta();
         resetSelectedTarget();
+        updateLongSelectorUi();
     }
 
     function selectPack(id, resetTarget = true) {
@@ -613,6 +849,7 @@ const LongPractice = (() => {
             resetSelectedTarget();
         }
         updatePackMeta();
+        updateLongSelectorUi();
         return selected;
     }
 
@@ -706,6 +943,19 @@ const LongPractice = (() => {
     }
 
     function setCurrentUnit(index) {
+        if (!longState.units.length) {
+            longState.unitIndex = 0;
+            longState.displayTarget = '';
+            longState.target = '';
+            longState.completed = false;
+            if (ui.input) {
+                ui.input.value = '';
+                ui.input.disabled = true;
+            }
+            renderPassage('');
+            updateStats();
+            return;
+        }
         longState.unitIndex = Math.max(0, Math.min(index, longState.units.length - 1));
         longState.displayTarget = longState.units[longState.unitIndex] || '';
         longState.target = typingTargetFromDisplay(longState.displayTarget);
@@ -739,6 +989,17 @@ const LongPractice = (() => {
 
         const isLast = longState.unitIndex >= longState.units.length - 1;
         if (isLast) {
+            if (repeatModeEnabled()) {
+                setStatus('REPEAT SECTION · 다시 처음 구간으로 이동합니다');
+                window.clearTimeout(longState.advanceTimer);
+                longState.advanceTimer = window.setTimeout(() => {
+                    longState.completedChars = 0;
+                    longState.completedCorrect = 0;
+                    setCurrentUnit(0);
+                    setStatus('SECTION REPEAT RUNNING');
+                }, 520);
+                return;
+            }
             if (ui.input) ui.input.disabled = true;
             setStatus('COMPLETE · 모든 문장을 입력했습니다');
             return;
@@ -756,7 +1017,8 @@ const LongPractice = (() => {
         const pack = selectedPack();
         const rawCustomText = ui.customText?.value || '';
         const customText = preprocessPracticeText(rawCustomText, pack, { userProvided: true });
-        const usesCustomText = ui.packSelect?.value === '__custom__' || isTemplatePack(pack);
+        const hasCustomText = customText.length > 0;
+        const usesCustomText = hasCustomText || ui.packSelect?.value === '__custom__' || isTemplatePack(pack);
         const text = usesCustomText ? customText : preprocessPracticeText(pack?.text || customText, pack);
         const unitOptions = {
             preserveLineStructure: shouldPreserveLineStructure(pack, usesCustomText)
@@ -776,7 +1038,8 @@ const LongPractice = (() => {
 
         longState.fullText = text;
         longState.unitOptions = unitOptions;
-        longState.units = splitPracticeUnits(text, unitOptions);
+        longState.allUnits = splitPracticeUnits(text, unitOptions);
+        longState.units = repeatUnitsFromAll();
         longState.unitIndex = 0;
         longState.completedChars = 0;
         longState.completedCorrect = 0;
@@ -795,7 +1058,8 @@ const LongPractice = (() => {
         }
         renderPassage('');
         updateStats();
-        setStatus('PRACTICE RUNNING');
+        updateRepeatInfo();
+        setStatus(repeatModeEnabled() ? 'SECTION REPEAT RUNNING' : 'PRACTICE RUNNING');
     }
 
     function reset() {
@@ -805,9 +1069,10 @@ const LongPractice = (() => {
         longState.completedChars = 0;
         longState.completedCorrect = 0;
         longState.unitIndex = 0;
-        if (longState.fullText && !longState.units.length) {
-            longState.units = splitPracticeUnits(longState.fullText, longState.unitOptions);
+        if (longState.fullText && !longState.allUnits.length) {
+            longState.allUnits = splitPracticeUnits(longState.fullText, longState.unitOptions);
         }
+        longState.units = repeatUnitsFromAll();
         if (longState.units.length) {
             longState.displayTarget = longState.units[0];
             longState.target = typingTargetFromDisplay(longState.displayTarget);
@@ -818,6 +1083,7 @@ const LongPractice = (() => {
         }
         renderPassage('');
         updateStats();
+        updateRepeatInfo();
         setStatus(longState.target ? 'RESET' : 'READY');
         ui.input?.focus();
     }
@@ -840,26 +1106,23 @@ const LongPractice = (() => {
 
     function handleKeydown(event) {
         if (!longState.target || ui.input?.disabled) return;
-        if (event.metaKey || event.ctrlKey || event.altKey) return;
         if (event.key === 'Process' || event.isComposing) return;
         if (event.key === 'Enter') {
-            event.preventDefault();
             playLongTypingSound(event);
-            const value = ui.input?.value || '';
-            const lineProgress = currentLineProgress(value);
-            const atDisplayLineBreak = isAtDisplayLineBreak(value);
-            if (isUnitReadyToComplete(value) || (!atDisplayLineBreak && !lineProgress.hasNextLine && lineProgress.typedEnough)) {
-                completeCurrentUnit();
+            if (event.ctrlKey || event.metaKey) {
+                event.preventDefault();
+                const value = ui.input?.value || '';
+                if (isUnitReadyToComplete(value)) {
+                    completeCurrentUnit();
+                    return;
+                }
+                setStatus('현재 구간을 끝까지 입력하면 Ctrl+Enter로 완료할 수 있습니다.');
                 return;
             }
-            if (atDisplayLineBreak) {
-                insertLongInputText('\n');
-                setStatus('NEXT LINE');
-                return;
-            }
-            setStatus('현재 줄을 끝까지 입력하면 Enter로 다음 줄로 이동합니다.');
+            setStatus('LINE BREAK · Ctrl+Enter로 현재 구간 완료');
             return;
         }
+        if (event.metaKey || event.ctrlKey || event.altKey) return;
         if (!isAudibleKey(event.key)) return;
         playLongTypingSound(event);
     }
@@ -971,6 +1234,23 @@ const LongPractice = (() => {
         ui.screen.dataset.bound = 'true';
         populatePackSelect();
         ui.packSelect?.addEventListener('change', handlePackChange);
+        ui.packTrigger?.addEventListener('click', event => {
+            event.stopPropagation();
+            if (ui.packSelector?.classList.contains('open')) closeLongPackPopover();
+            else openLongPackPopover();
+        });
+        ui.packPopoverClose?.addEventListener('click', closeLongPackPopover);
+        document.addEventListener('click', event => {
+            if (!ui.packSelector || ui.packSelector.contains(event.target)) return;
+            closeLongPackPopover();
+        });
+        ui.repeatEnabled?.addEventListener('change', () => {
+            applyRepeatRange();
+            updateRepeatInfo();
+        });
+        ui.repeatApply?.addEventListener('click', applyRepeatRange);
+        ui.repeatStart?.addEventListener('input', updateRepeatInfo);
+        ui.repeatEnd?.addEventListener('input', updateRepeatInfo);
         ui.start?.addEventListener('click', start);
         ui.reset?.addEventListener('click', reset);
         ui.home?.addEventListener('click', () => {

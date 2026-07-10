@@ -1252,8 +1252,14 @@ assert(longMode.includes('const chunkSize = lines.length <= 4 ? lines.length : 4
 assert(longMode.includes('function cleanUserProvidedText') && longMode.includes('function normalizePracticePunctuation'), 'long practice should normalize user-provided brackets, spacing, and quote variants before typing');
 assert(longMode.includes("pack?.preprocess === 'structured'") && longMode.includes("pack?.preprocess === 'lyrics' || pack?.preprocess === 'structured'"), 'long practice should preserve structured user-provided long packs');
 assert(longMode.includes('function comparableChar') && longMode.includes('isUnitReadyToComplete'), 'long practice should tolerate same-family punctuation variants and advance after a completed line');
-assert(longMode.includes('function displayLineBreakPositions') && longMode.includes('function insertLongInputText') && longMode.includes("insertLongInputText('\\n')"), 'long practice Enter should move to the next visible line inside structured passages');
-assert(longMode.includes('isAtDisplayLineBreak(value)') && longMode.includes('completeCurrentUnit();'), 'long practice Enter should complete the unit when no next visible line remains');
+assert(index.includes('id="long-pack-selector"') && index.includes('id="long-pack-card-groups"'), 'long practice page should use the cartridge-style sentence pack selector');
+assert(longMode.includes('function renderLongPackCards') && longMode.includes('pack-cartridge pack-style-${meta.style}'), 'long practice should render sentence packs as cartridge cards');
+assert(longMode.includes('.filter(pack => !isTemplatePack(pack))'), 'long practice page selector should hide direct-input/template placeholder cards');
+assert(index.includes('연습하고 싶은 문장을 입력해서 즉석에서 반복 타이핑할 수 있습니다') && index.includes('Pack Maker에서 장문팩으로 만들어 저장할 수도 있습니다'), 'long practice direct-input helper copy should explain instant repeat typing and pack creation');
+assert(index.includes('id="long-repeat-enabled"') && index.includes('id="long-repeat-start"') && index.includes('id="long-repeat-end"'), 'long practice should expose section repeat controls');
+assert(longMode.includes('function repeatUnitsFromAll') && longMode.includes('SECTION REPEAT RUNNING'), 'long practice should support a repeatable selected unit range');
+assert(longMode.includes('longState.allUnits = text ? splitPracticeUnits(text, longState.unitOptions) : []') && longMode.includes('longState.displayTarget = longState.units[0] || \'\''), 'long practice should render the selected saved pack preview before START');
+assert(longMode.includes("event.ctrlKey || event.metaKey") && longMode.includes('LINE BREAK · Ctrl+Enter로 현재 구간 완료'), 'long practice Enter should keep textarea line breaks and use Ctrl/Cmd+Enter for forced completion');
 assert(!longMode.includes(`.replace(/[“”＂"]/g, "'")`), 'long practice should not collapse double quotes into apostrophes');
 assert(longMode.includes('duplicate') && longMode.includes('normalizeText(saved.text) === text'), 'long practice should de-duplicate repeated user-provided long pack saves');
 assert(longMode.includes('function selectPack') && longMode.includes('pendingPackId'), 'long practice should support opening the just-saved user pack directly');

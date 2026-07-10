@@ -2714,6 +2714,14 @@
             gap: 14px;
         }
 
+        .long-native-select {
+            display: none;
+        }
+
+        .long-page-selector .pack-popover {
+            z-index: 260;
+        }
+
         .long-controls select,
         .long-controls textarea,
         #long-input {
@@ -2731,6 +2739,65 @@
             resize: vertical;
             padding: 12px;
             line-height: 1.55;
+        }
+
+        .long-repeat-card {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid rgba(0, 243, 255, 0.22);
+            border-radius: 8px;
+            background:
+                repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 5px),
+                rgba(0, 243, 255, 0.045);
+        }
+
+        .long-repeat-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #dffcff;
+            font-family: var(--font-display);
+            font-size: 0.72rem;
+            letter-spacing: 1.4px;
+        }
+
+        .long-repeat-toggle input {
+            accent-color: var(--primary-neon);
+        }
+
+        .long-repeat-range {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .long-repeat-range label {
+            display: grid;
+            gap: 5px;
+            color: #999;
+            font-size: 0.66rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .long-repeat-range input {
+            width: 100%;
+            min-height: 38px;
+            border: 1px solid rgba(0, 243, 255, 0.32);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #eee;
+            font-family: var(--font-code);
+            padding: 8px;
+        }
+
+        .long-repeat-info {
+            min-height: 18px;
+            color: rgba(224, 230, 237, 0.68);
+            font-size: 0.72rem;
+            line-height: 1.4;
         }
 
         .long-action-row,
@@ -5896,6 +5963,14 @@
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
 
+            .long-repeat-range {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .long-repeat-range button {
+                grid-column: 1 / -1;
+            }
+
             body.ocp-edition #start-screen .card {
                 height: auto;
                 min-height: 0;
@@ -8945,10 +9020,47 @@
                 <div class="long-controls">
                     <div class="select-group">
                         <label for="long-pack-select">문장팩 선택</label>
-                        <select id="long-pack-select"></select>
+                        <select id="long-pack-select" class="long-native-select" aria-hidden="true" tabindex="-1"></select>
+                        <div class="pack-selector long-mode long-page-selector" id="long-pack-selector">
+                            <button class="pack-selector-trigger" id="long-pack-trigger" type="button"
+                                aria-haspopup="dialog" aria-expanded="false">
+                                <span>
+                                    <span class="pack-trigger-kicker">문장팩 선택</span>
+                                    <span id="long-pack-current-title">SELECT TEXT</span>
+                                </span>
+                                <span class="pack-trigger-chip" id="long-pack-current-chip">TEXT</span>
+                            </button>
+                            <div class="pack-popover hidden" id="long-pack-popover" role="dialog" aria-modal="false"
+                                aria-label="문장팩 선택">
+                                <div class="pack-popover-head">
+                                    <span>문장팩 카트리지 선택</span>
+                                    <button class="pack-popover-close" id="long-pack-popover-close"
+                                        type="button">CLOSE</button>
+                                </div>
+                                <div class="pack-popover-body">
+                                    <div class="pack-card-groups" id="long-pack-card-groups"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="long-note" id="long-pack-meta">공개/오리지널 연습문을 기본 제공하고, 직접 붙여넣기 텍스트도 연습할 수 있습니다.</div>
-                    <textarea id="long-custom-text" placeholder="사용자가 직접 입력한 글을 연습하려면 여기에 붙여넣으세요. 가사 템플릿을 선택한 경우에도 원문은 이 개인 연습 슬롯에 직접 붙여넣어 사용합니다."></textarea>
+                    <div class="long-note" id="long-pack-meta">연습하고 싶은 문장을 입력해서 즉석에서 반복 타이핑할 수 있습니다. Pack Maker에서 장문팩으로 만들어 저장할 수도 있습니다.</div>
+                    <textarea id="long-custom-text" placeholder="연습하고 싶은 문장을 여기에 입력하세요. Enter로 줄을 나누고 START TEXT를 누르면 즉석 반복 연습이 시작됩니다."></textarea>
+                    <div class="long-repeat-card" aria-label="구간 반복 설정">
+                        <label class="long-repeat-toggle">
+                            <input id="long-repeat-enabled" type="checkbox">
+                            <span>구간 반복 모드</span>
+                        </label>
+                        <div class="long-repeat-range">
+                            <label for="long-repeat-start">시작 구간
+                                <input id="long-repeat-start" type="number" min="1" value="1" inputmode="numeric">
+                            </label>
+                            <label for="long-repeat-end">끝 구간
+                                <input id="long-repeat-end" type="number" min="1" value="1" inputmode="numeric">
+                            </label>
+                            <button class="btn-small" id="long-repeat-apply" type="button">APPLY</button>
+                        </div>
+                        <div class="long-repeat-info" id="long-repeat-info">START 후 느린 구간 번호를 선택하면 해당 구간만 반복합니다.</div>
+                    </div>
                     <div class="long-action-row">
                         <button class="btn-small" id="long-start" type="button">START TEXT</button>
                         <button class="btn-small" id="long-reset" type="button">RESET</button>
