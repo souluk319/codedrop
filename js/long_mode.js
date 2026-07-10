@@ -91,6 +91,59 @@ const LongPractice = (() => {
         return currentLanguage() === 'en' ? en : ko;
     }
 
+    function localizedStatus(text) {
+        const raw = String(text || '');
+        if (raw.startsWith('NEXT LINE ')) {
+            return `${textForLanguage('NEXT LINE', '다음 문장')} ${raw.slice('NEXT LINE '.length)}`;
+        }
+        const copy = {
+            'READY': ['READY', '준비'],
+            'PASTE TEXT TO START': ['PASTE TEXT TO START', '텍스트를 붙여넣고 시작하세요'],
+            'PRACTICE RUNNING': ['PRACTICE RUNNING', '연습 진행 중'],
+            'NEXT LINE': ['NEXT LINE', '다음 문장'],
+            'COMPLETE · 모든 문장을 입력했습니다': ['COMPLETE · All sentences typed', '완료 · 모든 문장을 입력했습니다'],
+            '이 템플릿은 직접 붙여넣은 텍스트가 있어야 시작할 수 있습니다.': ['Paste text into this template before starting.', '이 템플릿은 직접 붙여넣은 텍스트가 있어야 시작할 수 있습니다.'],
+            '20자 이상의 장문 텍스트가 필요합니다.': ['Long practice text must contain at least 20 characters.', '20자 이상의 장문 텍스트가 필요합니다.'],
+            '현재 줄을 끝까지 입력하면 Enter로 다음 줄로 이동합니다.': ['Finish the current line, then press Enter to continue.', '현재 줄을 끝까지 입력하면 Enter로 다음 줄로 이동합니다.']
+        };
+        const pair = copy[raw];
+        return pair ? textForLanguage(pair[0], pair[1]) : raw;
+    }
+
+    function applyLanguage() {
+        bindUi();
+        const subtitle = document.querySelector('.long-subtitle');
+        const packLabel = document.querySelector('label[for="long-pack-select"]');
+        const statLabels = Array.from(document.querySelectorAll('.long-stat > span'));
+        if (subtitle) subtitle.textContent = textForLanguage(
+            'A long-form CodeDrop trainer for sentences, proverbs, and passages',
+            '문장, 속담, 긴 글을 정확히 따라 치는 CodeDrop 장문 연습장'
+        );
+        if (ui.home) ui.home.textContent = textForLanguage('HOME', '홈');
+        if (packLabel) packLabel.textContent = textForLanguage('Select Sentence Pack', '문장팩 선택');
+        if (ui.customText) ui.customText.placeholder = textForLanguage(
+            'Paste text you want to practice here. Copyrighted lyrics stay only in this private practice slot.',
+            '사용자가 직접 입력한 글을 연습하려면 여기에 붙여넣으세요. 저작권 있는 가사는 이 개인 연습 슬롯에서만 다룹니다.'
+        );
+        if (ui.start) ui.start.textContent = textForLanguage('START TEXT', '연습 시작');
+        if (ui.reset) ui.reset.textContent = textForLanguage('RESET', '초기화');
+        if (ui.input) ui.input.placeholder = textForLanguage(
+            'Type the passage above exactly.',
+            '여기에 위 문장을 그대로 입력합니다.'
+        );
+        const labels = currentLanguage() === 'en'
+            ? ['Progress', 'Accuracy', 'WPM', 'Source']
+            : ['진행', '정확도', 'WPM', '출처'];
+        statLabels.forEach((label, index) => {
+            if (labels[index]) label.textContent = labels[index];
+        });
+        if (ui.packSelect) populatePackSelect();
+        updatePackMeta();
+        if (ui.status?.dataset.statusRaw) {
+            setStatus(ui.status.dataset.statusRaw, ui.status.dataset.statusDanger === 'true');
+        }
+    }
+
     function isPlayableLongPack(pack) {
         if (!pack) return false;
         if (isTemplatePack(pack)) return true;
@@ -457,13 +510,19 @@ const LongPractice = (() => {
     }
 
     function defaultCustomPlaceholder() {
-        return '사용자가 직접 입력한 글을 연습하려면 여기에 붙여넣으세요. 저작권 있는 가사는 기본팩에 넣지 않고, 이 개인 연습 슬롯에서만 다룹니다.';
+        return textForLanguage(
+            'Paste text you want to practice here. Copyrighted lyrics stay only in this private practice slot.',
+            '사용자가 직접 입력한 글을 연습하려면 여기에 붙여넣으세요. 저작권 있는 가사는 기본팩에 넣지 않고, 이 개인 연습 슬롯에서만 다룹니다.'
+        );
     }
 
     function applyCustomPlaceholder(pack) {
         if (!ui.customText) return;
         ui.customText.placeholder = isTemplatePack(pack)
-            ? (pack.promptText || '이 템플릿은 원문을 포함하지 않습니다. 연습할 텍스트를 직접 붙여넣으세요.')
+            ? textForLanguage(
+                'This template contains no source text. Paste the text you want to practice.',
+                pack.promptText || '이 템플릿은 원문을 포함하지 않습니다. 연습할 텍스트를 직접 붙여넣으세요.'
+            )
             : defaultCustomPlaceholder();
     }
 
@@ -549,6 +608,9 @@ const LongPractice = (() => {
         const hasDesiredValue = Array.from(ui.packSelect.options).some(option => option.value === desiredValue);
         if (desiredValue && hasDesiredValue) {
             ui.packSelect.value = desiredValue;
+        } else if (currentLanguage() === 'en') {
+            const englishPack = visiblePacks.find(pack => String(pack.group || '').toLowerCase() === 'english');
+            if (englishPack) ui.packSelect.value = englishPack.id;
         }
     }
 
@@ -562,11 +624,17 @@ const LongPractice = (() => {
         if (!ui.meta) return;
         applyCustomPlaceholder(pack);
         if (!pack) {
-            ui.meta.textContent = '직접 입력 텍스트는 개인 연습용입니다. 기본팩에는 저작권 있는 가사를 번들하지 않습니다.';
+            ui.meta.textContent = textForLanguage(
+                'Direct-input text is private practice content. Copyrighted lyrics are never bundled in official packs.',
+                '직접 입력 텍스트는 개인 연습용입니다. 기본팩에는 저작권 있는 가사를 번들하지 않습니다.'
+            );
             return;
         }
         if (isTemplatePack(pack)) {
-            ui.meta.textContent = `${pack.title || pack.label} · ${sourceLabel(pack)} · 원문은 직접 붙여넣기 슬롯에서만 사용합니다. 기본팩에는 포함하지 않습니다.`;
+            ui.meta.textContent = `${pack.title || pack.label} · ${sourceLabel(pack)} · ${textForLanguage(
+                'Paste the source into the private slot; it is not included in official packs.',
+                '원문은 직접 붙여넣기 슬롯에서만 사용합니다. 기본팩에는 포함하지 않습니다.'
+            )}`;
             return;
         }
         const tags = Array.isArray(pack.tags) ? pack.tags.join(' · ') : '';
@@ -618,7 +686,9 @@ const LongPractice = (() => {
 
     function setStatus(text, danger = false) {
         if (!ui.status) return;
-        ui.status.textContent = text;
+        ui.status.dataset.statusRaw = String(text || '');
+        ui.status.dataset.statusDanger = String(Boolean(danger));
+        ui.status.textContent = localizedStatus(text);
         ui.status.style.color = danger ? 'var(--danger-color)' : 'var(--secondary-neon)';
     }
 
@@ -888,6 +958,7 @@ const LongPractice = (() => {
     function open(options = {}) {
         bindUi();
         populatePackSelect();
+        applyLanguage();
         if (options.packId) {
             selectPack(options.packId, true);
         }
@@ -979,6 +1050,8 @@ const LongPractice = (() => {
         });
         ui.input?.addEventListener('keydown', handleKeydown);
         ui.input?.addEventListener('input', handleInput);
+        window.addEventListener('codedrop:language', applyLanguage);
+        applyLanguage();
         updatePackMeta();
     }
 

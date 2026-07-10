@@ -56,6 +56,58 @@ const ScenarioMode = (() => {
     const $ = (id) => document.getElementById(id);
     const ui = {};
 
+    function isEnglish() {
+        return window.CodeDropI18n?.lang?.() === 'en';
+    }
+
+    function tx(en, ko) {
+        return isEnglish() ? en : ko;
+    }
+
+    function localizedLabel(label) {
+        if (!isEnglish()) return label;
+        const labels = {
+            'Linux 기초': 'Linux Basics',
+            '인증 (htpasswd/IdP)': 'Authentication (htpasswd/IdP)',
+            '권한 (RBAC/그룹)': 'Permissions (RBAC/Groups)',
+            '쿼터/시크릿/컨피그맵': 'Quotas, Secrets, and ConfigMaps',
+            '디플로이/스케일/네트워크': 'Deployments, Scaling, and Networking',
+            '네트워크 보안/외부 노출': 'Network Security and External Access',
+            '트러블슈팅': 'Troubleshooting',
+            '앱 배포/검증': 'Application Deployment and Verification',
+            '오퍼레이터': 'Operators',
+            'SCC/서비스어카운트': 'SCC and Service Accounts',
+            '오류 진단 (Incident Drill)': 'Incident Drill',
+            '실전 시험': 'Practice Exam',
+            '오답노트': 'Review Queue'
+        };
+        return labels[label] || label;
+    }
+
+    function applyLanguageChrome() {
+        if (!ui.screen) return;
+        if (ui.category && session.opts) {
+            ui.category.textContent = session.phase === 'deferred'
+                ? `${tx('REVIEW ROUND', '복습 라운드')} (${session.list.length} ${tx('questions', '문제')})`
+                : localizedLabel(session.opts.label);
+        }
+        if (ui.chatBtn) ui.chatBtn.textContent = tx('QUESTION', '질문');
+        if (ui.quitBtn) ui.quitBtn.textContent = tx('QUIT', '종료');
+        if (ui.hintBtn && !session.hintUsed) ui.hintBtn.textContent = tx('HINT (-30)', '힌트 (-30점)');
+        if (ui.skipBtn) {
+            ui.skipBtn.textContent = session.opts?.mode === 'exam' && session.phase === 'main'
+                ? tx('ANSWER LATER', '나중에 풀기')
+                : tx('SKIP', '건너뛰기');
+        }
+        if (ui.retryBtn) ui.retryBtn.textContent = tx('TRY AGAIN', '다시 도전');
+        if (ui.homeBtn) ui.homeBtn.textContent = tx('HOME', '홈');
+        if (ui.input) {
+            ui.input.placeholder = isGuidedSession()
+                ? tx('Type the displayed command, then press Enter', '정답 명령을 보고 그대로 입력 후 Enter')
+                : tx('Enter command, then press Enter', '명령어 입력 후 Enter');
+        }
+    }
+
     function cacheEls() {
         ui.screen = $('scenario-screen');
         ui.card = $('scenario-card');
@@ -249,6 +301,7 @@ const ScenarioMode = (() => {
         ui.quitBtn.addEventListener('click', quit);
         ui.retryBtn.addEventListener('click', () => session.opts.retry());
         ui.homeBtn.addEventListener('click', quit);
+        window.addEventListener('codedrop:language', applyLanguageChrome);
     }
 
     // ---------- 타이머 (시험 전용) ----------
@@ -297,7 +350,7 @@ const ScenarioMode = (() => {
         if (typeof sfx !== 'undefined') sfx.playFail();
         ui.input.disabled = true;
         ui.input.classList.add('wrong');
-        showFeedback('skipped', '시간 초과 (오답 처리)', q);
+        showFeedback('skipped', tx('TIMEOUT (MARKED WRONG)', '시간 초과 (오답 처리)'), q);
         showNextControls();
     }
 
@@ -316,11 +369,11 @@ const ScenarioMode = (() => {
     }
 
     function chatModeLabel() {
-        if (session.opts?.mode === 'exam') return '시험 연습';
-        if (isGuidedSession()) return '따라치기';
-        if (session.opts?.mode === 'review') return '오답 복습';
-        if ((session.opts?.label || '').includes('진단')) return '진단훈련';
-        return '문제풀이';
+        if (session.opts?.mode === 'exam') return tx('Exam Practice', '시험 연습');
+        if (isGuidedSession()) return tx('Follow Typing', '따라치기');
+        if (session.opts?.mode === 'review') return tx('Missed Review', '오답 복습');
+        if ((session.opts?.label || '').includes('진단')) return tx('Incident Drill', '진단훈련');
+        return tx('Problem Solving', '문제풀이');
     }
 
     function chatContextForCurrentQuestion() {
@@ -374,7 +427,7 @@ const ScenarioMode = (() => {
         const isGuided = isGuidedSession();
         const badge = session.phase === 'deferred'
             ? `복습 라운드 (${session.list.length}문제)`
-            : session.opts.label;
+            : localizedLabel(session.opts.label);
         ui.category.textContent = badge;
         ui.progress.textContent = `${session.idx + 1} / ${totalInRound()}`;
         renderScore();
@@ -383,7 +436,9 @@ const ScenarioMode = (() => {
         ui.input.value = '';
         ui.input.disabled = false;
         ui.input.classList.remove('correct', 'wrong');
-        ui.input.placeholder = isGuided ? '정답 명령을 보고 그대로 입력 후 Enter' : '';
+        ui.input.placeholder = isGuided
+            ? tx('Type the displayed command, then press Enter', '정답 명령을 보고 그대로 입력 후 Enter')
+            : tx('Enter command, then press Enter', '명령어 입력 후 Enter');
         ui.input.focus();
 
         ui.feedback.className = 'scenario-feedback hidden';
@@ -392,7 +447,10 @@ const ScenarioMode = (() => {
         ui.hintBtn.disabled = false;
         ui.hintBtn.classList.toggle('hidden', !session.opts.hintsAllowed || isGuided);
         ui.skipBtn.classList.toggle('hidden', isGuided);
-        ui.skipBtn.textContent = (isExam && session.phase === 'main') ? '나중에 풀기' : '건너뛰기';
+        ui.skipBtn.textContent = (isExam && session.phase === 'main')
+            ? tx('ANSWER LATER', '나중에 풀기')
+            : tx('SKIP', '건너뛰기');
+        applyLanguageChrome();
         ui.nextBtn.classList.add('hidden');
         if (ui.chatBtn) ui.chatBtn.classList.toggle('hidden', !hasStudyChat());
 
@@ -403,7 +461,7 @@ const ScenarioMode = (() => {
 
     function renderScore() {
         if (session.opts.mode === 'exam') {
-            ui.score.textContent = `정답 ${session.correct}`;
+            ui.score.textContent = `${tx('CORRECT', '정답')} ${session.correct}`;
         } else if (session.opts.mode === 'guided') {
             ui.score.textContent = `FOLLOW ${session.correct}`;
         } else {
@@ -433,15 +491,15 @@ const ScenarioMode = (() => {
             let title;
             if (session.opts.mode === 'exam') {
                 session.results.push({ q, correct: true });
-                title = '정답!';
+                title = tx('CORRECT!', '정답!');
             } else if (session.opts.mode === 'guided') {
                 session.guidedChars += q.canonical.length;
                 if (session.wrongAttempts === 0) session.guidedClean++;
-                title = '따라치기 완료';
+                title = tx('FOLLOW COMPLETE', '따라치기 완료');
             } else {
                 const pts = questionPoints();
                 session.score += pts;
-                title = `정답! +${pts}점`;
+                title = tx(`CORRECT! +${pts}`, `정답! +${pts}점`);
             }
 
             if (typeof sfx !== 'undefined') sfx.playSuccess();
@@ -462,14 +520,23 @@ const ScenarioMode = (() => {
             ui.input.classList.add('wrong');
 
             if (session.opts.mode === 'guided') {
-                showFeedback('wrong-msg', `입력이 다릅니다 · 오답 ${session.wrongAttempts}회`, q);
+                showFeedback('wrong-msg', tx(
+                    `INPUT MISMATCH · ${session.wrongAttempts} wrong attempts`,
+                    `입력이 다릅니다 · 오답 ${session.wrongAttempts}회`
+                ), q);
             } else {
                 ui.feedback.className = 'scenario-feedback wrong-msg';
                 ui.feedback.innerHTML = '';
                 const msg = document.createElement('div');
                 msg.textContent = session.opts.mode === 'exam'
-                    ? `오답입니다. 시간 내에 다시 시도하세요. (오답 ${session.wrongAttempts}회)`
-                    : `오답입니다. 다시 시도하세요. (오답 ${session.wrongAttempts}회 — 현재 문제 배점 ${questionPoints()}점)`;
+                    ? tx(
+                        `Incorrect. Try again before time runs out. (${session.wrongAttempts} wrong attempts)`,
+                        `오답입니다. 시간 내에 다시 시도하세요. (오답 ${session.wrongAttempts}회)`
+                    )
+                    : tx(
+                        `Incorrect. Try again. (${session.wrongAttempts} wrong attempts · ${questionPoints()} points remaining)`,
+                        `오답입니다. 다시 시도하세요. (오답 ${session.wrongAttempts}회 — 현재 문제 배점 ${questionPoints()}점)`
+                    );
                 ui.feedback.appendChild(msg);
             }
         }
@@ -480,7 +547,7 @@ const ScenarioMode = (() => {
         ui.feedback.innerHTML = '';
         const title = document.createElement('div');
         title.className = 'fb-title';
-        title.textContent = '따라치기';
+        title.textContent = tx('FOLLOW TYPING', '따라치기');
         const cmd = document.createElement('div');
         cmd.className = 'fb-canonical';
         cmd.textContent = q.canonical;
@@ -499,7 +566,7 @@ const ScenarioMode = (() => {
         ui.feedback.className = 'scenario-feedback hint-msg';
         ui.feedback.innerHTML = '';
         const hint = document.createElement('div');
-        hint.textContent = `힌트: ${q.hint}`;
+        hint.textContent = `${tx('Hint', '힌트')}: ${q.hint}`;
         ui.feedback.appendChild(hint);
         ui.input.focus();
     }
@@ -527,7 +594,9 @@ const ScenarioMode = (() => {
         }
 
         ui.input.disabled = true;
-        showFeedback('skipped', session.opts.mode === 'exam' ? '포기 (오답 처리)' : '건너뜀 (0점)', q);
+        showFeedback('skipped', session.opts.mode === 'exam'
+            ? tx('GAVE UP (MARKED WRONG)', '포기 (오답 처리)')
+            : tx('SKIPPED (0 POINTS)', '건너뜀 (0점)'), q);
         showNextControls();
     }
 
@@ -556,7 +625,7 @@ const ScenarioMode = (() => {
         ui.nextBtn.classList.remove('hidden');
         const last = session.idx + 1 >= totalInRound() &&
             !(session.phase === 'main' && session.deferred.length > 0);
-        ui.nextBtn.textContent = last ? '결과 보기' : '다음 →';
+        ui.nextBtn.textContent = last ? tx('VIEW RESULTS', '결과 보기') : tx('NEXT →', '다음 →');
         ui.nextBtn.focus();
     }
 

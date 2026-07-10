@@ -23,6 +23,14 @@ const LearnMode = (() => {
         progressKey: 'codedrop_learn_progress'
     };
 
+    function isEnglish() {
+        return window.CodeDropI18n?.lang?.() === 'en';
+    }
+
+    function tx(en, ko) {
+        return isEnglish() ? en : ko;
+    }
+
     function configure(next = {}) {
         runtime = { ...runtime, ...next };
         LearnProgress.setKey(runtime.progressKey || 'codedrop_learn_progress');
@@ -189,26 +197,38 @@ const LearnMode = (() => {
         if (activeEdition === 'github') {
             return {
                 key: 'github',
-                surface: '현재 GitHub Edition 학습 화면',
-                listLabel: 'GitHub 학습 목록',
-                trackTitle: 'GitHub Certification 커리큘럼',
-                pickerIntro: '따라 치면서 배우는 GitHub Certification 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.',
-                prompt: 'GitHub Certification 학습 커리큘럼 목록 화면입니다. 사용자가 Foundations, Actions, Security, Administration, Copilot 중 어디서 시작할지 질문할 수 있습니다.',
-                explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
-                hint: '처음이면 이어서 학습 버튼이나 Foundations 첫 레슨부터 시작하는 것이 좋습니다.',
+                surface: tx('the current GitHub Edition learning screen', '현재 GitHub Edition 학습 화면'),
+                listLabel: tx('GitHub Lesson List', 'GitHub 학습 목록'),
+                trackTitle: tx('GitHub Certification Curriculum', 'GitHub Certification 커리큘럼'),
+                pickerIntro: tx(
+                    'Learn the GitHub Certification curriculum by typing. Completing a lesson unlocks the next one.',
+                    '따라 치면서 배우는 GitHub Certification 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.'
+                ),
+                prompt: tx(
+                    'This is the GitHub Certification curriculum list. Ask where to start among Foundations, Actions, Security, Administration, and Copilot.',
+                    'GitHub Certification 학습 커리큘럼 목록 화면입니다. 사용자가 Foundations, Actions, Security, Administration, Copilot 중 어디서 시작할지 질문할 수 있습니다.'
+                ),
+                explanation: tx('Choose a lesson to study concepts, typing drills, and quizzes.', '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.'),
+                hint: tx('If you are new, use Continue Learning or start with the first Foundations lesson.', '처음이면 이어서 학습 버튼이나 Foundations 첫 레슨부터 시작하는 것이 좋습니다.'),
                 modeGuide: 'GitHub Edition 구조: Learn Mode는 실무자가 가장 자주 쓰는 Git, PR, 보호 규칙, Actions, 보안, 조직 관리, Copilot 루틴을 효율 우선으로 손에 익히는 기본 코스라 경험자에게는 초반이 쉽게 느껴질 수 있다. 단계별 해금은 유지한다. 중급자는 열린 Learn 레슨을 빠르게 통과해 흐름을 확인하고, 상황 판단은 Scenario, 절차형 훈련은 Mock Lab, Actions 실패와 secret/권한/보안 알림 진단은 Incident Drill, 실전 점검은 Exam과 Dashboard를 추천한다.'
             };
         }
 
         return {
             key: 'ocp',
-            surface: '현재 OCP 학습 화면',
-            listLabel: 'OCP 학습 목록',
-            trackTitle: 'EX280 커리큘럼',
-            pickerIntro: '따라 치면서 배우는 EX280 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.',
-            prompt: 'EX280 학습 커리큘럼 목록 화면입니다. 사용자가 어떤 레슨부터 보면 좋을지, 현재 보이는 학습 흐름을 질문할 수 있습니다.',
-            explanation: '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.',
-            hint: '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.',
+            surface: tx('the current OCP learning screen', '현재 OCP 학습 화면'),
+            listLabel: tx('OCP Lesson List', 'OCP 학습 목록'),
+            trackTitle: tx('EX280 Curriculum', 'EX280 커리큘럼'),
+            pickerIntro: tx(
+                'Learn the EX280 curriculum by typing. Completing a lesson unlocks the next one.',
+                '따라 치면서 배우는 EX280 커리큘럼 — 레슨을 완료하면 다음 레슨이 열립니다.'
+            ),
+            prompt: tx(
+                'This is the EX280 curriculum list. Ask which lesson to start with or how the visible learning flow works.',
+                'EX280 학습 커리큘럼 목록 화면입니다. 사용자가 어떤 레슨부터 보면 좋을지, 현재 보이는 학습 흐름을 질문할 수 있습니다.'
+            ),
+            explanation: tx('Choose a lesson to study concepts, typing drills, and quizzes.', '레슨을 선택하면 개념, 따라치기, 퀴즈 순서로 학습합니다.'),
+            hint: tx('If you are new, use Continue Learning or start with the first unlocked lesson.', '처음이면 이어서 학습 버튼이나 첫 번째 열린 레슨부터 시작하는 것이 좋습니다.'),
             modeGuide: 'OCP Edition 구조: Learn Mode는 EX280 실무와 시험에서 반복되는 oc, kubectl, 리소스 점검, 권한, 트러블슈팅 기본 루틴을 효율 우선으로 손에 익히는 기본 코스라 경험자에게는 초반이 쉽게 느껴질 수 있다. 단계별 해금은 유지한다. 중급자는 열린 Learn 레슨을 빠르게 통과해 명령 습관을 확인하고, 상황 판단은 Scenario, 절차형 훈련은 Mock Lab, 장애 원인 분석은 Incident Drill, 실전 점검은 Exam과 Dashboard를 추천한다.'
         };
     }
@@ -299,6 +319,50 @@ const LearnMode = (() => {
 
     function isFollowMode() {
         return session.practiceMode === 'follow';
+    }
+
+    function applyLanguageChrome() {
+        cacheEls();
+        if (!ui.screen) return;
+        const pickerBadge = ui.picker?.querySelector('.scenario-badge');
+        if (pickerBadge) pickerBadge.textContent = tx('LEARN MODE', '학습 모드');
+        if (ui.pickerChat) ui.pickerChat.textContent = tx('QUESTION', '질문');
+        if (ui.pickerHome) ui.pickerHome.textContent = tx('HOME', '홈');
+        if (ui.pickerIntro) ui.pickerIntro.textContent = currentStudyEditionText().pickerIntro;
+        if (ui.prevStepBtn) ui.prevStepBtn.textContent = tx('← PREVIOUS', '← 이전');
+        if (ui.nextStepBtn) ui.nextStepBtn.textContent = tx('NEXT →', '다음 →');
+        if (ui.quitBtn) ui.quitBtn.textContent = tx('LESSON LIST', '레슨 목록');
+        if (ui.beginBtn) ui.beginBtn.textContent = tx('START LEARNING →', '학습 시작 →');
+        if (ui.peekBtn && !session.peeked) ui.peekBtn.textContent = tx('SHOW ANSWER', '정답 보기');
+        if (ui.hintBtn && !session.stepHintOpen && !session.quizHintOpen) ui.hintBtn.textContent = tx('HINT', '힌트');
+        if (ui.skipBtn) ui.skipBtn.textContent = tx('SKIP', '건너뛰기');
+        if (ui.chatClose) ui.chatClose.textContent = tx('COLLAPSE', '접기');
+        if (ui.chatInput) ui.chatInput.placeholder = tx('Ask a question', '궁금한 점을 질문');
+        if (ui.chatPanel) ui.chatPanel.setAttribute('aria-label', tx('Learning question chat', '학습 질문 챗'));
+        const chatHeader = ui.chatPanel?.querySelector('.kugbot-header');
+        if (chatHeader) chatHeader.setAttribute('aria-label', tx('KugBot learning partner', 'KugBot 학습 파트너'));
+        const chatEngine = ui.chatPanel?.querySelector('.learn-chat-engine-trigger');
+        if (chatEngine) chatEngine.setAttribute('aria-label', tx('Select LLM engine', 'LLM 엔진 선택'));
+        if (ui.retryQuizBtn) ui.retryQuizBtn.textContent = tx('RETRY QUIZ', '퀴즈 재도전');
+        if (ui.listBtn) ui.listBtn.textContent = tx('LESSON LIST', '레슨 목록');
+        if (ui.homeBtn) ui.homeBtn.textContent = tx('HOME', '홈');
+
+        if (session.phase === 'intro' && ui.progress) ui.progress.textContent = tx('CONCEPT', '개념');
+        if (session.phase === 'step' && session.lesson && ui.progress) {
+            ui.progress.textContent = `${tx('STEP', '스텝')} ${session.stepIdx + 1} / ${session.lesson.steps.length}`;
+        }
+        if (session.phase === 'quiz' && ui.progress) {
+            ui.progress.textContent = `${tx('QUIZ', '퀴즈')} ${session.quizIdx + 1} / ${session.quizList.length}`;
+        }
+        if (ui.input && session.phase === 'step') {
+            ui.input.placeholder = tx('Type the command exactly, then press Enter', '명령어를 그대로 입력 후 Enter');
+        } else if (ui.input && session.phase === 'quiz') {
+            ui.input.placeholder = isFollowMode()
+                ? tx('Type the displayed command, then press Enter', '정답 명령을 보고 그대로 입력 후 Enter')
+                : tx('Recall the learned command, then press Enter', '배운 명령을 기억해 입력 후 Enter');
+        }
+        if (ui.picker && !ui.picker.classList.contains('hidden')) renderPicker();
+        if (ui.chatPanel && !ui.chatPanel.classList.contains('hidden') && !session.chatBusy) renderChatHistory();
     }
 
     function cacheEls() {
@@ -486,6 +550,7 @@ const LearnMode = (() => {
         });
         ui.listBtn.addEventListener('click', showPicker);
         ui.homeBtn.addEventListener('click', quit);
+        window.addEventListener('codedrop:language', applyLanguageChrome);
     }
 
     // ---------- LLM 질문 패널 ----------
@@ -977,7 +1042,7 @@ const LearnMode = (() => {
             if (!target.childNodes.length) {
                 const typing = document.createElement('span');
                 typing.className = 'learn-chat-typing';
-                typing.textContent = '응답 생성 중';
+                typing.textContent = tx('Generating response', '응답 생성 중');
                 target.appendChild(typing);
             } else {
                 const caret = document.createElement('span');
@@ -1189,8 +1254,11 @@ const LearnMode = (() => {
         session.chatAutoStick = true;
         ui.chatStatus.textContent = chatEngineStatus('READY');
         ui.chatLog.replaceChildren();
-        const surface = session.externalContext ? currentStudyEditionText().surface : '현재 레슨 화면';
-        appendChat('system', `${chatEngineLabel()}가 ${surface}을 같이 보고 답합니다. 막히는 명령, 플래그, 왜 쓰는지 물어보세요.`);
+        const surface = session.externalContext ? currentStudyEditionText().surface : tx('the current lesson screen', '현재 레슨 화면');
+        appendChat('system', tx(
+            `${chatEngineLabel()} can see ${surface}. Ask about commands, flags, or why they are used.`,
+            `${chatEngineLabel()}가 ${surface}을 같이 보고 답합니다. 막히는 명령, 플래그, 왜 쓰는지 물어보세요.`
+        ));
         session.chat.forEach(entry => appendChat(entry.role, entry.content, { question: entry.question || '' }));
         scrollChatToBottom(true);
     }
@@ -1585,16 +1653,17 @@ const LearnMode = (() => {
         ui.summary.classList.add('hidden');
         ui.picker.classList.remove('hidden');
         ui.screen.classList.remove('hidden');
+        applyLanguageChrome();
         openPickerChat({ focus: false });
     }
 
     function renderPicker() {
         const p = progress();
         const resume = resumeLesson();
-        ui.pickerProgress.textContent = `${p.done} / ${p.total} 레슨 완료`;
+        ui.pickerProgress.textContent = `${p.done} / ${p.total} ${tx('lessons complete', '레슨 완료')}`;
         ui.continueBtn.textContent = resume
-            ? `이어서 학습: ${resume.lesson.title}`
-            : '커리큘럼 완주';
+            ? `${tx('CONTINUE LEARNING', '이어서 학습')}: ${resume.lesson.title}`
+            : tx('CURRICULUM COMPLETE', '커리큘럼 완주');
         ui.continueBtn.disabled = !resume;
 
         ui.trackList.innerHTML = '';
@@ -1627,8 +1696,8 @@ const LearnMode = (() => {
                 quiz.className = 'learn-lesson-quiz';
                 const rec = LearnProgress.load().lessons[lesson.id];
                 quiz.textContent = rec && rec.done
-                    ? `퀴즈 ${rec.quizBest}/${rec.quizTotal}`
-                    : `${lesson.steps.length}스텝 · 퀴즈 ${effectiveLessonQuizCount(lesson)}`;
+                    ? `${tx('Quiz', '퀴즈')} ${rec.quizBest}/${rec.quizTotal}`
+                    : `${lesson.steps.length} ${tx('steps', '스텝')} · ${tx('Quiz', '퀴즈')} ${effectiveLessonQuizCount(lesson)}`;
 
                 row.append(state, title, quiz);
                 if (unlocked) {
@@ -1678,12 +1747,13 @@ const LearnMode = (() => {
         ui.screen.classList.remove('hidden');
 
         ui.lessonTitle.textContent = found.lesson.title;
-        ui.progress.textContent = '개념';
+        ui.progress.textContent = tx('CONCEPT', '개념');
         ui.intro.textContent = found.lesson.intro;
         ui.introWrap.classList.remove('hidden');
         ui.workWrap.classList.add('hidden');
         updateLessonNav();
         showChatPanel();
+        applyLanguageChrome();
     }
 
     function buildQuizList(lesson) {
@@ -1722,7 +1792,7 @@ const LearnMode = (() => {
         session.stepHintOpen = false;
         session.quizHintOpen = false;
         session.reviewingStage = false;
-        ui.progress.textContent = '개념';
+        ui.progress.textContent = tx('CONCEPT', '개념');
         ui.intro.textContent = session.lesson.intro;
         ui.introWrap.classList.remove('hidden');
         ui.workWrap.classList.add('hidden');
@@ -1752,7 +1822,7 @@ const LearnMode = (() => {
         session.stepHintOpen = false;
         session.stepWrongAttempts = 0;
 
-        ui.progress.textContent = `스텝 ${session.stepIdx + 1} / ${session.lesson.steps.length}`;
+        ui.progress.textContent = `${tx('STEP', '스텝')} ${session.stepIdx + 1} / ${session.lesson.steps.length}`;
         ui.desc.textContent = step.desc;
         updateChatContext();
 
@@ -1763,7 +1833,7 @@ const LearnMode = (() => {
         ui.input.disabled = review;
         ui.input.classList.remove('correct', 'wrong');
         ui.input.classList.toggle('correct', review);
-        ui.input.placeholder = '명령어를 그대로 입력 후 Enter';
+        ui.input.placeholder = tx('Type the command exactly, then press Enter', '명령어를 그대로 입력 후 Enter');
         if (!review) ui.input.focus();
 
         ui.output.classList.add('hidden');
@@ -1773,10 +1843,10 @@ const LearnMode = (() => {
         const hasStepHint = !isFollowMode() && scaffold === 'hint' && Boolean(step.hint);
         ui.peekBtn.classList.toggle('hidden', review || isFollowMode() || scaffold !== 'hint');
         ui.peekBtn.disabled = false;
-        ui.peekBtn.textContent = '정답 보기';
+        ui.peekBtn.textContent = tx('SHOW ANSWER', '정답 보기');
         ui.hintBtn.classList.toggle('hidden', review || !hasStepHint);
         ui.hintBtn.disabled = false;
-        ui.hintBtn.textContent = '힌트';
+        ui.hintBtn.textContent = tx('HINT', '힌트');
         ui.skipBtn.classList.add('hidden');
         ui.nextBtn.classList.add('hidden');
 
@@ -1790,7 +1860,7 @@ const LearnMode = (() => {
             ui.feedback.innerHTML = '';
             const title = document.createElement('div');
             title.className = 'fb-title';
-            title.textContent = '복습 중';
+            title.textContent = tx('REVIEWING', '복습 중');
             const explain = document.createElement('div');
             explain.className = 'fb-explain';
             explain.textContent = step.explain;
@@ -1799,8 +1869,8 @@ const LearnMode = (() => {
             ui.nextBtn.classList.remove('hidden');
             const lastStep = session.stepIdx + 1 >= session.lesson.steps.length;
             ui.nextBtn.textContent = lastStep
-                ? (session.quizList.length > 0 ? '미니퀴즈 →' : '결과 보기')
-                : '다음 →';
+                ? (session.quizList.length > 0 ? tx('MINI QUIZ →', '미니퀴즈 →') : tx('VIEW RESULTS', '결과 보기'))
+                : tx('NEXT →', '다음 →');
         }
 
         updateLessonNav();
@@ -1971,7 +2041,7 @@ const LearnMode = (() => {
         session.quizHintUsed = review;
         session.quizHintOpen = false;
 
-        ui.progress.textContent = `퀴즈 ${session.quizIdx + 1} / ${session.quizList.length}`;
+        ui.progress.textContent = `${tx('QUIZ', '퀴즈')} ${session.quizIdx + 1} / ${session.quizList.length}`;
         ui.desc.textContent = q.scenario;
         updateChatContext();
         ui.target.classList.toggle('hidden', !isFollowMode()); // solve는 blind, follow는 canonical 공개
@@ -1981,8 +2051,8 @@ const LearnMode = (() => {
         ui.input.classList.remove('correct', 'wrong');
         ui.input.classList.toggle('correct', review);
         ui.input.placeholder = isFollowMode()
-            ? '정답 명령을 보고 그대로 입력 후 Enter'
-            : '배운 명령을 기억해 입력 후 Enter';
+            ? tx('Type the displayed command, then press Enter', '정답 명령을 보고 그대로 입력 후 Enter')
+            : tx('Recall the learned command, then press Enter', '배운 명령을 기억해 입력 후 Enter');
         if (!review) ui.input.focus();
 
         ui.output.classList.add('hidden');
@@ -1992,14 +2062,14 @@ const LearnMode = (() => {
         ui.peekBtn.classList.add('hidden');
         ui.hintBtn.classList.toggle('hidden', review || isFollowMode());
         ui.hintBtn.disabled = false;
-        ui.hintBtn.textContent = '힌트';
+        ui.hintBtn.textContent = tx('HINT', '힌트');
         ui.skipBtn.classList.toggle('hidden', review || isFollowMode());
         ui.nextBtn.classList.add('hidden');
 
         if (isFollowMode()) renderQuizTarget();
 
         if (review) {
-            quizFeedback('correct', '복습 중', q);
+            quizFeedback('correct', tx('REVIEWING', '복습 중'), q);
             showQuizNext();
         }
 
@@ -2025,7 +2095,9 @@ const LearnMode = (() => {
         ui.hintBtn.classList.add('hidden');
         ui.skipBtn.classList.add('hidden');
         ui.nextBtn.classList.remove('hidden');
-        ui.nextBtn.textContent = session.quizIdx + 1 >= session.quizList.length ? '결과 보기' : '다음 →';
+        ui.nextBtn.textContent = session.quizIdx + 1 >= session.quizList.length
+            ? tx('VIEW RESULTS', '결과 보기')
+            : tx('NEXT →', '다음 →');
         updateLessonNav();
         focusNextAction();
     }

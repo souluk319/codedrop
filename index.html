@@ -1352,13 +1352,15 @@
         }
 
         #music-widget.widget-overlap,
-        #readme-widget.widget-overlap {
+        #readme-widget.widget-overlap,
+        #global-lang-toggle.widget-overlap {
             opacity: 0.26;
             pointer-events: auto;
         }
 
         #music-widget.widget-overlap:hover,
-        #readme-widget.widget-overlap:hover {
+        #readme-widget.widget-overlap:hover,
+        #global-lang-toggle.widget-overlap:hover {
             opacity: 1;
         }
 
@@ -3541,7 +3543,58 @@
             }
         }
 
-        /* --- Readme Widget --- */
+        /* --- Global Language + Readme Widgets --- */
+        #global-lang-toggle {
+            position: fixed;
+            bottom: calc(var(--corner-widget-offset) + 12px);
+            left: calc(var(--corner-widget-offset) + var(--corner-widget-size) + 10px);
+            z-index: 12010;
+        }
+
+        .global-lang-toggle {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 104px;
+            height: 36px;
+            padding: 3px;
+            border: 1px solid rgba(0, 243, 255, 0.52);
+            border-radius: 999px;
+            background: rgba(5, 5, 10, 0.92);
+            box-shadow: 0 0 16px rgba(0, 243, 255, 0.2);
+            overflow: hidden;
+            transition: opacity 0.24s ease, box-shadow 0.24s ease, transform 0.24s ease;
+        }
+
+        .global-lang-toggle:hover {
+            box-shadow: 0 0 22px rgba(0, 243, 255, 0.38);
+        }
+
+        .global-lang-toggle button {
+            min-width: 0;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: rgba(224, 230, 237, 0.58);
+            font-family: var(--font-display);
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .global-lang-toggle button.active,
+        .global-lang-toggle button[aria-pressed="true"] {
+            color: #001014;
+            background: var(--primary-neon);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.72);
+        }
+
+        .global-lang-toggle button:focus-visible {
+            outline: 2px solid #fff;
+            outline-offset: -2px;
+        }
+
         #readme-widget {
             position: fixed;
             bottom: var(--corner-widget-offset);
@@ -3633,41 +3686,7 @@
             display: flex;
             justify-content: center;
             align-items: stretch;
-            gap: 10px;
             margin: 0 auto 18px;
-        }
-
-        .readme-lang-toggle {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            width: 260px;
-            padding: 4px;
-            margin: 0;
-            border: 1px solid rgba(0, 243, 255, 0.45);
-            border-radius: 4px;
-            background: rgba(0, 0, 0, 0.42);
-            box-shadow: 0 0 12px rgba(0, 243, 255, 0.12);
-        }
-
-        .readme-lang-toggle button {
-            min-width: 0;
-            padding: 6px 10px;
-            border: 0;
-            border-radius: 3px;
-            background: transparent;
-            color: #888;
-            font-family: var(--font-display);
-            font-size: 0.72rem;
-            letter-spacing: 1px;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        .readme-lang-toggle button.active {
-            color: #000;
-            background: var(--primary-neon);
-            box-shadow: 0 0 12px var(--primary-neon);
         }
 
         #readme-tutorial-btn {
@@ -3744,14 +3763,6 @@
                 width: calc(100vw - 28px) !important;
                 max-width: calc(100vw - 28px) !important;
                 padding: 28px 22px !important;
-            }
-
-            .readme-lang-toggle {
-                width: 220px;
-            }
-
-            .readme-action-row {
-                flex-wrap: wrap;
             }
 
             #readme-tutorial-btn {
@@ -8525,6 +8536,16 @@
                 left: 12px !important;
             }
 
+            #global-lang-toggle {
+                top: calc(env(safe-area-inset-top, 0px) + 18px);
+                bottom: auto !important;
+                left: 64px;
+                width: 92px;
+                height: 32px;
+                opacity: 0.82;
+                transform: none;
+            }
+
             #music-widget.closed {
                 right: 12px;
             }
@@ -8534,6 +8555,12 @@
                 top: calc(env(safe-area-inset-top, 0px) + 132px);
                 width: 38px !important;
                 height: 38px !important;
+                opacity: 0.58;
+            }
+
+            body.game-active #global-lang-toggle {
+                top: calc(env(safe-area-inset-top, 0px) + 135px);
+                left: 58px;
                 opacity: 0.58;
             }
 
@@ -9520,6 +9547,12 @@
 
 
 
+    <!-- Global Language Toggle -->
+    <div id="global-lang-toggle" class="global-lang-toggle" role="group" aria-label="App language">
+        <button type="button" data-app-lang-select="ko" aria-pressed="false">KR</button>
+        <button type="button" class="active" data-app-lang-select="en" aria-pressed="true">EN</button>
+    </div>
+
     <!-- Readme Widget -->
     <div id="readme-widget"
         style="position: fixed; bottom: var(--corner-widget-offset); left: var(--corner-widget-offset); width: var(--corner-widget-size); height: var(--corner-widget-size); border-radius: 50%; border: 2px solid var(--primary-neon); background: rgba(0,0,0,0.8); color: var(--primary-neon); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 120; box-shadow: 0 0 15px var(--primary-neon); transition: all 0.3s;">
@@ -9537,10 +9570,6 @@
             <button id="readme-close"
                 style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--primary-neon); font-size: 1.5rem; cursor: pointer;">X</button>
             <div class="readme-action-row">
-                <div class="readme-lang-toggle" aria-label="Manual language">
-                    <button type="button" class="active" data-readme-lang="en">ENG</button>
-                    <button type="button" data-readme-lang="ko">KOR</button>
-                </div>
                 <button type="button" id="readme-tutorial-btn">
                     <span data-i18n="en">TUTORIAL</span>
                     <span data-i18n="ko">튜토리얼</span>

@@ -188,16 +188,24 @@ const koI18nKeys = Object.keys(i18nText.ko || {}).sort();
 assert(enI18nKeys.length === koI18nKeys.length, `EN/KO i18n key counts differ: ${enI18nKeys.length} vs ${koI18nKeys.length}`);
 assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n keys must match exactly');
 [
-    'menu.startCodedrop',
     'ocp.start',
-    'menu.packMaker',
-    'menu.keyTest',
     'packMaker.title',
-    'packMaker.home',
     'packMaker.ask',
     'packMaker.stop'
 ].forEach(key => {
     assert(i18nText.ko[key] === i18nText.en[key], `${key} should stay as a stable game/action label across languages`);
+});
+
+[
+    'menu.startCodedrop',
+    'menu.startLongPractice',
+    'menu.packMaker',
+    'menu.keyTest',
+    'packMaker.home',
+    'hud.score',
+    'hud.pause'
+].forEach(key => {
+    assert(i18nText.ko[key] !== i18nText.en[key] && /[가-힣]/.test(i18nText.ko[key]), `${key} should expose localized Korean UI copy`);
 });
 
 [
@@ -366,7 +374,7 @@ assert(game.includes('TUTORIAL_SEEN_STORAGE_KEY'), 'tutorial first-run storage k
 assert(game.includes('function maybeShowFirstRunTutorial()'), 'tutorial should auto-open on first visit');
 assert(game.includes("localStorage.setItem(TUTORIAL_SEEN_STORAGE_KEY, '1')"), 'tutorial should mark itself seen after first display/close');
 assert(game.includes('handleReadmeTutorialClick'), 'README tutorial button should manually open the tutorial');
-assert(index.includes('class="readme-action-row"'), 'README language toggle should sit beside the tutorial action row');
+assert(index.includes('class="readme-action-row"'), 'README tutorial action row is missing');
 assert(index.includes('id="readme-tutorial-btn"'), 'README tutorial button is missing');
 assert(index.includes('id="tutorial-overlay"') && index.includes('data-tutorial-lang="en"'), 'tutorial overlay shell is missing');
 
@@ -648,7 +656,7 @@ assert(index.includes('position: fixed;') && index.includes('bottom: var(--mobil
 assert(index.includes('#learn-screen.learn-session-active #learn-picker'), 'learn picker should have a two-panel layout when chat is open');
 assert(scenario.includes('function hasStudyChat()') && scenario.includes('return !!session.opts;'), 'scenario chat must be available for every OCP scenario-style session, including exam');
 assert(!scenario.includes("session.opts && session.opts.mode !== 'exam'"), 'exam mode must not be excluded from OCP study chat');
-assert(scenario.includes("if (session.opts?.mode === 'exam') return '시험 연습';"), 'exam chat context should be labelled as exam practice');
+assert(scenario.includes("if (session.opts?.mode === 'exam') return tx('Exam Practice', '시험 연습');"), 'exam chat context should be labelled as exam practice in both languages');
 assert(scenario.includes("openStudyChat({ focus: false });"), 'scenario/exam/incident screens should auto-place the shared chat panel on entry');
 assert(scenario.includes("LearnMode.openContextChat(chatContextForCurrentQuestion(), options)"), 'scenario screens should open the shared LearnMode chat panel');
 assert(scenario.includes("LearnMode.setExternalChatContext(chatContextForCurrentQuestion())"), 'scenario screens should refresh shared chat context per question');
@@ -789,6 +797,7 @@ const inputHidden = cssBlock('body:not(.game-active) #input-area');
 assert(inputHidden.includes('pointer-events: none;'), 'inactive command input should not intercept input');
 assert(!index.includes('body.overlay-chrome-hidden #music-widget'), 'music widget should stay visible on every app screen');
 assert(!index.includes('body.overlay-chrome-hidden #readme-widget'), 'readme widget should stay visible on every app screen');
+assert(!index.includes('body.overlay-chrome-hidden #global-lang-toggle'), 'global language toggle should stay visible on every app screen');
 assert(index.includes('<label>SELECT PACK</label>'), 'DROP pack selector label should be SELECT PACK');
 assert(!index.includes('<label>Data Pack</label>'), 'old Data Pack label should not return');
 assert(index.includes('class="pack-native-select"'), 'native pack select should stay in the DOM as the hidden state source');
@@ -879,6 +888,7 @@ assert(game.includes("'packMaker.submit': '공개 요청'"), 'pack maker public 
 assert(game.includes('운영자 검수 후'), 'pack maker public listing copy should clarify operator review');
 assert(index.includes('#music-widget.widget-overlap'), 'music widget should only fade when it overlaps falling words');
 assert(index.includes('#readme-widget.widget-overlap'), 'readme widget should only fade when it overlaps falling words');
+assert(index.includes('#global-lang-toggle.widget-overlap'), 'global language toggle should only fade when it overlaps falling words');
 assert(index.includes('--corner-widget-size: 60px;'), 'bottom corner widgets should share one size token');
 assert(index.includes('--corner-widget-offset: 24px;'), 'bottom corner widgets should use the balanced default offset token');
 const gameActiveBlocks = cssBlocks('body.game-active');
@@ -927,12 +937,21 @@ const readmeWidget = cssBlock('#readme-widget');
 assert(readmeWidget.includes('z-index: 120 !important;'), 'readme widget should sit above app screens despite inline legacy styles');
 assert(readmeWidget.includes('bottom: var(--corner-widget-offset);'), 'readme widget should follow the shared corner widget offset');
 assert(readmeWidget.includes('left: var(--corner-widget-offset);'), 'readme widget should follow the shared corner widget offset');
+const globalLangToggle = cssBlock('#global-lang-toggle');
+assert(globalLangToggle.includes('position: fixed;'), 'global language toggle should float across app screens');
+assert(globalLangToggle.includes('bottom: calc(var(--corner-widget-offset) + 12px);'), 'global language toggle should align vertically with the README widget');
+assert(globalLangToggle.includes('left: calc(var(--corner-widget-offset) + var(--corner-widget-size) + 10px);'), 'global language toggle should sit directly right of the README widget');
+assert(globalLangToggle.includes('z-index: 12010;'), 'global language toggle should remain usable above README and tutorial overlays');
+const globalLangShell = cssBlock('.global-lang-toggle');
+assert(globalLangShell.includes('grid-template-columns: repeat(2, minmax(0, 1fr));'), 'global language toggle should expose stable KR/EN segments');
 assert(index.includes('--mobile-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);'), 'mobile layout should account for the browser safe-area');
 assert(index.includes('#music-widget.closed,\n            #readme-widget') && index.includes('top: calc(env(safe-area-inset-top, 0px) + 12px);'), 'mobile README/MUSIC widgets should move away from bottom inputs');
+assert(index.includes('#global-lang-toggle {\n                top: calc(env(safe-area-inset-top, 0px) + 18px);') && index.includes('left: 64px;'), 'mobile language toggle should remain directly right of README');
 assert(index.includes('body.github-edition #start-screen .card') && index.includes('max-height: calc(100dvh - 152px);'), 'mobile study home cards should keep the logo visible and scroll internally');
 assert(index.includes('padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 calc(var(--mobile-safe-bottom) + 8px);'), 'mobile learn/scenario chat screens should reserve top space for README/MUSIC widgets');
 assert(index.includes('padding: calc(env(safe-area-inset-top, 0px) + 64px) 0 var(--mobile-safe-bottom);'), 'mobile Pack Maker should reserve top space for README/MUSIC widgets');
 assert(index.includes('body.game-active #readme-widget') && index.includes('top: calc(env(safe-area-inset-top, 0px) + 132px);'), 'mobile DROP play widgets should move below the HUD instead of covering score controls');
+assert(index.includes('body.game-active #global-lang-toggle') && index.includes('top: calc(env(safe-area-inset-top, 0px) + 135px);'), 'mobile DROP play should move the language toggle below the HUD with README');
 assert(index.includes('class="study-account-actions"'), 'logout/withdraw controls should have a stable account action class instead of relying on last-child layout');
 assert(index.includes('body.github-edition .study-account-actions'), 'mobile study edition account actions should stay in normal card flow');
 assert(index.includes('body.github-edition #logged-in-view .study-account-actions') && index.includes('order: 3;'), 'mobile study edition account actions should sit above the mode menu instead of overlapping mode cards');
@@ -1424,13 +1443,17 @@ assert(game.includes('function toggleMusicDetails'), 'music island should expand
 assert(game.includes('function toggleMusicTrackList'), 'music island should show/hide the playlist popover');
 assert(game.includes('function updateSoundCloudMetadata'), 'music island should update current track and queue metadata when possible');
 assert(game.includes('function switchMusicWidgetUi'), 'music player should switch between island and SoundCloud views');
-assert(!index.includes('id="global-lang-toggle"'), 'global language toggle should not appear on the page ceiling');
-assert(game.includes('document.body.dataset.appLang = lang'), 'README language toggle should drive the shared app language state');
+assert(index.includes('id="global-lang-toggle"'), 'global KR/EN language toggle is missing');
+assert(index.includes('data-app-lang-select="ko"') && index.includes('>KR</button>'), 'global Korean language action is missing');
+assert(index.includes('data-app-lang-select="en"') && index.includes('>EN</button>'), 'global English language action is missing');
+assert(index.indexOf('id="global-lang-toggle"') < index.indexOf('id="readme-overlay"'), 'global language toggle should live outside the README overlay');
+const readmeOverlayMarkup = index.slice(index.indexOf('<div id="readme-overlay"'), index.indexOf('<!-- First Run Tutorial Overlay -->'));
+assert(!readmeOverlayMarkup.includes('data-app-lang-select'), 'README overlay should not contain a duplicate language toggle');
+assert(game.includes('document.body.dataset.appLang = lang'), 'global language toggle should drive the shared app language state');
 assert(index.includes('--font-korean-ui'), 'Korean UI font stack should be explicit instead of falling back to browser defaults');
 assert(index.includes('Pretendard'), 'Korean UI should load/use Pretendard for polished Hangul rendering');
 assert(index.includes('body[data-app-lang="ko"]'), 'Korean app mode should have dedicated typography tuning');
-assert(index.includes('class="readme-lang-toggle"'), 'system manual should include an EN/KR language toggle');
-assert(index.includes('data-readme-lang="ko"'), 'system manual Korean toggle is missing');
+assert(!index.includes('class="readme-lang-toggle"'), 'legacy README-only language toggle should be removed');
 assert(index.includes('시스템 매뉴얼'), 'system manual should include Korean copy');
 assert(index.includes('https://www.kugnus.com'), 'system manual contact should include www.kugnus.com');
 assert(index.includes('mailto:kugnus@cywell.co.kr'), 'system manual email should link to kugnus@cywell.co.kr');
@@ -1449,14 +1472,23 @@ const readmeEnHeading = cssBlock('#readme-box[data-manual-lang="en"] h2');
 assert(readmeEnHeading.includes('3.05rem'), 'English README title should be capped to avoid horizontal overflow');
 const readmeKoParagraph = cssBlock('#readme-box[data-manual-lang="ko"] p');
 assert(readmeKoParagraph.includes('word-break: keep-all;'), 'Korean README copy should not break awkwardly by syllable');
-const readmeToggle = cssBlock('.readme-lang-toggle');
-assert(readmeToggle.includes('grid-template-columns: 1fr 1fr;') && readmeToggle.includes('width: 260px;'), 'README language toggle should keep a stable two-column width');
-assert(game.includes("const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language'"), 'README language toggle should persist its selection');
-assert(game.includes('function setReadmeLanguage'), 'README language setter is missing');
-assert(game.includes('function initReadmeLanguage'), 'README language initializer is missing');
-assert(game.includes('function handleReadmeLanguageClick'), 'system manual language toggle handler is missing');
-assert(game.includes('readmeBox.dataset.manualLang = lang'), 'system manual language toggle should update the manual language');
-assert(game.includes("document.querySelectorAll('.readme-lang-toggle [data-readme-lang]')"), 'README language buttons should sync from the same state');
+assert(game.includes("const APP_LANGUAGE_STORAGE_KEY = 'codedrop_language'"), 'global language toggle should persist its selection');
+assert(game.includes("const README_LANGUAGE_STORAGE_KEY = 'codedrop_readme_language'"), 'global language state should migrate the legacy README preference');
+assert(game.includes('function setAppLanguage'), 'global language setter is missing');
+assert(game.includes('function initAppLanguage'), 'global language initializer is missing');
+assert(game.includes('function handleAppLanguageClick'), 'global language toggle handler is missing');
+assert(game.includes('readmeBox.dataset.manualLang = lang'), 'global language toggle should update the system manual language');
+assert(game.includes("document.querySelectorAll('#global-lang-toggle [data-app-lang-select]')"), 'global language buttons should sync from the shared state');
+assert(game.includes("langButton.setAttribute('aria-pressed', String(active))"), 'global language buttons should expose their active state accessibly');
+assert(game.includes('applyAppLanguage(appLang());'), 'route application should reapply the persisted language after edition screens render');
+assert(game.includes("setText('[data-standard-mode=\"DROP\"] span', 'menu.dropDesc')") && game.includes("setPreviousText('#score', 'hud.score')"), 'main mode descriptions and DROP HUD should follow the global language');
+assert(longMode.includes("window.addEventListener('codedrop:language', applyLanguage)"), 'Long Practice should re-render its UI when the global language changes');
+assert(dashboard.includes("window.addEventListener('codedrop:language'") && dashboard.includes("tx('Coverage', '커버리지')"), 'dashboard chrome should re-render in the selected language');
+assert(scenario.includes("window.addEventListener('codedrop:language', applyLanguageChrome)"), 'scenario/exam chrome should follow the global language');
+assert(lab.includes("window.addEventListener('codedrop:language', applyLanguageChrome)"), 'lab chrome should follow the global language');
+assert(learn.includes("window.addEventListener('codedrop:language', applyLanguageChrome)"), 'learn chrome should follow the global language');
+assert(packMaker.includes('function syncShellLanguage()') && packMaker.includes('syncShellLanguage();'), 'Pack Maker tabs and long editor should follow the global language');
+assert(adminPacks.includes("ui.detail?.querySelector('.admin-login-card')") && adminPacks.includes('renderLoginPrompt();'), 'admin login prompt should re-render when language changes');
 
 const feedbackBlock = cssBlock('.scenario-feedback');
 assert(feedbackBlock.includes('display: grid;'), 'scenario/lab feedback should separate title, command, and explanation blocks');

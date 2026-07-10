@@ -47,6 +47,17 @@ const I18N_TEXT = {
         'menu.keyTest': 'KEY TEST',
         'menu.topAgents': 'TOP AGENTS',
         'menu.connecting': 'CONNECTING TO SERVER...',
+        'menu.dropDesc': 'Shoot down falling terms before they reach the floor',
+        'menu.longDesc': 'Build typing flow with sentences and long passages',
+        'hud.score': 'Score',
+        'hud.combo': 'Combo',
+        'hud.lives': 'Lives',
+        'hud.timer': 'Timer',
+        'hud.progress': 'Progress',
+        'hud.difficulty': 'Difficulty',
+        'hud.pause': 'PAUSE',
+        'hud.home': 'HOME',
+        'hud.inputPlaceholder': 'COMMAND_INPUT...',
         'difficulty.easy': 'EASY [SAFE_MODE]',
         'difficulty.normal': 'NORMAL [STANDARD]',
         'difficulty.developer': 'DEVELOPER [OVERCLOCK]',
@@ -91,6 +102,11 @@ const I18N_TEXT = {
         'packMaker.title': 'PACK MAKER',
         'packMaker.subtitle': 'Search-grounded data packs for CODEDROP',
         'packMaker.home': 'HOME',
+        'packMaker.tabChat': 'CHAT',
+        'packMaker.tabEdit': 'EDIT',
+        'packMaker.tabReview': 'PUBLIC REQUESTS',
+        'packMaker.wordMode': 'WORD PACK',
+        'packMaker.longMode': 'LONG PACK',
         'packMaker.inputPlaceholder': 'e.g. Make a 50-item K-pop group pack',
         'packMaker.termLanguage': 'PROMPT TERMS',
         'packMaker.descLanguage': 'ONE-LINE NOTE',
@@ -198,12 +214,23 @@ const I18N_TEXT = {
         'menu.selectTextCartridge': '문장팩 선택',
         'menu.close': '닫기',
         'menu.deletePackHint': '내 팩을 끌어와 삭제',
-        'menu.startCodedrop': 'START CODEDROP',
-        'menu.startLongPractice': 'START LONG PRACTICE',
-        'menu.packMaker': 'PACK MAKER',
-        'menu.keyTest': 'KEY TEST',
+        'menu.startCodedrop': 'CODEDROP 시작',
+        'menu.startLongPractice': 'LONG PRACTICE 시작',
+        'menu.packMaker': 'PACK MAKER 열기',
+        'menu.keyTest': '키 테스트',
         'menu.topAgents': '상위 요원',
         'menu.connecting': '서버 연결 중...',
+        'menu.dropDesc': '낙하 단어를 바닥에 닿기 전에 빠르게 격추합니다',
+        'menu.longDesc': '문장과 긴 글을 따라 치며 손가락 흐름을 만듭니다',
+        'hud.score': '점수',
+        'hud.combo': '콤보',
+        'hud.lives': '생명',
+        'hud.timer': '시간',
+        'hud.progress': '진행',
+        'hud.difficulty': '난이도',
+        'hud.pause': '일시정지',
+        'hud.home': '홈',
+        'hud.inputPlaceholder': '명령어 입력...',
         'difficulty.easy': '쉬움 [안전 모드]',
         'difficulty.normal': '보통 [표준]',
         'difficulty.developer': '개발자 [오버클럭]',
@@ -247,7 +274,12 @@ const I18N_TEXT = {
         'confirm.register': '회원가입',
         'packMaker.title': 'PACK MAKER',
         'packMaker.subtitle': '검색 기반 CODEDROP 데이터팩 제작',
-        'packMaker.home': 'HOME',
+        'packMaker.home': '홈',
+        'packMaker.tabChat': '대화',
+        'packMaker.tabEdit': '편집',
+        'packMaker.tabReview': '공개 요청',
+        'packMaker.wordMode': '단어 팩',
+        'packMaker.longMode': '장문 팩',
         'packMaker.inputPlaceholder': '예: K-pop 그룹 이름 50개 팩 만들어줘',
         'packMaker.termLanguage': '제시어',
         'packMaker.descLanguage': '한줄설명',
@@ -665,6 +697,7 @@ function applyAppRoute(route) {
             if (typeof ScenarioMode !== 'undefined') ScenarioMode.startExam();
         }
 
+        applyAppLanguage(appLang());
         syncOverlayChrome();
     } finally {
         routeApplying = false;
@@ -746,6 +779,7 @@ function rectsOverlap(a, b, padding = 4) {
 function bottomWidgets() {
     return [
         document.getElementById('readme-widget'),
+        document.getElementById('global-lang-toggle'),
         els.musicWidget
     ].filter(Boolean);
 }
@@ -3892,12 +3926,12 @@ function handleTutorialKeydown(e) {
     if (overlay && !overlay.classList.contains('hidden')) closeTutorialOverlay();
 }
 
-function normalizeReadmeLanguage(value) {
+function normalizeAppLanguage(value) {
     return value === 'ko' ? 'ko' : 'en';
 }
 
 function appLang() {
-    return normalizeReadmeLanguage(
+    return normalizeAppLanguage(
         localStorage.getItem(APP_LANGUAGE_STORAGE_KEY) ||
         localStorage.getItem(README_LANGUAGE_STORAGE_KEY) ||
         'en'
@@ -3923,6 +3957,11 @@ function setPlaceholder(selector, key) {
     if (el) el.placeholder = t(key);
 }
 
+function setPreviousText(selector, key) {
+    const el = document.querySelector(selector);
+    if (el?.previousElementSibling) el.previousElementSibling.textContent = t(key);
+}
+
 function setOptionText(selector, key) {
     document.querySelectorAll(selector).forEach(option => {
         option.textContent = t(key);
@@ -3943,7 +3982,7 @@ function updateWelcomeText() {
 }
 
 function applyAppLanguage(value) {
-    const lang = normalizeReadmeLanguage(value);
+    const lang = normalizeAppLanguage(value);
     localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, lang);
     localStorage.setItem(README_LANGUAGE_STORAGE_KEY, lang);
     document.documentElement.lang = lang;
@@ -3977,6 +4016,12 @@ function applyAppLanguage(value) {
     setText('#pack-maker-btn', 'menu.packMaker');
     setText('#keyboard-test-btn', 'menu.keyTest');
     setText('#leaderboard-preview h3', 'menu.topAgents');
+    setText('[data-standard-mode="DROP"] span', 'menu.dropDesc');
+    setText('[data-standard-mode="LONG"] span', 'menu.longDesc');
+    const standardModeGrid = document.getElementById('standard-mode-grid');
+    if (standardModeGrid) standardModeGrid.setAttribute('aria-label', lang === 'en' ? 'CodeDrop practice mode' : 'CodeDrop 연습 모드');
+    const packSelect = document.getElementById('pack-select');
+    if (packSelect) packSelect.setAttribute('aria-label', lang === 'en' ? 'Select CodeDrop data pack' : 'CodeDrop 데이터 팩 선택');
     syncStandardModeUi();
     setOptionText('#difficulty-select option[value="EASY"], #ocp-difficulty-select option[value="EASY"]', 'difficulty.easy');
     setOptionText('#difficulty-select option[value="NORMAL"], #ocp-difficulty-select option[value="NORMAL"]', 'difficulty.normal');
@@ -4020,6 +4065,16 @@ function applyAppLanguage(value) {
     setText('#ocp-start-btn', 'ocp.start');
     setText('#dashboard-btn', 'ocp.dashboard');
 
+    setPreviousText('#score', 'hud.score');
+    setPreviousText('#combo', 'hud.combo');
+    setPreviousText('#lives-display', 'hud.lives');
+    setPreviousText('#study-timer-display', 'hud.timer');
+    setPreviousText('#progress', 'hud.progress');
+    setPreviousText('#diff-badge', 'hud.difficulty');
+    setText('#btn-pause', 'hud.pause');
+    setText('#btn-home', 'hud.home');
+    setPlaceholder('#input-field', 'hud.inputPlaceholder');
+
     setText('.stat-item:nth-child(1) .stat-label', 'result.finalScore');
     setText('.stat-item:nth-child(2) .stat-label', 'result.maxCombo');
     setText('.stat-item:nth-child(4) .stat-label', 'result.accuracy');
@@ -4028,6 +4083,11 @@ function applyAppLanguage(value) {
     setText('.pack-maker-title', 'packMaker.title');
     setText('.pack-maker-subtitle', 'packMaker.subtitle');
     setText('#pack-maker-close', 'packMaker.home');
+    setText('#pack-maker-tab-chat', 'packMaker.tabChat');
+    setText('#pack-maker-tab-edit', 'packMaker.tabEdit');
+    setText('#pack-maker-tab-review', 'packMaker.tabReview');
+    setText('#pack-maker-word-mode', 'packMaker.wordMode');
+    setText('#pack-maker-long-mode', 'packMaker.longMode');
     setPlaceholder('#pack-maker-input', 'packMaker.inputPlaceholder');
     setText('#pack-maker-term-label', 'packMaker.termLanguage');
     setText('#pack-maker-desc-label', 'packMaker.descLanguage');
@@ -4060,8 +4120,10 @@ function applyAppLanguage(value) {
     if (readmeBox) readmeBox.dataset.manualLang = lang;
     const tutorial = tutorialOverlay();
     if (tutorial) tutorial.dataset.tutorialLang = lang;
-    document.querySelectorAll('.readme-lang-toggle [data-readme-lang]').forEach(langButton => {
-        langButton.classList.toggle('active', normalizeReadmeLanguage(langButton.dataset.readmeLang) === lang);
+    document.querySelectorAll('#global-lang-toggle [data-app-lang-select]').forEach(langButton => {
+        const active = normalizeAppLanguage(langButton.dataset.appLangSelect) === lang;
+        langButton.classList.toggle('active', active);
+        langButton.setAttribute('aria-pressed', String(active));
     });
 
     if (els.auth && els.auth.btns) {
@@ -4085,26 +4147,26 @@ function stateRefSafePackMakerBusy() {
 window.CodeDropI18n = {
     t,
     lang: appLang,
-    set: setReadmeLanguage,
+    set: setAppLanguage,
     apply: applyAppLanguage
 };
 
-function setReadmeLanguage(value, options = {}) {
-    const lang = normalizeReadmeLanguage(value);
+function setAppLanguage(value, options = {}) {
+    const lang = normalizeAppLanguage(value);
     applyAppLanguage(lang);
     if (options.sound) sfx.playKey('Tab');
 }
 
-function initReadmeLanguage() {
-    setReadmeLanguage(localStorage.getItem(APP_LANGUAGE_STORAGE_KEY) || localStorage.getItem(README_LANGUAGE_STORAGE_KEY) || 'en');
+function initAppLanguage() {
+    setAppLanguage(localStorage.getItem(APP_LANGUAGE_STORAGE_KEY) || localStorage.getItem(README_LANGUAGE_STORAGE_KEY) || 'en');
 }
 
-function handleReadmeLanguageClick(e) {
-    const button = e.target.closest('[data-readme-lang]');
+function handleAppLanguageClick(e) {
+    const button = e.target.closest('[data-app-lang-select]');
     if (!button) return;
 
-    const lang = normalizeReadmeLanguage(button.dataset.readmeLang);
-    setReadmeLanguage(lang, { sound: true });
+    const lang = normalizeAppLanguage(button.dataset.appLangSelect);
+    setAppLanguage(lang, { sound: true });
 }
 
 // Add Listeners for Game Controls
@@ -4143,24 +4205,27 @@ function initGameControls() {
     const readmeWidget = document.getElementById('readme-widget');
     const readmeOverlay = document.getElementById('readme-overlay');
     const readmeClose = document.getElementById('readme-close');
-    const readmeLangToggle = document.querySelector('.readme-lang-toggle');
+    const appLangToggle = document.getElementById('global-lang-toggle');
     const readmeTutorialBtn = document.getElementById('readme-tutorial-btn');
     const tutorial = tutorialOverlay();
     const tutorialClose = document.getElementById('tutorial-close');
     const tutorialStart = document.getElementById('tutorial-start-btn');
 
+    if (appLangToggle) {
+        appLangToggle.removeEventListener('click', handleAppLanguageClick);
+        appLangToggle.addEventListener('click', handleAppLanguageClick);
+    }
+    initAppLanguage();
+
     if (readmeWidget && readmeOverlay && readmeClose) {
         readmeWidget.removeEventListener('click', handleReadmeWidgetClick);
         readmeClose.removeEventListener('click', handleReadmeCloseClick);
         readmeOverlay.removeEventListener('click', handleReadmeOverlayClick);
-        if (readmeLangToggle) readmeLangToggle.removeEventListener('click', handleReadmeLanguageClick);
         if (readmeTutorialBtn) readmeTutorialBtn.removeEventListener('click', handleReadmeTutorialClick);
         readmeWidget.addEventListener('click', handleReadmeWidgetClick);
         readmeClose.addEventListener('click', handleReadmeCloseClick);
         readmeOverlay.addEventListener('click', handleReadmeOverlayClick);
-        if (readmeLangToggle) readmeLangToggle.addEventListener('click', handleReadmeLanguageClick);
         if (readmeTutorialBtn) readmeTutorialBtn.addEventListener('click', handleReadmeTutorialClick);
-        initReadmeLanguage();
     }
 
     if (tutorial && tutorialClose && tutorialStart) {
