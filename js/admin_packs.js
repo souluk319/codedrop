@@ -380,7 +380,9 @@ const AdminPacks = (() => {
     function syncLanguage() {
         if (!ui.screen) return;
         renderList();
-        if (stateRef.selectedPack) {
+        if (ui.detail?.querySelector('.admin-login-card')) {
+            renderLoginPrompt();
+        } else if (stateRef.selectedPack) {
             renderDetail(stateRef.selectedPack);
         } else if (ui.detail && !ui.detail.textContent.trim()) {
             ui.detail.innerHTML = `<div class="admin-pack-empty">${escapeText(tr('admin.selectPack'))}</div>`;

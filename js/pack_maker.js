@@ -148,6 +148,45 @@ const PackMaker = (() => {
         return key;
     }
 
+    function syncShellLanguage() {
+        const en = window.CodeDropI18n?.lang?.() === 'en';
+        const setText = (el, english, korean) => {
+            if (el) el.textContent = en ? english : korean;
+        };
+        const setOptionLabel = (input, english, korean) => {
+            const label = input?.closest('label');
+            if (!label) return;
+            const textNode = Array.from(label.childNodes).find(node => node.nodeType === 3 && node.textContent.trim());
+            if (textNode) textNode.nodeValue = ` ${en ? english : korean}`;
+        };
+        setText(ui.closeBtn, 'HOME', '홈');
+        setText($('pack-maker-tab-chat'), 'CHAT', '대화');
+        setText($('pack-maker-tab-edit'), 'EDIT', '편집');
+        setText($('pack-maker-tab-review'), 'PUBLIC REQUESTS', '공개 요청');
+        setText(ui.wordMode, 'WORD PACK', '단어 팩');
+        setText(ui.longMode, 'LONG PACK', '장문 팩');
+        const termLanguage = $('pack-maker-term-language');
+        const descLanguage = $('pack-maker-desc-language');
+        if (termLanguage) termLanguage.setAttribute('aria-label', en ? 'Prompt term language' : '제시어 언어');
+        if (descLanguage) descLanguage.setAttribute('aria-label', en ? 'One-line description language' : '한줄설명 언어');
+        setText(document.querySelector('.pack-maker-long-hint'),
+            'LONG PACK saves user-provided passages for long-form practice. Copyrighted lyrics are never bundled or fetched; only pasted text is stored and marked USER PROVIDED.',
+            'LONG PACK은 사용자가 직접 입력한 긴 글을 장문 연습팩으로 저장합니다. 저작권 있는 가사는 기본 제공하거나 검색해 가져오지 않고, 직접 붙여넣기 텍스트로만 다룹니다. 저장된 글은 USER PROVIDED로 표시됩니다.'
+        );
+        setOptionLabel(ui.longNormalizeQuotes, 'Normalize quotes', '따옴표 정리');
+        setOptionLabel(ui.longStripBrackets, 'Remove bracket shells', '괄호 껍데기 제거');
+        setOptionLabel(ui.longStripSongForm, 'Remove song-form labels', '송폼 라벨 제거');
+        setOptionLabel(ui.longStripPunctuation, 'Remove commas and periods', '쉼표·마침표 제거');
+        setOptionLabel(ui.longFourLines, 'Present four lines at a time', '4줄 단위 제시');
+        if (ui.longText) ui.longText.placeholder = en
+            ? 'Paste long-form practice text here. After saving, select it immediately in LONG PRACTICE.'
+            : '여기에 장문 연습용 텍스트를 붙여넣으세요. 저장 후 LONG PRACTICE에서 바로 선택할 수 있습니다.';
+        setText(ui.longApplyCleanup, 'APPLY CLEANUP', '정리 적용');
+        setText(ui.saveLong, 'SAVE LONG PACK', '장문 팩 저장');
+        setText(ui.submitLong, 'REQUEST PUBLIC LISTING', '공개 요청');
+        setText(ui.openLong, 'OPEN LONG PRACTICE', 'LONG PRACTICE 열기');
+    }
+
     const ENGINE_LABELS = {
         kugnus: 'KUGNUS SERVER',
         gemini: 'GEMINI 2.5 FLASH',
@@ -2266,6 +2305,7 @@ const PackMaker = (() => {
         ui.chatLog.addEventListener('click', handleChatLogClick);
         ui.chatLog.addEventListener('scroll', handleChatScroll);
         window.addEventListener('codedrop:language', () => {
+            syncShellLanguage();
             if (!stateRef.busy && ui.send) ui.send.textContent = t('packMaker.ask');
             if (!state.userToken && ui.screen && !ui.screen.classList.contains('hidden')) {
                 renderStatus(t('packMaker.guestPreview'));
@@ -2283,6 +2323,7 @@ const PackMaker = (() => {
         });
 
         loadDraftFromStorage();
+        syncShellLanguage();
         loadChatHistory();
         renderDraft();
         setMobileTab(stateRef.mobileTab);

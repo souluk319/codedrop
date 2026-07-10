@@ -30,6 +30,29 @@ const LabMode = (() => {
     const $ = (id) => document.getElementById(id);
     const ui = {};
 
+    function isEnglish() {
+        return window.CodeDropI18n?.lang?.() === 'en';
+    }
+
+    function tx(en, ko) {
+        return isEnglish() ? en : ko;
+    }
+
+    function applyLanguageChrome() {
+        if (!ui.screen) return;
+        if (ui.chatBtn) ui.chatBtn.textContent = tx('QUESTION', '질문');
+        if (ui.quitBtn) ui.quitBtn.textContent = tx('QUIT', '종료');
+        if (ui.hintBtn && !state.hintUsed) ui.hintBtn.textContent = tx('HINT (-30)', '힌트 (-30점)');
+        if (ui.skipBtn) ui.skipBtn.textContent = tx('SKIP', '스킵');
+        if (ui.nextBtn) ui.nextBtn.textContent = state.idx + 1 >= (state.lab?.steps?.length || 0)
+            ? tx('VIEW RESULTS', '결과 보기')
+            : tx('NEXT STEP', '다음 스텝');
+        if (ui.retryBtn) ui.retryBtn.textContent = tx('TRY AGAIN', '다시 도전');
+        if (ui.nextLabBtn) ui.nextLabBtn.textContent = tx('NEXT LAB', '다음 랩');
+        if (ui.homeBtn) ui.homeBtn.textContent = tx('HOME', '홈');
+        if (ui.input) ui.input.placeholder = tx('Enter command, then press Enter', '명령어 입력 후 Enter');
+    }
+
     function cacheEls() {
         ui.screen = $('lab-screen');
         ui.card = $('lab-card');
@@ -155,6 +178,7 @@ const LabMode = (() => {
         ui.retryBtn.addEventListener('click', () => start(state.lab.id));
         ui.nextLabBtn.addEventListener('click', startNextLab);
         ui.homeBtn.addEventListener('click', quit);
+        window.addEventListener('codedrop:language', applyLanguageChrome);
     }
 
     function currentStep() {
@@ -162,7 +186,7 @@ const LabMode = (() => {
     }
 
     function chatModeLabel() {
-        return isGuided() ? '따라치기' : '문제풀이';
+        return isGuided() ? tx('Follow Typing', '따라치기') : tx('Problem Solving', '문제풀이');
     }
 
     function chatContextForCurrentStep() {
@@ -226,8 +250,9 @@ const LabMode = (() => {
         if (ui.chatBtn) ui.chatBtn.classList.remove('hidden');
         ui.input.focus();
         if (isGuided()) {
-            showFeedback('hint-msg', '따라치기', step);
+            showFeedback('hint-msg', tx('FOLLOW TYPING', '따라치기'), step);
         }
+        applyLanguageChrome();
         refreshStudyChatContext();
     }
 
@@ -302,7 +327,10 @@ const LabMode = (() => {
             ui.feedback.className = 'scenario-feedback wrong-msg';
             ui.feedback.innerHTML = '';
             const msg = document.createElement('div');
-            msg.textContent = `오답입니다. 다시 시도하세요. (오답 ${state.wrongAttempts}회 - 현재 스텝 ${stepPoints()}점)`;
+            msg.textContent = tx(
+                `Incorrect. Try again. (${state.wrongAttempts} wrong attempts · ${stepPoints()} points remaining)`,
+                `오답입니다. 다시 시도하세요. (오답 ${state.wrongAttempts}회 - 현재 스텝 ${stepPoints()}점)`
+            );
             ui.feedback.appendChild(msg);
         }
     }
@@ -317,7 +345,7 @@ const LabMode = (() => {
         ui.feedback.className = 'scenario-feedback hint-msg';
         ui.feedback.innerHTML = '';
         const hint = document.createElement('div');
-        hint.textContent = `힌트: ${step.hint}`;
+        hint.textContent = `${tx('Hint', '힌트')}: ${step.hint}`;
         ui.feedback.appendChild(hint);
         ui.input.focus();
     }
@@ -359,7 +387,9 @@ const LabMode = (() => {
         ui.hintBtn.classList.add('hidden');
         ui.skipBtn.classList.add('hidden');
         ui.nextBtn.classList.remove('hidden');
-        ui.nextBtn.textContent = state.idx + 1 >= state.lab.steps.length ? '결과 보기' : '다음 스텝';
+        ui.nextBtn.textContent = state.idx + 1 >= state.lab.steps.length
+            ? tx('VIEW RESULTS', '결과 보기')
+            : tx('NEXT STEP', '다음 스텝');
         ui.nextBtn.focus();
     }
 
@@ -411,7 +441,7 @@ const LabMode = (() => {
         ui.summaryReview.innerHTML = '';
         const title = document.createElement('div');
         title.className = 'review-title';
-        title.textContent = '절차 체크리스트';
+        title.textContent = tx('Procedure Checklist', '절차 체크리스트');
         ui.summaryReview.appendChild(title);
 
         state.completed.forEach((entry, index) => {
