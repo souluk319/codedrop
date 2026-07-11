@@ -148,7 +148,8 @@ try {
         '/games/codedrop/admin/packs',
         '/games/codedrop/ocp',
         '/games/codedrop/ocp/dashboard',
-        '/games/codedrop/ocp/scenario'
+        '/games/codedrop/ocp/scenario',
+        '/games/codedrop/ocp/code-red'
     ];
     for (const path of subpathRoutes) {
         const res = await request(path);
@@ -171,8 +172,10 @@ try {
         '/js/scenario_packs.js',
         '/js/lab_packs.js',
         '/js/lesson_packs.js',
+        '/js/code_red_scenarios.js',
         '/js/study_stats.js',
         '/js/game.js',
+        '/js/code_red_mode.js',
         '/js/scenario_mode.js',
         '/js/lab_mode.js',
         '/js/learn_mode.js',
@@ -195,6 +198,18 @@ try {
     const subpathGameJs = await request('/games/codedrop/js/game.js');
     assert(subpathGameJs.status === 200 && subpathGameJs.text.includes('CodeDrop - Cyberpunk Edition'), '/games/codedrop/js/game.js should be public');
     assertNoStore(subpathGameJs.headers, '/games/codedrop/js/game.js');
+
+    const codeRedCss = await request('/css/code_red.css');
+    assert(codeRedCss.status === 200 && codeRedCss.text.includes('.code-red-operator'), '/css/code_red.css should serve the CODE RED pixel cutscene');
+    assertNoStore(codeRedCss.headers, '/css/code_red.css');
+    const operatorSprite = await request('/assets/code-red/operator-07-sprite.png');
+    assert(operatorSprite.status === 200 && operatorSprite.headers.get('content-type').includes('image/png'), 'OPERATOR-07 pixel sprite should be public');
+    const subpathOperatorSprite = await request('/games/codedrop/assets/code-red/operator-07-sprite.png');
+    assert(subpathOperatorSprite.status === 200 && subpathOperatorSprite.headers.get('content-type').includes('image/png'), 'OPERATOR-07 pixel sprite should be public under the CodeDrop subpath');
+    const operatorConsoleSprite = await request('/assets/code-red/operator-07-console.png');
+    assert(operatorConsoleSprite.status === 200 && operatorConsoleSprite.headers.get('content-type').includes('image/png'), 'OPERATOR-07 console sprite should be public');
+    const subpathOperatorConsoleSprite = await request('/games/codedrop/assets/code-red/operator-07-console.png');
+    assert(subpathOperatorConsoleSprite.status === 200 && subpathOperatorConsoleSprite.headers.get('content-type').includes('image/png'), 'OPERATOR-07 console sprite should be public under the CodeDrop subpath');
 
     const asset = await request('/assets/red-hat-logo.svg');
     assert(asset.status === 200 && asset.text.includes('<svg'), 'red hat SVG should be public');
@@ -296,7 +311,7 @@ try {
     console.log(JSON.stringify({
         port: PORT,
         server: 'ok',
-        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg', '/assets/octocat-typing.png', '/games/codedrop/assets/octocat-typing.png', '/assets/favicon.svg', '/games/codedrop/assets/favicon.svg'],
+        publicAssets: ['/', ...subpathRoutes, ...localScripts, '/games/codedrop/js/game.js', '/css/code_red.css', '/assets/code-red/operator-07-sprite.png', '/games/codedrop/assets/code-red/operator-07-sprite.png', '/assets/code-red/operator-07-console.png', '/games/codedrop/assets/code-red/operator-07-console.png', '/assets/red-hat-logo.svg', '/games/codedrop/assets/red-hat-logo.svg', '/assets/octocat-typing.png', '/games/codedrop/assets/octocat-typing.png', '/assets/favicon.svg', '/games/codedrop/assets/favicon.svg'],
         protectedPaths: denied.length,
         authSmoke: 'ok',
         learnChatSmoke: 'ok',

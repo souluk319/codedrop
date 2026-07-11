@@ -193,9 +193,19 @@ app.use("/js", express.static(path.join(__dirname, "js"), {
     lastModified: false,
     setHeaders: preventStaleUiCache
 }));
+app.use("/css", express.static(path.join(__dirname, "css"), {
+    etag: false,
+    lastModified: false,
+    setHeaders: preventStaleUiCache
+}));
 app.use("/assets", express.static(path.join(__dirname, "assets")));
 app.use("/sound", express.static(path.join(__dirname, "sound")));
 app.use(`${CODEDROP_BASE_PATH}/js`, express.static(path.join(__dirname, "js"), {
+    etag: false,
+    lastModified: false,
+    setHeaders: preventStaleUiCache
+}));
+app.use(`${CODEDROP_BASE_PATH}/css`, express.static(path.join(__dirname, "css"), {
     etag: false,
     lastModified: false,
     setHeaders: preventStaleUiCache

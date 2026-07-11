@@ -8585,6 +8585,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="css/code_red.css">
 
 
 
@@ -8829,6 +8830,10 @@
                             <button class="mode-choice" id="mode-incident" data-mode="INCIDENT" type="button">
                                 <strong>INCIDENT DRILL</strong>
                                 <span>CrashLoop/Pending/RBAC/SCC 원인 찾기</span>
+                            </button>
+                            <button class="mode-choice code-red-mode-choice" id="mode-code-red" data-mode="CODE_RED" type="button">
+                                <strong>CODE RED</strong>
+                                <span>스토리 속 장애를 진단하고 떨어지기 전에 복구</span>
                             </button>
                             <button class="mode-choice" id="mode-exam" data-mode="EXAM" type="button">
                                 <strong>EXAM</strong>
@@ -9306,6 +9311,226 @@
         </div>
     </div>
 
+    <!-- CODE RED Story Mode -->
+    <div id="code-red-screen" class="overlay hidden" role="application" aria-label="CODE RED story mode">
+        <main class="code-red-shell">
+            <header class="code-red-hud" aria-label="CODE RED status">
+                <div class="code-red-brand-lockup">
+                    <span class="code-red-kicker">CODEDROP // OCP EDITION</span>
+                    <strong>CODE RED</strong>
+                </div>
+                <div class="code-red-hud-stats">
+                    <span id="code-red-chapter-hud">CHAPTER 1 / 8</span>
+                    <span id="code-red-step-hud">STEP 0 / 6</span>
+                    <span id="code-red-mttr">MTTR 00:00</span>
+                    <span id="code-red-chain">CHAIN x0</span>
+                    <span id="code-red-score">SCORE 0</span>
+                    <span id="code-red-impact-hud">IMPACT 0%</span>
+                    <span id="code-red-story-hud">STORY ON</span>
+                </div>
+                <button class="code-red-icon-button" id="code-red-exit" type="button">EXIT</button>
+            </header>
+
+            <section id="code-red-start-panel" class="code-red-panel code-red-start-panel" aria-labelledby="code-red-start-title">
+                <div class="code-red-start-copy">
+                    <span class="code-red-eyebrow">OPERATION NIGHT SHIFT</span>
+                    <h1 id="code-red-start-title">OPERATE BEFORE IT DROPS.</h1>
+                    <p id="code-red-start-description">스토리 속 증거를 읽고, 장애가 충돌하기 전에 OpenShift를 복구하십시오.</p>
+                </div>
+                <div class="code-red-start-grid">
+                    <div class="code-red-option-block">
+                        <span class="code-red-option-label" id="code-red-story-label">STORY</span>
+                        <div class="code-red-segmented" id="code-red-story-options" role="group" aria-label="Story setting">
+                            <button type="button" data-code-red-story="on">ON</button>
+                            <button type="button" data-code-red-story="off">OFF</button>
+                        </div>
+                    </div>
+                    <div class="code-red-option-block">
+                        <span class="code-red-option-label" id="code-red-difficulty-label">DIFFICULTY</span>
+                        <div class="code-red-segmented code-red-difficulty-options" id="code-red-difficulty-options" role="group" aria-label="CODE RED difficulty">
+                            <button type="button" data-code-red-difficulty="TRAINEE">TRAINEE</button>
+                            <button type="button" data-code-red-difficulty="OPERATOR">OPERATOR</button>
+                            <button type="button" data-code-red-difficulty="SRE">SRE</button>
+                        </div>
+                        <p id="code-red-difficulty-copy"></p>
+                    </div>
+                </div>
+                <div class="code-red-start-actions">
+                    <button class="btn code-red-primary" id="code-red-begin" type="button">BEGIN NIGHT SHIFT</button>
+                    <button class="btn-small hidden" id="code-red-resume" type="button">RESUME CAMPAIGN</button>
+                </div>
+            </section>
+
+            <section id="code-red-story-layer" class="code-red-panel code-red-story-layer hidden" aria-labelledby="code-red-scene-title">
+                <div class="code-red-stage" id="code-red-stage" data-scene="control-room" data-shot="wide">
+                    <div class="code-red-pixel-world" aria-hidden="true">
+                        <div class="code-red-city-grid"></div>
+                        <div class="code-red-beacon"><i></i></div>
+                        <div class="code-red-monitor-bank code-red-monitor-left"><i class="code-red-monitor" data-label="HEALTH"></i><i class="code-red-monitor" data-label="PAYMENTS"></i><i class="code-red-monitor" data-label="EVENTS"></i></div>
+                        <div class="code-red-monitor-bank code-red-monitor-right"><i class="code-red-monitor" data-label="NODES"></i><i class="code-red-monitor" data-label="ROUTES"></i></div>
+                        <div class="code-red-console code-red-console-desk"><i></i><i></i><i></i></div>
+                        <div class="code-red-operator" id="code-red-operator">
+                            <img class="code-red-operator-sprite" src="assets/code-red/operator-07-sprite.png" alt="" aria-hidden="true">
+                        </div>
+                        <div class="code-red-scanlines"></div>
+                    </div>
+                    <div class="code-red-stage-focal" aria-hidden="true">
+                        <div class="code-red-watcher-holo"></div>
+                        <div class="code-red-comms-panel">
+                            <div class="code-red-comms-channel code-red-control-comms-panel">
+                                <strong>CONTROL</strong>
+                                <span>OPERATOR-07 // STANDBY</span>
+                            </div>
+                            <div class="code-red-comms-channel code-red-dev-comms-panel">
+                                <strong>DEV</strong>
+                                <span>02:59 // CONFIG SYNC</span>
+                            </div>
+                        </div>
+                        <div class="code-red-incident-projection"></div>
+                        <img class="code-red-operator-console-sprite" src="assets/code-red/operator-07-console.png" alt="" aria-hidden="true">
+                    </div>
+                    <div class="code-red-scene-clock" id="code-red-scene-clock">03:17:08</div>
+                    <div class="code-red-scene-title" id="code-red-scene-title">NEXUS-9 // CONTROL ROOM</div>
+                </div>
+                <div class="code-red-dialogue">
+                    <div class="code-red-speaker" id="code-red-speaker">WATCHER</div>
+                    <p class="code-red-dialogue-text" id="code-red-dialogue-text"></p>
+                    <footer class="code-red-dialogue-footer">
+                        <div class="code-red-story-progress" id="code-red-story-progress"></div>
+                        <div class="code-red-story-controls">
+                            <button class="btn-small" id="code-red-story-next" type="button">[ENTER] NEXT</button>
+                            <button class="btn-small" id="code-red-story-fast" type="button">[SPACE] FAST FORWARD</button>
+                            <button class="btn-small" id="code-red-story-skip" type="button">[ESC] SKIP SCENE</button>
+                        </div>
+                    </footer>
+                </div>
+                <p class="code-red-visually-hidden" id="code-red-story-live" role="status" aria-live="polite" aria-atomic="true"></p>
+                <div class="code-red-skip-dialog hidden" id="code-red-skip-dialog" role="dialog" aria-modal="true" aria-labelledby="code-red-skip-title" aria-describedby="code-red-skip-description">
+                    <h2 id="code-red-skip-title">SKIP CURRENT SCENE?</h2>
+                    <p id="code-red-skip-description">Choose whether to skip this scene or every remaining story scene in this run.</p>
+                    <div class="code-red-skip-actions">
+                        <button type="button" data-code-red-skip="scene">SKIP THIS SCENE</button>
+                        <button type="button" data-code-red-skip="session">SKIP ALL STORIES THIS RUN</button>
+                        <button type="button" data-code-red-skip="cancel">CANCEL</button>
+                    </div>
+                </div>
+            </section>
+
+            <section id="code-red-brief-layer" class="code-red-panel code-red-brief-layer hidden" aria-labelledby="code-red-brief-title">
+                <span class="code-red-eyebrow">MISSION BRIEF // APP-01</span>
+                <h2 id="code-red-brief-title">HEARTBEAT LOST</h2>
+                <dl class="code-red-brief-grid">
+                    <div><dt>NAMESPACE</dt><dd id="code-red-brief-namespace"></dd></div>
+                    <div><dt>TARGET</dt><dd id="code-red-brief-target"></dd></div>
+                    <div><dt>SYMPTOM</dt><dd id="code-red-brief-symptom"></dd></div>
+                    <div><dt>ALERT</dt><dd id="code-red-brief-alert"></dd></div>
+                </dl>
+                <p id="code-red-brief-copy"></p>
+                <button class="btn code-red-primary" id="code-red-accept" type="button">ACCEPT INCIDENT</button>
+            </section>
+
+            <section id="code-red-game-layer" class="code-red-panel code-red-game-layer code-red-game hidden" aria-labelledby="code-red-incident-code">
+                <div class="code-red-incident-field" id="code-red-incident-field">
+                    <div class="code-red-log-rain" aria-hidden="true"></div>
+                    <article id="code-red-incident-card" class="code-red-incident-card" aria-live="assertive">
+                        <span>CRITICAL</span>
+                        <strong class="code-red-incident-code" id="code-red-incident-code">CrashLoopBackOff</strong>
+                        <small class="code-red-incident-meta" id="code-red-incident-target">payment-api · payments</small>
+                        <em class="code-red-incident-meta" id="code-red-incident-metric">RESTARTS 7</em>
+                    </article>
+                    <div class="code-red-impact-line"><span>IMPACT LINE</span></div>
+                </div>
+                <div class="code-red-ops-console code-red-game-console">
+                    <ol id="code-red-aiops-rail" aria-label="AIOps incident response phase">
+                        <li data-code-red-phase="signal">SIGNAL</li>
+                        <li data-code-red-phase="evidence">EVIDENCE</li>
+                        <li data-code-red-phase="hypothesis">HYPOTHESIS</li>
+                        <li data-code-red-phase="action">ACTION</li>
+                        <li data-code-red-phase="verify">VERIFY</li>
+                    </ol>
+                    <div id="code-red-evidence-rail" role="list" aria-label="Pinned incident evidence"></div>
+                    <div class="code-red-terminal" id="code-red-terminal" aria-live="polite"></div>
+                    <div class="code-red-directive">
+                        <span id="code-red-directive-speaker">CONTROL</span>
+                        <p class="code-red-directive-title" id="code-red-directive-text"></p>
+                    </div>
+                    <div class="code-red-command-row code-red-input-row">
+                        <span class="code-red-input-prompt">&gt;</span>
+                        <input id="code-red-input" type="text" autocomplete="off" spellcheck="false" placeholder="ENTER OPENSHIFT COMMAND...">
+                    </div>
+                    <div class="code-red-feedback" id="code-red-feedback" aria-live="assertive"></div>
+                    <div class="code-red-actions">
+                        <button class="btn-small" id="code-red-hint" type="button">HINT (-30)</button>
+                        <button class="btn-small" id="code-red-pause" type="button">PAUSE</button>
+                    </div>
+                </div>
+                <div class="code-red-pause-card hidden" id="code-red-pause-card" role="dialog" aria-modal="true" aria-labelledby="code-red-pause-title" aria-describedby="code-red-pause-description">
+                    <h2 id="code-red-pause-title">SYSTEM PAUSED</h2>
+                    <p id="code-red-pause-description">INCIDENT TIMER SUSPENDED</p>
+                    <button class="btn code-red-primary" id="code-red-resume-game" type="button">RESUME</button>
+                </div>
+            </section>
+
+            <section id="code-red-failure-layer" class="code-red-panel code-red-failure-layer hidden" aria-labelledby="code-red-failure-title">
+                <span class="code-red-eyebrow">INCIDENT ESCALATED</span>
+                <h2 id="code-red-failure-title">SERVICE IMPACT EXPANDED</h2>
+                <p id="code-red-failure-copy"></p>
+                <div class="code-red-start-actions">
+                    <button class="btn code-red-primary" id="code-red-retry" type="button">RETRY INCIDENT</button>
+                    <button class="btn-small" id="code-red-takeover" type="button">AI TAKEOVER / CONTINUE</button>
+                </div>
+            </section>
+
+            <section id="code-red-assisted-layer" class="code-red-panel code-red-assisted-layer hidden" aria-labelledby="code-red-assisted-title">
+                <span class="code-red-eyebrow">WATCHER // ASSISTED RECOVERY</span>
+                <h2 id="code-red-assisted-title">RECOVERY CHAIN REPLAY</h2>
+                <div class="code-red-assisted-meta">
+                    <span id="code-red-assisted-progress" role="status" aria-live="polite">STEP 0 / 6</span>
+                    <p id="code-red-assisted-rationale">WATCHER will explain why each safe command advances the incident response.</p>
+                </div>
+                <div id="code-red-assisted-console" role="log" aria-label="WATCHER assisted recovery transcript" aria-live="polite" aria-relevant="additions text"></div>
+                <div id="code-red-assisted-controls">
+                    <button class="btn-small" id="code-red-assisted-pause" type="button" aria-pressed="false">PAUSE</button>
+                    <button class="btn code-red-primary" id="code-red-assisted-next" type="button">NEXT STEP</button>
+                    <button class="btn-small" id="code-red-assisted-skip" type="button">SKIP REPLAY</button>
+                </div>
+            </section>
+
+            <section id="code-red-report-layer" class="code-red-panel code-red-report-layer code-red-report hidden" aria-labelledby="code-red-report-status">
+                <span class="code-red-eyebrow">INCIDENT REPORT // APP-01</span>
+                <h2 id="code-red-report-status">INCIDENT RESOLVED</h2>
+                <div class="code-red-report-grid" id="code-red-report-grid"></div>
+                <div class="code-red-flow" id="code-red-operating-flow"></div>
+                <section class="code-red-report-evidence" aria-labelledby="code-red-report-evidence-title">
+                    <h3 id="code-red-report-evidence-title">RECOVERY EVIDENCE</h3>
+                    <div id="code-red-report-evidence" role="list" aria-labelledby="code-red-report-evidence-title"></div>
+                </section>
+                <div class="code-red-postmortem">
+                    <div><span>ROOT CAUSE</span><p id="code-red-root-cause"></p></div>
+                    <div><span>OPERATOR LESSON</span><p id="code-red-lesson"></p></div>
+                </div>
+                <p id="code-red-best-comparison" class="code-red-best-comparison" aria-live="polite"></p>
+                <div class="code-red-start-actions">
+                    <button class="btn code-red-primary" id="code-red-continue" type="button">CONTINUE STORY</button>
+                    <button class="btn code-red-primary hidden" id="code-red-clean-retry" type="button">RETRY FOR CLEAN RESOLVE</button>
+                    <button class="btn-small" id="code-red-replay" type="button">REPLAY INCIDENT</button>
+                    <button class="btn-small" id="code-red-home" type="button">EXIT TO OCP EDITION</button>
+                </div>
+            </section>
+
+            <section id="code-red-teaser-layer" class="code-red-panel code-red-teaser-layer hidden" aria-labelledby="code-red-teaser-title">
+                <span class="code-red-eyebrow">NEXT SIGNAL DETECTED</span>
+                <h2 id="code-red-teaser-title">GHOST TAG</h2>
+                <p id="code-red-teaser-copy"></p>
+                <details id="code-red-teaser-roadmap" class="code-red-teaser-roadmap">
+                    <summary id="code-red-teaser-roadmap-summary">VIEW FULL SIGNAL ROADMAP</summary>
+                    <div class="code-red-locked-chapters" id="code-red-locked-chapters"></div>
+                </details>
+                <button class="btn code-red-primary" id="code-red-teaser-home" type="button">RETURN TO OCP EDITION</button>
+            </section>
+        </main>
+    </div>
+
     <!-- Study Dashboard -->
     <div id="dashboard-screen" class="overlay hidden">
         <div class="card dashboard-card">
@@ -9733,9 +9958,11 @@
     <script src="js/lesson_packs.js"></script>
     <script src="js/github_edition_packs.js"></script>
     <script src="js/long_packs.js"></script>
+    <script src="js/code_red_scenarios.js"></script>
     <script src="js/study_stats.js"></script>
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <script src="js/game.js"></script>
+    <script src="js/code_red_mode.js"></script>
     <script src="js/scenario_mode.js"></script>
     <script src="js/lab_mode.js"></script>
     <script src="js/learn_mode.js"></script>
