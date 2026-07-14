@@ -173,6 +173,7 @@ try {
         '/js/lab_packs.js',
         '/js/lesson_packs.js',
         '/js/code_red_scenarios.js',
+        '/js/code_red_visuals.js',
         '/js/study_stats.js',
         '/js/game.js',
         '/js/code_red_mode.js',
@@ -210,6 +211,27 @@ try {
     assert(operatorConsoleSprite.status === 200 && operatorConsoleSprite.headers.get('content-type').includes('image/png'), 'OPERATOR-07 console sprite should be public');
     const subpathOperatorConsoleSprite = await request('/games/codedrop/assets/code-red/operator-07-console.png');
     assert(subpathOperatorConsoleSprite.status === 200 && subpathOperatorConsoleSprite.headers.get('content-type').includes('image/png'), 'OPERATOR-07 console sprite should be public under the CodeDrop subpath');
+
+    const codeRedChapterOneAssets = [
+        'control-room-bg.png',
+        'control-room-mid.png',
+        'control-room-fg.png',
+        'operator-desk-plate.png',
+        'operator-standing-sheet.png',
+        'operator-console-sheet.png',
+        'watcher-sheet.png',
+        'control-portrait-sheet.png',
+        'dev-portrait-sheet.png',
+        'ui-data-atlas.png'
+    ];
+    for (const file of codeRedChapterOneAssets) {
+        for (const prefix of ['', '/games/codedrop']) {
+            const assetPath = `${prefix}/assets/code-red/chapter-1/${file}`;
+            const res = await request(assetPath);
+            assert(res.status === 200, `${assetPath} should be publicly served`);
+            assert(res.headers.get('content-type')?.includes('image/png'), `${assetPath} should serve image/png`);
+        }
+    }
 
     const asset = await request('/assets/red-hat-logo.svg');
     assert(asset.status === 200 && asset.text.includes('<svg'), 'red hat SVG should be public');

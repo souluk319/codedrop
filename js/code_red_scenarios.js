@@ -76,6 +76,16 @@ const CODE_RED_CAMPAIGN = {
         }
     },
     difficulty: {
+        beginner: {
+            id: 'beginner',
+            label: { ko: '비기너', en: 'BEGINNER' },
+            fallSpeedMultiplier: 0,
+            directiveDetail: 'copy-exact-command',
+            hintPenalty: 0,
+            wrongScorePenalty: 0,
+            wrongImpactPenalty: 0,
+            competitive: false
+        },
         trainee: {
             id: 'trainee',
             label: { ko: '훈련생', en: 'TRAINEE' },

@@ -12,10 +12,13 @@ const CodeRedMode = (() => {
     const START_POSITION = 10;
     const BASE_FALL_RATE = 0.86;
     const ASSISTED_STEP_MS = 1200;
-    const DIFFICULTY_IDS = new Set(['TRAINEE', 'OPERATOR', 'SRE']);
+    const ART_DECODE_TIMEOUT_MS = 1500;
+    const ART_SLOTS = ['background', 'midground', 'subject', 'foreground', 'ui'];
+    const DIFFICULTY_IDS = new Set(['BEGINNER', 'TRAINEE', 'OPERATOR', 'SRE']);
     const RESPONSE_PHASES = ['signal', 'evidence', 'hypothesis', 'action', 'verify'];
 
     const ui = {};
+    const artAssetStatus = new Map();
     const session = {
         active: false,
         bound: false,
@@ -56,6 +59,9 @@ const CodeRedMode = (() => {
         priorBest: null,
         feedback: null,
         generation: 0,
+        artGeneration: 0,
+        artComposition: null,
+        artCrop: null,
         timers: new Set(),
         returnFocus: null,
         appReturnFocus: null
@@ -109,22 +115,32 @@ const CodeRedMode = (() => {
         return campaign()?.difficulty?.[session.difficulty.toLowerCase()] || {};
     }
 
+    function isBeginner() {
+        return session.difficulty === 'BEGINNER';
+    }
+
     function effectiveFallRate() {
         const difficultyMultiplier = Number(difficultyProfile().fallSpeedMultiplier);
         const incidentMultiplier = Number(session.chapter?.incident?.fallSpeed);
         return BASE_FALL_RATE
-            * (Number.isFinite(difficultyMultiplier) && difficultyMultiplier > 0 ? difficultyMultiplier : 1)
+            * (Number.isFinite(difficultyMultiplier) && difficultyMultiplier >= 0 ? difficultyMultiplier : 1)
             * (Number.isFinite(incidentMultiplier) && incidentMultiplier > 0 ? incidentMultiplier : 1);
     }
 
     function hintPenalty() {
         const configuredPenalty = Number(difficultyProfile().hintPenalty);
         if (Number.isFinite(configuredPenalty) && configuredPenalty >= 0) return configuredPenalty;
-        return session.difficulty === 'TRAINEE' ? 0 : (session.difficulty === 'SRE' ? 60 : 30);
+        return ['BEGINNER', 'TRAINEE'].includes(session.difficulty) ? 0 : (session.difficulty === 'SRE' ? 60 : 30);
     }
 
     function updateHintLabel() {
         if (!ui.hint) return;
+        if (isBeginner()) {
+            ui.hint.textContent = tx('COMMAND VISIBLE', '명령 표시 중');
+            ui.hint.disabled = true;
+            return;
+        }
+        ui.hint.disabled = false;
         const penalty = hintPenalty();
         ui.hint.textContent = penalty === 0
             ? tx('HINT (FREE)', '힌트 (무료)')
@@ -157,6 +173,17 @@ const CodeRedMode = (() => {
         ui.resume = $('code-red-resume');
         ui.exit = $('code-red-exit');
         ui.stage = $('code-red-stage');
+        ui.artStage = $('code-red-art-stage');
+        ui.artSlots = {};
+        ui.artStage?.querySelectorAll('[data-code-red-art-slot]').forEach(image => {
+            const slot = image.dataset.codeRedArtSlot;
+            if (!ART_SLOTS.includes(slot)) return;
+            image.alt = '';
+            image.setAttribute('aria-hidden', 'true');
+            image.decoding = 'async';
+            image.draggable = false;
+            ui.artSlots[slot] = image;
+        });
         ui.sceneClock = $('code-red-scene-clock');
         ui.sceneTitle = $('code-red-scene-title');
         ui.speaker = $('code-red-speaker');
@@ -185,6 +212,9 @@ const CodeRedMode = (() => {
         ui.evidenceRail = $('code-red-evidence-rail');
         ui.directiveSpeaker = $('code-red-directive-speaker');
         ui.directive = $('code-red-directive-text');
+        ui.copyGuide = $('code-red-copy-guide');
+        ui.copyLabel = $('code-red-copy-label');
+        ui.copyCommand = $('code-red-copy-command');
         ui.input = $('code-red-input');
         ui.feedback = $('code-red-feedback');
         ui.hint = $('code-red-hint');
@@ -246,8 +276,15 @@ const CodeRedMode = (() => {
 
     function setAppIsolation(active) {
         if (!ui.screen) return;
+        const sharedChromeIds = new Set([
+            'global-lang-toggle',
+            'readme-widget',
+            'readme-overlay',
+            'tutorial-overlay',
+            'music-widget'
+        ]);
         [...document.body.children].forEach(element => {
-            if (element === ui.screen || element.id === 'global-lang-toggle' || ['SCRIPT', 'STYLE'].includes(element.tagName)) return;
+            if (element === ui.screen || sharedChromeIds.has(element.id) || ['SCRIPT', 'STYLE'].includes(element.tagName)) return;
             if (active) {
                 if (!element.hasAttribute('inert')) {
                     element.setAttribute('inert', '');
@@ -443,6 +480,12 @@ const CodeRedMode = (() => {
     }
 
     function difficultyDescription() {
+        if (isBeginner()) {
+            return tx(
+                'No falling pressure · exact command always visible · no mistake penalty',
+                '낙하 압박 없음 · 정확한 명령 항상 표시 · 실수 페널티 없음'
+            );
+        }
         if (session.difficulty === 'TRAINEE') {
             return tx('Slower fall · command skeletons · instant hints', '느린 낙하 · 명령 골격 제공 · 즉시 힌트');
         }
@@ -473,6 +516,290 @@ const CodeRedMode = (() => {
             ui.resume.textContent = tx('RESUME CAMPAIGN', '캠페인 이어하기');
         }
         updateHud();
+    }
+
+    function visualsRegistry() {
+        const embedded = campaign()?.cutscene;
+        const registry = embedded?.assets && embedded?.compositions
+            ? embedded
+            : window.CODE_RED_VISUALS;
+        return registry && typeof registry === 'object' ? registry : null;
+    }
+
+    function visualAssetDescriptor(reference, registry = visualsRegistry()) {
+        if (!reference || !registry) return null;
+        if (typeof reference === 'object' && reference.src) {
+            return { id: String(reference.id || reference.src), descriptor: reference };
+        }
+        const id = String(reference);
+        const assets = registry.assets;
+        const descriptor = Array.isArray(assets)
+            ? assets.find(asset => String(asset?.id) === id)
+            : assets?.[id];
+        return descriptor?.src ? { id, descriptor } : null;
+    }
+
+    function resolveVisualAssetUrl(descriptor, registry = visualsRegistry()) {
+        const source = String(descriptor?.src || '').trim();
+        if (!source) return '';
+        if (/^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
+        if (source.startsWith('/')) return new URL(source, window.location.origin).href;
+        const basePath = String(registry?.basePath || '').trim();
+        const sourcePath = source.replace(/^\.\//, '');
+        const comparableBase = basePath.replace(/^\.?\//, '').replace(/\/$/, '');
+        const candidate = basePath && !sourcePath.startsWith(`${comparableBase}/`)
+            ? `${basePath.replace(/\/$/, '')}/${sourcePath}`
+            : sourcePath;
+        return new URL(candidate, document.baseURI).href;
+    }
+
+    function visualCompositionFor(line = {}) {
+        const registry = visualsRegistry();
+        const action = String(line.cue?.action || 'idle');
+        const compositions = registry?.compositions;
+        const composition = Array.isArray(compositions)
+            ? compositions.find(item => String(item?.action || item?.id) === action)
+            : compositions?.[action];
+        return composition && typeof composition === 'object'
+            ? { action, composition, registry }
+            : null;
+    }
+
+    function compositionAssetRecords(composition, registry = visualsRegistry()) {
+        const layers = composition?.layers || {};
+        return ART_SLOTS.flatMap(slot => {
+            const resolved = visualAssetDescriptor(layers[slot], registry);
+            if (!resolved) return [];
+            const url = resolveVisualAssetUrl(resolved.descriptor, registry);
+            return url ? [{ slot, ...resolved, url }] : [];
+        });
+    }
+
+    function ensureArtAsset(record) {
+        const cached = artAssetStatus.get(record.url);
+        if (cached?.status === 'ready') return Promise.resolve(cached);
+        if (cached?.status === 'loading') return cached.promise;
+        if (cached?.status === 'error') return Promise.reject(cached.error);
+
+        const image = new Image();
+        image.alt = '';
+        image.decoding = 'async';
+        const entry = {
+            id: record.id,
+            url: record.url,
+            status: 'loading',
+            image,
+            error: null,
+            promise: null
+        };
+        entry.promise = new Promise((resolve, reject) => {
+            const fail = error => {
+                entry.status = 'error';
+                entry.error = error instanceof Error ? error : new Error(`Unable to load art asset: ${record.id}`);
+                reject(entry.error);
+            };
+            image.onerror = () => fail(new Error(`Unable to load art asset: ${record.id}`));
+            image.onload = async () => {
+                try {
+                    if (typeof image.decode === 'function') await image.decode();
+                } catch (error) {
+                    if (!image.complete || image.naturalWidth === 0) {
+                        fail(error);
+                        return;
+                    }
+                }
+                if (entry.status === 'error') return;
+                entry.status = 'ready';
+                resolve(entry);
+            };
+            image.src = record.url;
+        });
+        artAssetStatus.set(record.url, entry);
+        return entry.promise;
+    }
+
+    function preloadCriticalArt() {
+        const registry = visualsRegistry();
+        if (!registry?.assets) return;
+        const assets = Array.isArray(registry.assets)
+            ? registry.assets.map(asset => [asset?.id, asset])
+            : Object.entries(registry.assets);
+        assets.forEach(([id, descriptor]) => {
+            if (!descriptor?.src || !(descriptor.critical || descriptor.preload === true || descriptor.preload === 'critical')) return;
+            const url = resolveVisualAssetUrl(descriptor, registry);
+            if (!url) return;
+            ensureArtAsset({ id: String(id || descriptor.id || descriptor.src), descriptor, url }).catch(() => {});
+        });
+    }
+
+    function warmStoryWindow(index = session.storyIndex) {
+        [session.storyLines[index], session.storyLines[index + 1]].filter(Boolean).forEach(line => {
+            const resolved = visualCompositionFor(line);
+            if (!resolved) return;
+            compositionAssetRecords(resolved.composition, resolved.registry)
+                .forEach(record => ensureArtAsset(record).catch(() => {}));
+        });
+    }
+
+    function withArtTimeout(promise, timeoutMs = ART_DECODE_TIMEOUT_MS) {
+        let timeout = 0;
+        const expired = new Promise((_, reject) => {
+            timeout = window.setTimeout(() => reject(new Error('Art asset decode timed out')), timeoutMs);
+        });
+        return Promise.race([promise, expired]).finally(() => window.clearTimeout(timeout));
+    }
+
+    function cropCssValue(key, value, fallback) {
+        if (value == null || value === '') return fallback;
+        if (typeof value === 'number' && key !== 'scale') return `${value}%`;
+        return String(value);
+    }
+
+    function normalizeArtCrop(values = {}, logicalSize = {}) {
+        const logicalWidth = Math.max(1, Number(logicalSize.width) || 320);
+        const logicalHeight = Math.max(1, Number(logicalSize.height) || 180);
+        const width = Number(values.width);
+        const height = Number(values.height);
+        if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+            const x = Number(values.x) || 0;
+            const y = Number(values.y) || 0;
+            return {
+                x: ((logicalWidth / 2 - (x + width / 2)) / logicalWidth) * 100,
+                y: ((logicalHeight / 2 - (y + height / 2)) / logicalHeight) * 100,
+                scale: Math.max(logicalWidth / width, logicalHeight / height)
+            };
+        }
+        return {
+            x: values.x ?? 0,
+            y: values.y ?? 0,
+            scale: values.scale ?? 1
+        };
+    }
+
+    function applyActiveArtCrop() {
+        if (!ui.artStage || !session.artCrop) return;
+        const compact = window.matchMedia?.('(max-width: 300px), (max-height: 520px)').matches;
+        const portrait = !compact && window.matchMedia?.('(max-width: 600px)').matches;
+        const variant = compact ? 'compact' : (portrait ? 'portrait' : 'desktop');
+        ui.artStage.dataset.crop = variant;
+        ui.artStage.dataset.motion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
+    }
+
+    function applyArtCrop(crop = {}, logicalSize = {}) {
+        if (!ui.artStage) return;
+        session.artCrop = {};
+        ['desktop', 'portrait', 'compact'].forEach(variant => {
+            const values = normalizeArtCrop(crop[variant] || crop.desktop || {}, logicalSize);
+            session.artCrop[variant] = values;
+            ui.artStage.style.setProperty(`--code-red-art-${variant}-x`, cropCssValue('x', values.x, '50%'));
+            ui.artStage.style.setProperty(`--code-red-art-${variant}-y`, cropCssValue('y', values.y, '50%'));
+            ui.artStage.style.setProperty(`--code-red-art-${variant}-scale`, cropCssValue('scale', values.scale, '1'));
+        });
+        applyActiveArtCrop();
+    }
+
+    function setArtStageState(state, action = '') {
+        if (!ui.artStage) return;
+        ui.artStage.dataset.artState = state;
+        if (ui.stage) ui.stage.dataset.artState = state;
+        if (action) ui.artStage.dataset.action = action;
+        if (state !== 'loading') delete ui.artStage.dataset.artPending;
+    }
+
+    function setArtFallback(action = '') {
+        session.artComposition = null;
+        ART_SLOTS.forEach(slot => {
+            const image = ui.artSlots?.[slot];
+            if (!image) return;
+            image.hidden = true;
+            image.removeAttribute('src');
+            delete image.dataset.artLoaded;
+            delete image.dataset.assetId;
+        });
+        setArtStageState('fallback', action);
+    }
+
+    function prepareArtStage() {
+        if (!ui.artStage) return;
+        const complete = ART_SLOTS.every(slot => ui.artSlots?.[slot]);
+        if (!complete) {
+            setArtFallback();
+            return;
+        }
+        ui.artStage.dataset.motion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';
+        if (ui.artStage.dataset.artState !== 'ready') setArtStageState('fallback');
+    }
+
+    function commitArtComposition(resolved, loadedRecords, request) {
+        if (!ui.artStage || !session.active || request.sessionGeneration !== session.generation
+            || request.artGeneration !== session.artGeneration) return;
+        const recordsBySlot = new Map(loadedRecords.map(record => [record.slot, record]));
+        ART_SLOTS.forEach(slot => {
+            const image = ui.artSlots?.[slot];
+            if (!image) return;
+            const record = recordsBySlot.get(slot);
+            if (!record) {
+                image.hidden = true;
+                image.removeAttribute('src');
+                delete image.dataset.artLoaded;
+                delete image.dataset.assetId;
+                return;
+            }
+            image.src = record.url;
+            image.dataset.assetId = record.id;
+            image.dataset.artLoaded = 'true';
+            image.hidden = false;
+        });
+
+        const { action, composition } = resolved;
+        ui.artStage.dataset.composition = String(composition.id || action);
+        ui.artStage.dataset.action = action;
+        ui.artStage.dataset.actorState = String(composition.actorState || 'idle');
+        ui.artStage.dataset.screenState = String(composition.screenState || 'nominal');
+        ui.artStage.dataset.focalSlot = String(composition.focalSlot || 'subject');
+        ui.artStage.dataset.shot = String(resolved.registry?.shotAliases?.[request.shot] || request.shot || 'establish-wide');
+        ui.artStage.dataset.camera = String(resolved.registry?.cameraAliases?.[request.camera] || request.camera || 'hold-center');
+        ui.artStage.dataset.effect = String(resolved.registry?.effectAliases?.[request.effect] || request.effect || 'scanlines-blue');
+        session.artComposition = String(composition.id || action);
+        applyArtCrop(composition.crop || {}, resolved.registry?.logicalSize || {});
+        setArtStageState('ready', action);
+    }
+
+    function renderLayeredArt(line = {}) {
+        if (!ui.artStage) return;
+        const request = {
+            sessionGeneration: session.generation,
+            artGeneration: ++session.artGeneration,
+            shot: String(line.cue?.shot || ''),
+            camera: String(line.cue?.camera || ''),
+            effect: String(line.cue?.effect || '')
+        };
+        const resolved = visualCompositionFor(line);
+        const action = String(line.cue?.action || 'idle');
+        if (!resolved) {
+            setArtFallback(action);
+            return;
+        }
+        const records = compositionAssetRecords(resolved.composition, resolved.registry);
+        const requestedLayers = ART_SLOTS.filter(slot => resolved.composition.layers?.[slot]).length;
+        if (!records.length || records.length !== requestedLayers) {
+            setArtFallback(action);
+            return;
+        }
+
+        const retainingReadyArt = ui.artStage.dataset.artState === 'ready';
+        ui.artStage.dataset.artPending = action;
+        if (!retainingReadyArt) setArtStageState('loading', action);
+        withArtTimeout(Promise.all(records.map(async record => {
+            await ensureArtAsset(record);
+            return record;
+        }))).then(loadedRecords => {
+            commitArtComposition(resolved, loadedRecords, request);
+        }).catch(() => {
+            if (!session.active || request.sessionGeneration !== session.generation
+                || request.artGeneration !== session.artGeneration) return;
+            setArtFallback(action);
+        });
     }
 
     function setSceneCue(line = {}) {
@@ -550,6 +877,8 @@ const CodeRedMode = (() => {
             return;
         }
         setSceneCue(line);
+        warmStoryWindow();
+        renderLayeredArt(line);
         if (ui.speaker) ui.speaker.textContent = String(line.speaker || 'WATCHER');
         ui.speaker?.closest('.code-red-dialogue')?.setAttribute('data-speaker', String(line.speaker || 'WATCHER'));
         typeStoryText(localized(line.text ?? line));
@@ -572,6 +901,7 @@ const CodeRedMode = (() => {
         session.storyIndex = 0;
         session.storyDone = done;
         hideLayers(ui.story);
+        warmStoryWindow(0);
         renderStoryLine();
         updateHud();
     }
@@ -595,6 +925,7 @@ const CodeRedMode = (() => {
 
     function finishStory(skipped) {
         stopStoryTyping();
+        session.artGeneration += 1;
         const done = session.storyDone;
         session.storyDone = null;
         session.storyLines = [];
@@ -673,6 +1004,7 @@ const CodeRedMode = (() => {
         const storedBest = safeRead(BEST_KEY, {})?.[session.chapter?.id] || null;
         session.priorBest = storedBest
             && !storedBest.assisted
+            && storedBest.difficulty !== 'BEGINNER'
             && Number(storedBest.wrong || 0) === 0
             && Number(storedBest.hints || 0) === 0
             ? storedBest
@@ -703,6 +1035,20 @@ const CodeRedMode = (() => {
             rationale ? `${tx('WATCHER INFERENCE', 'WATCHER 추론')}: ${rationale}` : '',
             hint ? `${tx('COMMAND FRAME', '명령 골격')}: ${hint}` : ''
         ].filter(Boolean).join('\n');
+    }
+
+    function updateBeginnerCopyState() {
+        if (!ui.copyGuide || !ui.input) return;
+        const active = isBeginner() && ['gameplay', 'transition'].includes(session.phase);
+        const target = String(currentStep()?.canonical || '');
+        const typed = String(ui.input.value || '');
+        const prefixMatches = target.startsWith(typed);
+        ui.copyGuide.classList.toggle('mismatch', active && typed.length > 0 && !prefixMatches);
+        ui.copyGuide.classList.toggle('complete', active && typed === target);
+        ui.copyGuide.dataset.typed = String(Math.min(typed.length, target.length));
+        ui.copyGuide.dataset.total = String(target.length);
+        if (active) ui.input.setAttribute('aria-describedby', 'code-red-copy-guide');
+        else ui.input.removeAttribute('aria-describedby');
     }
 
     function isEvidenceLine(line) {
@@ -736,20 +1082,30 @@ const CodeRedMode = (() => {
             ui.incidentMetric.textContent = localized(chapter.incident?.metric || chapter.incident?.symptom)
                 || (metrics.restarts != null ? `RESTARTS ${metrics.restarts}` : 'CRITICAL');
         }
-        if (ui.directiveSpeaker) ui.directiveSpeaker.textContent = String(step.speaker || 'CONTROL');
+        const beginner = isBeginner();
+        if (ui.directiveSpeaker) ui.directiveSpeaker.textContent = beginner ? 'COPY' : String(step.speaker || 'CONTROL');
         if (ui.directive) ui.directive.textContent = traineeDirective(step);
         const directivePanel = ui.directive?.closest('.code-red-directive');
-        if (directivePanel) directivePanel.toggleAttribute('hidden', session.difficulty === 'SRE');
+        if (directivePanel) {
+            directivePanel.toggleAttribute('hidden', session.difficulty === 'SRE');
+            directivePanel.classList.toggle('beginner-copy', beginner);
+        }
+        ui.directive?.toggleAttribute('hidden', beginner);
+        ui.copyGuide?.toggleAttribute('hidden', !beginner);
+        if (ui.copyCommand) ui.copyCommand.textContent = String(step.canonical || '');
         if (ui.input) {
             ui.input.value = '';
             ui.input.disabled = false;
-            ui.input.placeholder = tx('ENTER OPENSHIFT COMMAND...', 'OPENSHIFT 명령을 입력...');
+            ui.input.placeholder = beginner
+                ? tx('TYPE THE COMMAND SHOWN ABOVE...', '위 명령을 그대로 입력...')
+                : tx('ENTER OPENSHIFT COMMAND...', 'OPENSHIFT 명령을 입력...');
         }
         if (!options.preserveFeedback) session.feedback = null;
         renderFeedback();
         renderResponseRail();
         renderEvidenceRail();
         renderTerminal();
+        updateBeginnerCopyState();
         updateIncidentPosition();
         updateHud();
     }
@@ -760,6 +1116,7 @@ const CodeRedMode = (() => {
         session.paused = false;
         session.startedAt = performance.now();
         session.lastFrameAt = performance.now();
+        updateBeginnerCopyState();
         updateHud();
         session.raf = requestAnimationFrame(tick);
         if (options.focusInput !== false) schedule(() => ui.input?.focus({ preventScroll: true }), 0);
@@ -808,7 +1165,8 @@ const CodeRedMode = (() => {
         if (!state) return;
         const step = feedbackStep(state);
         if (state.kind === 'accepted') {
-            ui.feedback.textContent = `${tx('COMMAND ACCEPTED', '명령 승인')} // SCORE +100 · IMPACT -${state.impact}`;
+            const impactEffect = state.impact === 0 ? tx('IMPACT LOCKED', 'IMPACT 고정') : `IMPACT -${state.impact}`;
+            ui.feedback.textContent = `${tx('COMMAND ACCEPTED', '명령 승인')} // SCORE +100 · ${impactEffect}`;
             ui.feedback.classList.add('accepted');
             return;
         }
@@ -824,9 +1182,18 @@ const CodeRedMode = (() => {
             ui.feedback.classList.add('rejected', state.category || 'generic');
             return;
         }
+        if (state.kind === 'copy-mismatch') {
+            ui.feedback.textContent = tx(
+                'COPY MODE // Compare the shown command and try again. NO PENALTY.',
+                '따라치기 모드 // 표시된 명령과 비교해 다시 입력하세요. 페널티 없음.'
+            );
+            ui.feedback.classList.add('copy-mismatch');
+            return;
+        }
         if (state.kind === 'hint') {
             const scoreEffect = state.score === 0 ? tx('SCORE FREE', 'SCORE 감점 없음') : `SCORE -${state.score}`;
-            ui.feedback.textContent = `${tx('HINT', '힌트')} // ${localized(step?.hint)} · ${scoreEffect} · IMPACT +${state.impact}`;
+            const impactEffect = state.impact === 0 ? tx('IMPACT LOCKED', 'IMPACT 고정') : `IMPACT +${state.impact}`;
+            ui.feedback.textContent = `${tx('HINT', '힌트')} // ${localized(step?.hint)} · ${scoreEffect} · ${impactEffect}`;
             ui.feedback.classList.add('hint');
         }
     }
@@ -841,7 +1208,7 @@ const CodeRedMode = (() => {
         session.chain += 1;
         session.maxChain = Math.max(session.maxChain, session.chain);
         const knockback = Number(step.knockback);
-        const knockbackValue = knockback > 0 && knockback <= 1 ? knockback * 100 : (knockback || 10);
+        const knockbackValue = isBeginner() ? 0 : (knockback > 0 && knockback <= 1 ? knockback * 100 : (knockback || 10));
         session.position = Math.max(5, session.position - knockbackValue);
         ui.incidentCard?.classList.remove('rejected');
         ui.incidentCard?.classList.add('accepted');
@@ -901,6 +1268,15 @@ const CodeRedMode = (() => {
     }
 
     function commandRejected(value, step) {
+        if (isBeginner()) {
+            ui.input?.classList.add('rejected');
+            schedule(() => ui.input?.classList.remove('rejected'), 420);
+            session.feedback = { kind: 'copy-mismatch', stepId: step.id };
+            renderFeedback();
+            updateBeginnerCopyState();
+            playCue('warning');
+            return;
+        }
         const category = classifyRejection(value, step);
         session.wrong += 1;
         session.chain = 0;
@@ -928,12 +1304,15 @@ const CodeRedMode = (() => {
         if (session.commandHistory.at(-1) !== value) session.commandHistory.push(value);
         session.commandHistory = session.commandHistory.slice(-20);
         session.historyIndex = session.commandHistory.length;
-        const correct = window.StudyCore?.isCorrect
-            ? window.StudyCore.isCorrect(value, step)
-            : (typeof StudyCore !== 'undefined' && StudyCore.isCorrect(value, step));
+        const correct = isBeginner()
+            ? value.replace(/\s+/g, ' ') === String(step.canonical || '').trim().replace(/\s+/g, ' ')
+            : (window.StudyCore?.isCorrect
+                ? window.StudyCore.isCorrect(value, step)
+                : (typeof StudyCore !== 'undefined' && StudyCore.isCorrect(value, step)));
         if (correct) commandAccepted(step);
         else commandRejected(value, step);
-        if (ui.input) ui.input.value = '';
+        if (ui.input && (correct || !isBeginner())) ui.input.value = '';
+        updateBeginnerCopyState();
     }
 
     function navigateCommandHistory(direction) {
@@ -942,6 +1321,7 @@ const CodeRedMode = (() => {
         ui.input.value = session.historyIndex >= session.commandHistory.length
             ? ''
             : session.commandHistory[session.historyIndex];
+        updateBeginnerCopyState();
         schedule(() => ui.input?.setSelectionRange(ui.input.value.length, ui.input.value.length), 0);
     }
 
@@ -949,11 +1329,12 @@ const CodeRedMode = (() => {
         if (session.phase !== 'gameplay' || session.paused) return;
         const step = currentStep();
         if (!step) return;
-        session.hints += 1;
+        if (!isBeginner()) session.hints += 1;
         const penalty = hintPenalty();
         session.score = Math.max(0, session.score - penalty);
-        session.position = Math.min(IMPACT_POSITION, session.position + 4);
-        session.feedback = { kind: 'hint', stepId: step.id, score: penalty, impact: 4 };
+        const impactPenalty = isBeginner() ? 0 : 4;
+        session.position = Math.min(IMPACT_POSITION, session.position + impactPenalty);
+        session.feedback = { kind: 'hint', stepId: step.id, score: penalty, impact: impactPenalty };
         renderFeedback();
         playCue('warning');
         updateIncidentPosition();
@@ -1009,6 +1390,7 @@ const CodeRedMode = (() => {
             hints: session.hints,
             maxChain: session.maxChain,
             assisted: session.assisted,
+            difficulty: session.difficulty,
             stepIndex: session.stepIndex,
             updatedAt: new Date().toISOString()
         };
@@ -1018,11 +1400,13 @@ const CodeRedMode = (() => {
         const candidate = best[chapter.id];
         const prior = candidate
             && !candidate.assisted
+            && candidate.difficulty !== 'BEGINNER'
             && Number(candidate.wrong || 0) === 0
             && Number(candidate.hints || 0) === 0
             ? candidate
             : null;
-        const cleanResolve = resolved && !session.assisted && session.wrong === 0 && session.hints === 0;
+        const competitive = difficultyProfile().competitive !== false;
+        const cleanResolve = competitive && resolved && !session.assisted && session.wrong === 0 && session.hints === 0;
         const isBetter = !prior
             || session.score > Number(prior.score || 0)
             || (session.score === Number(prior.score || 0) && session.elapsedMs < Number(prior.mttrMs || Infinity));
@@ -1190,7 +1574,7 @@ const CodeRedMode = (() => {
 
     function reportRows(resolved) {
         return [
-            [tx('STATUS', '상태'), resolved ? (session.assisted ? 'ASSISTED' : 'RESOLVED') : 'ESCALATED'],
+            [tx('STATUS', '상태'), resolved ? (isBeginner() ? 'PRACTICE' : (session.assisted ? 'ASSISTED' : 'RESOLVED')) : 'ESCALATED'],
             ['MTTR', formatTime(session.elapsedMs)],
             [tx('COMMANDS', '명령 수'), String(session.chapter?.steps?.length || 0)],
             [tx('WRONG', '오답'), String(session.wrong)],
@@ -1208,9 +1592,11 @@ const CodeRedMode = (() => {
             ui.continue.dataset.codeRedBound = 'true';
         }
         if (ui.reportStatus) {
-            ui.reportStatus.textContent = session.assisted
-                ? tx('INCIDENT RESOLVED // ASSISTED', '인시던트 복구 // 보조됨')
-                : tx('INCIDENT RESOLVED', '인시던트 복구 완료');
+            ui.reportStatus.textContent = isBeginner()
+                ? tx('COPY TRAINING COMPLETE', '따라치기 훈련 완료')
+                : (session.assisted
+                    ? tx('INCIDENT RESOLVED // ASSISTED', '인시던트 복구 // 보조됨')
+                    : tx('INCIDENT RESOLVED', '인시던트 복구 완료'));
         }
         if (ui.reportGrid) {
             ui.reportGrid.replaceChildren();
@@ -1253,7 +1639,12 @@ const CodeRedMode = (() => {
         if (ui.bestComparison) {
             const prior = session.priorBest;
             const cleanResolve = !session.assisted && session.wrong === 0 && session.hints === 0;
-            if (!prior) {
+            if (isBeginner()) {
+                ui.bestComparison.textContent = tx(
+                    'PRACTICE MODE // competitive best unchanged',
+                    '반복 훈련 모드 // 경쟁 기록은 변경되지 않습니다.'
+                );
+            } else if (!prior) {
                 ui.bestComparison.textContent = cleanResolve
                     ? tx('NEW CLEAN BASELINE RECORDED', '새 클린 기준 기록이 저장되었습니다.')
                     : tx('CLEAN BEST UNCHANGED // no clean baseline recorded yet', '클린 최고 기록 유지 // 아직 클린 기준 기록이 없습니다.');
@@ -1268,7 +1659,7 @@ const CodeRedMode = (() => {
                 ui.bestComparison.textContent = `${comparisonLabel} // SCORE ${scoreText} · MTTR ${mttrText}`;
             }
         }
-        const needsCleanRetry = session.assisted || session.wrong > 0 || session.hints > 0;
+        const needsCleanRetry = !isBeginner() && (session.assisted || session.wrong > 0 || session.hints > 0);
         ui.cleanRetry?.classList.toggle('hidden', !needsCleanRetry);
         renderResponseRail(true);
         updateHud();
@@ -1461,6 +1852,7 @@ const CodeRedMode = (() => {
                 ui.input.value = pendingCommand;
                 ui.input.disabled = session.paused;
             }
+            updateBeginnerCopyState();
         }
         else if (session.phase === 'failure') showFailureChoices();
         else if (session.phase === 'assisted') renderAssistedTranscript();
@@ -1480,6 +1872,7 @@ const CodeRedMode = (() => {
         );
         if (ui.storyLabel) ui.storyLabel.textContent = tx('STORY', '스토리');
         if (ui.difficultyLabel) ui.difficultyLabel.textContent = tx('DIFFICULTY', '난이도');
+        if (ui.copyLabel) ui.copyLabel.textContent = tx('TYPE EXACTLY', '그대로 입력');
         if (ui.begin) ui.begin.textContent = tx('BEGIN NIGHT SHIFT', '야간 작전 시작');
         if (ui.exit) ui.exit.textContent = tx('EXIT', '나가기');
         if (ui.storyNext) ui.storyNext.textContent = tx('[ENTER] NEXT', '[ENTER] 다음');
@@ -1577,7 +1970,10 @@ const CodeRedMode = (() => {
                 submitCommand();
             }
         });
-        ui.input?.addEventListener('input', event => playSound(null, event.data || 'a'));
+        ui.input?.addEventListener('input', event => {
+            playSound(null, event.data || 'a');
+            updateBeginnerCopyState();
+        });
         ui.hint?.addEventListener('click', showHint);
         ui.pause?.addEventListener('click', togglePause);
         ui.resumeGame?.addEventListener('click', resumeGame);
@@ -1594,6 +1990,7 @@ const CodeRedMode = (() => {
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('visibilitychange', onVisibilityChange);
         window.addEventListener('codedrop:language', onLanguageChange);
+        window.addEventListener('resize', applyActiveArtCrop, { passive: true });
     }
 
     function open() {
@@ -1608,6 +2005,9 @@ const CodeRedMode = (() => {
         session.generation += 1;
         loadPreferences();
         session.active = true;
+        session.artGeneration += 1;
+        session.artComposition = null;
+        session.artCrop = null;
         session.chapter = firstPlayableChapter();
         session.skipAllStory = false;
         ui.screen.classList.remove('hidden');
@@ -1615,6 +2015,11 @@ const CodeRedMode = (() => {
         ui.screen.setAttribute('aria-hidden', 'false');
         setAppIsolation(true);
         document.body.classList.add('code-red-active');
+        prepareArtStage();
+        artAssetStatus.forEach((entry, url) => {
+            if (entry.status === 'error') artAssetStatus.delete(url);
+        });
+        preloadCriticalArt();
         applyLanguage();
         renderStart();
         playSound(null, 'Enter');
@@ -1627,6 +2032,9 @@ const CodeRedMode = (() => {
         clearScheduled();
         session.assistedTimer = 0;
         session.generation += 1;
+        session.artGeneration += 1;
+        session.artComposition = null;
+        session.artCrop = null;
         session.active = false;
         session.phase = 'idle';
         session.paused = false;
@@ -1678,7 +2086,13 @@ const CodeRedMode = (() => {
             assistedIndex: session.assistedIndex,
             evidenceCount: session.pinnedEvidence.length,
             storyEnabled: session.storyEnabled,
-            difficulty: session.difficulty
+            difficulty: session.difficulty,
+            artState: ui.artStage?.dataset.artState || 'unavailable',
+            artComposition: session.artComposition,
+            artAssets: [...artAssetStatus.values()].reduce((counts, entry) => {
+                counts[entry.status] = (counts[entry.status] || 0) + 1;
+                return counts;
+            }, {})
         };
     }
 

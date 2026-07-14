@@ -9348,6 +9348,7 @@
                     <div class="code-red-option-block">
                         <span class="code-red-option-label" id="code-red-difficulty-label">DIFFICULTY</span>
                         <div class="code-red-segmented code-red-difficulty-options" id="code-red-difficulty-options" role="group" aria-label="CODE RED difficulty">
+                            <button type="button" data-code-red-difficulty="BEGINNER">BEGINNER</button>
                             <button type="button" data-code-red-difficulty="TRAINEE">TRAINEE</button>
                             <button type="button" data-code-red-difficulty="OPERATOR">OPERATOR</button>
                             <button type="button" data-code-red-difficulty="SRE">SRE</button>
@@ -9363,6 +9364,13 @@
 
             <section id="code-red-story-layer" class="code-red-panel code-red-story-layer hidden" aria-labelledby="code-red-scene-title">
                 <div class="code-red-stage" id="code-red-stage" data-scene="control-room" data-shot="wide">
+                    <div class="code-red-art-stage" id="code-red-art-stage" aria-hidden="true">
+                        <img data-code-red-art-slot="background" width="640" height="360" alt="" aria-hidden="true">
+                        <img data-code-red-art-slot="midground" width="640" height="360" alt="" aria-hidden="true">
+                        <img data-code-red-art-slot="subject" width="640" height="360" alt="" aria-hidden="true">
+                        <img data-code-red-art-slot="foreground" width="640" height="360" alt="" aria-hidden="true">
+                        <img data-code-red-art-slot="ui" width="640" height="360" alt="" aria-hidden="true">
+                    </div>
                     <div class="code-red-pixel-world" aria-hidden="true">
                         <div class="code-red-city-grid"></div>
                         <div class="code-red-beacon"><i></i></div>
@@ -9453,6 +9461,10 @@
                     <div class="code-red-directive">
                         <span id="code-red-directive-speaker">CONTROL</span>
                         <p class="code-red-directive-title" id="code-red-directive-text"></p>
+                        <div class="code-red-copy-guide" id="code-red-copy-guide" role="note" aria-labelledby="code-red-copy-label" hidden>
+                            <span id="code-red-copy-label">TYPE THIS COMMAND</span>
+                            <code id="code-red-copy-command"></code>
+                        </div>
                     </div>
                     <div class="code-red-command-row code-red-input-row">
                         <span class="code-red-input-prompt">&gt;</span>
@@ -9959,6 +9971,7 @@
     <script src="js/github_edition_packs.js"></script>
     <script src="js/long_packs.js"></script>
     <script src="js/code_red_scenarios.js"></script>
+    <script src="js/code_red_visuals.js"></script>
     <script src="js/study_stats.js"></script>
     <script src="https://w.soundcloud.com/player/api.js"></script>
     <script src="js/game.js"></script>
