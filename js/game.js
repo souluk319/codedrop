@@ -73,6 +73,9 @@ const I18N_TEXT = {
         'ocp.labDesc': 'Hands-on procedure training',
         'ocp.incident': 'INCIDENT DRILL',
         'ocp.incidentDesc': 'CrashLoop, Pending, RBAC, SCC diagnosis',
+        'ocp.codeRed': 'CODE RED',
+        'ocp.codeRedDesc': 'Recover a story-driven incident before impact',
+        'ocp.enterCodeRed': 'ENTER CODE RED',
         'ocp.exam': 'EXAM',
         'ocp.examDesc': '15 questions · 90 seconds',
         'ocp.learnMode': 'Learn Mode',
@@ -246,6 +249,9 @@ const I18N_TEXT = {
         'ocp.labDesc': '실전 절차 훈련',
         'ocp.incident': '진단훈련',
         'ocp.incidentDesc': 'CrashLoop, Pending, RBAC, SCC 원인 찾기',
+        'ocp.codeRed': 'CODE RED',
+        'ocp.codeRedDesc': '스토리 속 장애를 진단하고 떨어지기 전에 복구',
+        'ocp.enterCodeRed': 'CODE RED 진입',
         'ocp.exam': '시험 모드',
         'ocp.examDesc': '15문제 · 90초',
         'ocp.learnMode': '학습 모드',
@@ -520,6 +526,7 @@ const overlayChromeIds = [
     'pause-screen',
     'scenario-screen',
     'lab-screen',
+    'code-red-screen',
     'dashboard-screen',
     'learn-screen',
     'long-practice-screen',
@@ -566,6 +573,7 @@ const APP_ROUTE_PATHS = {
     ocpScenario: '/ocp/scenario',
     ocpLab: '/ocp/lab',
     ocpIncident: '/ocp/incident',
+    ocpCodeRed: '/ocp/code-red',
     ocpExam: '/ocp/exam',
     ocpDashboard: '/ocp/dashboard',
     github: '/github',
@@ -604,6 +612,7 @@ function navigateAppRoute(route, options = {}) {
 }
 
 function hideAppOverlaysForRoute() {
+    window.CodeRedMode?.close?.({ silent: true });
     [
         'pause-screen',
         'result-screen',
@@ -614,6 +623,7 @@ function hideAppOverlaysForRoute() {
         'keyboard-test-screen',
         'scenario-screen',
         'lab-screen',
+        'code-red-screen',
         'dashboard-screen',
         'learn-screen'
     ].forEach(id => document.getElementById(id)?.classList.add('hidden'));
@@ -691,6 +701,10 @@ function applyAppRoute(route) {
             window.CodeDropModeControls?.setMode('INCIDENT');
             els.screens.start.classList.add('hidden');
             if (typeof ScenarioMode !== 'undefined') ScenarioMode.startIncidentDrill();
+        } else if (route === 'ocpCodeRed') {
+            window.CodeDropModeControls?.setMode('CODE_RED');
+            els.screens.start.classList.add('hidden');
+            window.CodeRedMode?.open();
         } else if (route === 'ocpExam' || route === 'githubExam') {
             window.CodeDropModeControls?.setMode('EXAM');
             els.screens.start.classList.add('hidden');
@@ -1230,6 +1244,73 @@ const sfx = {
         // Keep existing synth
         this.playTone(150, 'sawtooth', 0.3, 0.1);
         this.playTone(100, 'square', 0.3, 0.1);
+    },
+    playCodeRedCue: function (name) {
+        const cue = String(name || '').trim().toLowerCase();
+        if (!cue) return false;
+
+        switch (cue) {
+            case 'alarm':
+            case 'warning':
+            case 'warning-chirp':
+                this.playSweep(640, 1180, 'square', 0.11, 0.055, 0);
+                this.playSweep(720, 1320, 'square', 0.11, 0.045, 0.14);
+                break;
+            case 'incident':
+            case 'incident-lock':
+                this.playSweep(980, 180, 'sawtooth', 0.22, 0.075, 0);
+                this.playTone(82, 'square', 0.24, 0.065);
+                break;
+            case 'accepted':
+            case 'command-accepted':
+            case 'evidence-mark':
+                this.playSweep(360, 840, 'triangle', 0.12, 0.055, 0);
+                this.playTone(1040, 'sine', 0.09, 0.045);
+                break;
+            case 'rejected':
+            case 'command-rejected':
+            case 'impact':
+            case 'impact-breach':
+            case 'registry-fail':
+                this.playFail();
+                this.playSweep(260, 62, 'sawtooth', 0.2, 0.07, 0.035);
+                break;
+            case 'recovery':
+            case 'resolved':
+            case 'service-recovered':
+                this.playSuccess();
+                this.playSweep(420, 1180, 'sine', 0.2, 0.045, 0.04);
+                break;
+            case 'control-room-hum':
+                this.playTone(72, 'sine', 0.22, 0.022);
+                break;
+            case 'watcher-online':
+                this.playSweep(180, 920, 'triangle', 0.18, 0.045, 0);
+                break;
+            case 'comms-open':
+                this.playSweep(320, 680, 'sine', 0.09, 0.04, 0);
+                break;
+            case 'comms-ping':
+                this.playTone(760, 'sine', 0.08, 0.045);
+                break;
+            case 'comms-clear':
+                this.playSweep(520, 940, 'sine', 0.12, 0.04, 0);
+                break;
+            case 'control-lock':
+                this.playSweep(620, 260, 'square', 0.1, 0.05, 0);
+                this.playTone(120, 'square', 0.12, 0.04);
+                break;
+            case 'retry-arm':
+                this.playSweep(220, 720, 'square', 0.14, 0.045, 0);
+                break;
+            case 'night-shift-theme':
+                this.playSweep(86, 172, 'sine', 0.32, 0.025, 0);
+                break;
+            default:
+                return false;
+        }
+
+        return true;
     },
     playPackLatch: function () {
         this.playSweep(920, 260, 'triangle', 0.045, 0.075, 0);
@@ -2892,6 +2973,7 @@ const STUDY_EDITION_CONFIGS = {
             scenario: 'ocpScenario',
             lab: 'ocpLab',
             incident: 'ocpIncident',
+            codeRed: 'ocpCodeRed',
             exam: 'ocpExam',
             dashboard: 'ocpDashboard'
         },
@@ -2912,6 +2994,8 @@ const STUDY_EDITION_CONFIGS = {
             labDesc: '실전 절차 훈련',
             incident: '진단훈련',
             incidentDesc: 'CrashLoop, Pending, RBAC, SCC 원인 찾기',
+            codeRed: 'CODE RED',
+            codeRedDesc: '스토리 속 장애를 진단하고 떨어지기 전에 복구',
             exam: '시험 모드',
             examDesc: '15문제 · 90초',
             fixedPack: 'OpenShift CLI (EX280) 팩으로 고정됩니다.',
@@ -3059,6 +3143,10 @@ function handleStart() {
         els.screens.start.classList.add('hidden');
         if (practiceStyle === 'follow') ScenarioMode.startGuided(studyConfig.incidentCategory);
         else ScenarioMode.startIncidentDrill();
+    } else if (gameMode === 'CODE_RED' && studyConfig.key === 'ocp') {
+        navigateAppRoute(studyConfig.routes.codeRed);
+        els.screens.start.classList.add('hidden');
+        window.CodeRedMode?.open();
     } else if (gameMode === 'EXAM') {
         navigateAppRoute(studyConfig.routes.exam);
         els.screens.start.classList.add('hidden');
@@ -3132,6 +3220,7 @@ function initModeControls() {
         SCENARIO: ['scenario-select-group'],
         LAB: ['lab-select-group'],
         INCIDENT: [],
+        CODE_RED: [],
         EXAM: ['exam-info-group']
     };
 
@@ -3218,6 +3307,7 @@ function initModeControls() {
         setModeCopy('SCENARIO', copy.scenario, copy.scenarioDesc);
         setModeCopy('LAB', copy.lab, copy.labDesc);
         setModeCopy('INCIDENT', copy.incident, copy.incidentDesc);
+        setModeCopy('CODE_RED', copy.codeRed, copy.codeRedDesc);
         setModeCopy('EXAM', copy.exam, copy.examDesc);
         setText('#ocp-drop-group > label', copy.dropDifficulty);
         setText('#ocp-drop-group .mode-info', copy.fixedPack);
@@ -3225,6 +3315,8 @@ function initModeControls() {
         setText('#lab-select-group > label', copy.mockLab);
         setText('#exam-info-group > label', copy.examLabel);
         setText('#exam-info-group .mode-info', copy.examInfo);
+        const codeRedButton = document.getElementById('mode-code-red');
+        if (codeRedButton) codeRedButton.classList.toggle('hidden', config.key !== 'ocp');
         if (ocpStartBtn) ocpStartBtn.textContent = copy.start;
         if (dashboardBtn) dashboardBtn.textContent = copy.dashboard;
     }
@@ -3291,6 +3383,9 @@ function initModeControls() {
 
         if (mode === 'DROP' && isStudyEditionActive()) {
             forceStudyDropPackSync();
+        }
+        if (ocpStartBtn) {
+            ocpStartBtn.textContent = mode === 'CODE_RED' ? t('ocp.enterCodeRed') : currentStudyConfig()?.copy?.start || t('ocp.start');
         }
         syncStudyDifficultyControls();
     }
@@ -3895,6 +3990,7 @@ function maybeShowFirstRunTutorial() {
             'admin-pack-screen',
             'keyboard-test-screen',
             'learn-screen',
+            'code-red-screen',
             'dashboard-screen'
         ];
         const blocked = state.isPlaying || blockingScreens.some(id => {
@@ -4041,6 +4137,8 @@ function applyAppLanguage(value) {
     setText('#mode-lab span', 'ocp.labDesc');
     setText('#mode-incident strong', 'ocp.incident');
     setText('#mode-incident span', 'ocp.incidentDesc');
+    setText('#mode-code-red strong', 'ocp.codeRed');
+    setText('#mode-code-red span', 'ocp.codeRedDesc');
     setText('#mode-exam strong', 'ocp.exam');
     setText('#mode-exam span', 'ocp.examDesc');
     setText('#learn-info-group label', 'ocp.learnMode');
@@ -4062,7 +4160,7 @@ function applyAppLanguage(value) {
     }
     setText('#exam-info-group label', 'ocp.examMode');
     setText('#exam-info-group .mode-info:not(.exam-gate-note)', 'ocp.examInfo');
-    setText('#ocp-start-btn', 'ocp.start');
+    setText('#ocp-start-btn', window.CodeDropModeControls?.currentMode?.() === 'CODE_RED' ? 'ocp.enterCodeRed' : 'ocp.start');
     setText('#dashboard-btn', 'ocp.dashboard');
 
     setPreviousText('#score', 'hud.score');

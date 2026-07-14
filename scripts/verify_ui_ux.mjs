@@ -15,6 +15,10 @@ const stats = read('js/study_stats.js');
 const learn = read('js/learn_mode.js');
 const scenario = read('js/scenario_mode.js');
 const lab = read('js/lab_mode.js');
+const codeRedMode = read('js/code_red_mode.js');
+const codeRedScenarios = read('js/code_red_scenarios.js');
+const codeRedVisuals = read('js/code_red_visuals.js');
+const codeRedCss = read('css/code_red.css');
 const dockerCompose = read('docker-compose.local.yml');
 const localSchema = read('db/init/001_schema.sql');
 const localEnvExample = read('.env.local.example');
@@ -131,6 +135,39 @@ globalThis.__githubEditionData = {
     return sandbox.__githubEditionData;
 }
 
+function loadCodeRedData() {
+    const sandbox = {};
+    vm.runInNewContext(`${codeRedScenarios}\nglobalThis.__codeRedData = { CODE_RED_CAMPAIGN, CODE_RED_SCENARIOS };`, sandbox);
+    return sandbox.__codeRedData;
+}
+
+function loadCodeRedVisualData() {
+    const sandbox = {};
+    vm.runInNewContext(`${codeRedScenarios}\n${codeRedVisuals}\nglobalThis.__codeRedVisualData = {
+        campaign: CODE_RED_CAMPAIGN,
+        registry: globalThis.CODE_RED_VISUALS
+    };`, sandbox);
+    return sandbox.__codeRedVisualData;
+}
+
+function collectCodeRedCues(value, cues = []) {
+    if (Array.isArray(value)) {
+        value.forEach(item => collectCodeRedCues(item, cues));
+        return cues;
+    }
+    if (!value || typeof value !== 'object') return cues;
+    if (value.cue && typeof value.cue === 'object') cues.push(value.cue);
+    Object.values(value).forEach(item => collectCodeRedCues(item, cues));
+    return cues;
+}
+
+function pngDimensions(file) {
+    const buffer = fs.readFileSync(file);
+    const signature = buffer.subarray(0, 8).toString('hex');
+    assert(signature === '89504e470d0a1a0a', `asset should be a PNG: ${path.relative(root, file)}`);
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
 function collectObjectIds(value, ids = []) {
     if (!value || typeof value !== 'object') return ids;
     if (Array.isArray(value)) {
@@ -161,8 +198,11 @@ const expectedOrder = [
     'js/lesson_packs.js',
     'js/github_edition_packs.js',
     'js/long_packs.js',
+    'js/code_red_scenarios.js',
+    'js/code_red_visuals.js',
     'js/study_stats.js',
     'js/game.js',
+    'js/code_red_mode.js',
     'js/scenario_mode.js',
     'js/lab_mode.js',
     'js/learn_mode.js',
@@ -219,6 +259,7 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'mode-drop',
     'mode-scenario',
     'mode-lab',
+    'mode-code-red',
     'mode-exam',
     'ocp-drop-group',
     'scenario-select-group',
@@ -230,6 +271,50 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'scenario-screen',
     'scenario-timer',
     'lab-screen',
+    'code-red-screen',
+    'code-red-start-panel',
+    'code-red-story-layer',
+    'code-red-stage',
+    'code-red-art-stage',
+    'code-red-dialogue-text',
+    'code-red-story-next',
+    'code-red-story-fast',
+    'code-red-story-skip',
+    'code-red-skip-dialog',
+    'code-red-brief-layer',
+    'code-red-accept',
+    'code-red-game-layer',
+    'code-red-incident-card',
+    'code-red-score',
+    'code-red-impact-hud',
+    'code-red-story-live',
+    'code-red-aiops-rail',
+    'code-red-evidence-rail',
+    'code-red-terminal',
+    'code-red-directive-text',
+    'code-red-copy-guide',
+    'code-red-copy-label',
+    'code-red-copy-command',
+    'code-red-input',
+    'code-red-hint',
+    'code-red-failure-layer',
+    'code-red-assisted-layer',
+    'code-red-assisted-title',
+    'code-red-assisted-progress',
+    'code-red-assisted-rationale',
+    'code-red-assisted-console',
+    'code-red-assisted-controls',
+    'code-red-assisted-pause',
+    'code-red-assisted-next',
+    'code-red-assisted-skip',
+    'code-red-report-layer',
+    'code-red-report-evidence-title',
+    'code-red-report-evidence',
+    'code-red-best-comparison',
+    'code-red-clean-retry',
+    'code-red-teaser-layer',
+    'code-red-teaser-roadmap',
+    'code-red-teaser-roadmap-summary',
     'dashboard-screen',
     'dashboard-learn',
     'dashboard-next-btn',
@@ -335,6 +420,153 @@ assert(enI18nKeys.every((key, index) => key === koI18nKeys[index]), 'EN/KO i18n 
     'pack-maker-save',
     'pack-maker-submit'
 ].forEach(id => assert(hasId(id), `missing DOM id: ${id}`));
+
+assert(index.includes('<link rel="stylesheet" href="css/code_red.css">'), 'CODE RED stylesheet should be linked from the app shell');
+assert(game.includes("ocpCodeRed: '/ocp/code-red'"), 'CODE RED direct route is missing');
+assert(game.includes("gameMode === 'CODE_RED'"), 'OCP start flow should launch CODE RED');
+assert(game.includes("setMode('CODE_RED')"), 'CODE RED route should restore the selected mode');
+assert(game.includes("config.key !== 'ocp'"), 'CODE RED menu card should stay scoped to OCP Edition');
+assert(codeRedMode.includes('requestAnimationFrame(tick)'), 'CODE RED falling incident must use requestAnimationFrame');
+assert(codeRedMode.includes("document.addEventListener('visibilitychange', onVisibilityChange)"), 'CODE RED must auto-pause on hidden browser tabs');
+assert(codeRedMode.includes("window.addEventListener('codedrop:language', onLanguageChange)"), 'CODE RED must follow the product-wide language state');
+assert(codeRedMode.includes('StudyCore.isCorrect'), 'CODE RED should reuse the safe command matching contract');
+assert(codeRedMode.includes('finalStep') && codeRedMode.includes("step.phase === 'verify'"), 'CODE RED must resolve only after its verification step');
+assert(codeRedMode.includes('skipAllStory') && codeRedMode.includes('missionBrief'), 'CODE RED story skip must retain a Mission Brief');
+assert(codeRedMode.includes('function clearScheduled()') && codeRedMode.includes('session.generation += 1'), 'CODE RED must invalidate delayed callbacks across exits and re-entry');
+assert(codeRedMode.includes("classList.remove('impact', 'resolved', 'accepted', 'rejected')"), 'CODE RED must clear stale incident result classes before a new run');
+assert(codeRedMode.includes('function resumeCampaign()') && codeRedMode.includes("ui.resume?.addEventListener('click', resumeCampaign)"), 'CODE RED resume must restore persisted chapter-boundary state');
+assert(codeRedMode.includes('difficultyProfile().fallSpeedMultiplier') && codeRedMode.includes('session.chapter?.incident?.fallSpeed'), 'CODE RED fall speed must come from campaign and incident data');
+assert(index.includes('data-code-red-difficulty="BEGINNER"') && index.includes('id="code-red-copy-guide" role="note"'), 'CODE RED must expose the BEGINNER copy-training option and persistent command guide');
+assert(codeRedMode.includes("['BEGINNER', 'TRAINEE', 'OPERATOR', 'SRE']") && codeRedMode.includes('function isBeginner()'), 'CODE RED engine must recognize BEGINNER as a first-class difficulty');
+assert(codeRedMode.includes('difficultyMultiplier >= 0') && codeRedMode.includes("kind: 'copy-mismatch'") && codeRedMode.includes('difficultyProfile().competitive !== false'), 'CODE RED BEGINNER must freeze falling pressure, avoid mistake penalties, and preserve competitive bests');
+assert(codeRedMode.includes('function setModalIsolation(') && codeRedMode.includes("sibling.setAttribute('inert', '')") && codeRedMode.includes('data-code-red-modal-inert') && codeRedMode.includes('function trapModalFocus('), 'CODE RED modal overlays must isolate and retain keyboard focus across the full screen');
+assert(codeRedMode.includes('function setAppIsolation(') && codeRedMode.includes('data-code-red-screen-inert'), 'CODE RED must isolate the active full-screen app from inactive UI');
+assert(['global-lang-toggle', 'readme-widget', 'readme-overlay', 'tutorial-overlay', 'music-widget'].every(id => codeRedMode.includes(`'${id}'`)), 'CODE RED must keep the shared language, README, tutorial, and music chrome interactive');
+assert(codeRedMode.includes('function hideLayers(except)') && codeRedMode.includes("layer.toggleAttribute('inert', hidden)") && codeRedMode.includes('data-code-red-layer-inert'), 'CODE RED must mark every inactive internal layer inert and hidden');
+assert(codeRedMode.includes('function updateHintLabel()') && codeRedMode.includes("tx('HINT (FREE)', '힌트 (무료)')"), 'CODE RED hint CTA must reflect the selected difficulty penalty');
+assert(index.includes('id="code-red-pause-card" role="dialog" aria-modal="true"'), 'CODE RED pause overlay must expose modal dialog semantics');
+assert(index.includes('id="code-red-story-live" role="status" aria-live="polite" aria-atomic="true"'), 'CODE RED cutscene must announce completed dialogue through a dedicated live region');
+assert(codeRedMode.includes('if (ui.storyLive) ui.storyLive.textContent = `${ui.speaker?.textContent || \'SYSTEM\'}: ${session.storyFullText}`;'), 'CODE RED live region must receive the completed line, not each typing character');
+assert(!codeRedMode.includes('storyLive.textContent = text.slice('), 'CODE RED live region must not announce each typing character');
+assert(codeRedCss.includes('.code-red-operator') && codeRedCss.includes('.code-red-operator-sprite') && codeRedCss.includes('.code-red-operator-console-sprite'), 'CODE RED pixel operator should style both the standing and console tribute poses');
+assert(codeRedCss.includes('@keyframes') && codeRedCss.includes('prefers-reduced-motion'), 'CODE RED cutscenes need motion plus a reduced-motion fallback');
+assert(codeRedCss.includes('@media') && codeRedCss.includes('code-red-game-layer'), 'CODE RED must include a responsive gameplay layout');
+assert(codeRedCss.includes('#code-red-start-panel > .code-red-start-actions > button') && codeRedCss.includes('.code-red-directive.beginner-copy') && codeRedCss.includes('#code-red-copy-command'), 'CODE RED must align its entry CTAs and style the BEGINNER copy guide');
+assert(codeRedCss.includes('body.code-red-active #readme-widget') && codeRedCss.includes('body.code-red-active #music-widget') && codeRedCss.includes('z-index: 1705 !important'), 'CODE RED must keep the global README and music widgets above its full-screen layer');
+assert(codeRedCss.includes('grid-area: actions;') && codeRedCss.includes('grid-template-columns: repeat(2, minmax(0, 1fr));'), 'CODE RED entry CTAs must align directly beneath the options column');
+assert(index.includes('assets/code-red/operator-07-sprite.png'), 'CODE RED cutscene should render the OPERATOR-07 tribute sprite');
+assert(fs.existsSync(path.join(root, 'assets/code-red/operator-07-sprite.png')), 'OPERATOR-07 pixel sprite asset is missing');
+assert(index.includes('assets/code-red/operator-07-console.png'), 'CODE RED cutscene should render the OPERATOR-07 console pose');
+const codeRedConsoleSpritePath = path.join(root, 'assets/code-red/operator-07-console.png');
+assert(fs.existsSync(codeRedConsoleSpritePath), 'OPERATOR-07 console sprite asset is missing');
+assert(fs.statSync(codeRedConsoleSpritePath).size <= 250 * 1024, 'OPERATOR-07 console sprite must stay at or below 250KB');
+
+assert(index.includes('id="code-red-aiops-rail"') && ['signal', 'evidence', 'hypothesis', 'action', 'verify'].every(phase => index.includes(`data-code-red-phase="${phase}"`)), 'CODE RED markup must expose the five-stage AIOps response rail');
+assert(index.includes('id="code-red-evidence-rail" role="list"'), 'CODE RED markup must expose pinned evidence as a semantic list');
+assert(index.includes('id="code-red-assisted-console" role="log"') && index.includes('id="code-red-assisted-pause"') && index.includes('id="code-red-assisted-next"') && index.includes('id="code-red-assisted-skip"'), 'CODE RED assisted recovery must expose replay output and pause/next/skip controls');
+assert(index.includes('id="code-red-report-evidence" role="list"') && index.includes('id="code-red-best-comparison"') && index.includes('id="code-red-clean-retry"'), 'CODE RED report must expose evidence, best comparison, and clean retry hooks');
+
+assert(codeRedMode.includes("const RESPONSE_PHASES = ['signal', 'evidence', 'hypothesis', 'action', 'verify']"), 'CODE RED engine must use the five-stage AIOps response contract');
+assert(codeRedMode.includes('function responsePhaseForStep(') && codeRedMode.includes('function renderResponseRail(') && codeRedMode.includes('function pinEvidence('), 'CODE RED engine must map action steps to the response rail and pin successful evidence');
+assert(codeRedMode.includes('function classifyRejection(') && ['dangerous', 'namespace', 'resource', 'flags', 'generic'].every(category => codeRedMode.includes(`return '${category}'`) || codeRedMode.includes(`${category}: tx(`)), 'CODE RED engine must classify all five rejection categories');
+assert(codeRedMode.includes('session.commandHistory.push(value)') && codeRedMode.includes('function navigateCommandHistory(') && codeRedMode.includes("event.key === 'ArrowUp'") && codeRedMode.includes("event.key === 'ArrowDown'"), 'CODE RED terminal must retain and navigate command history with ArrowUp/ArrowDown');
+assert(codeRedMode.includes('const ASSISTED_STEP_MS = 1200') && codeRedMode.includes('function aiTakeover()') && codeRedMode.includes('function renderAssistedTranscript()') && codeRedMode.includes('function runAssistedStep(') && codeRedMode.includes('function toggleAssistedPause()') && codeRedMode.includes('function finishAssistedReplay()'), 'CODE RED AI takeover must run a controllable six-step assisted replay before reporting');
+assert(codeRedMode.includes('session.chapter?.failureStories?.[phase] || session.chapter?.failureStory'), 'CODE RED failures must select a phase-specific story with the legacy fallback');
+assert(codeRedMode.includes('ART_DECODE_TIMEOUT_MS = 1500') && codeRedMode.includes('image.decode()') && codeRedMode.includes('Promise.race([promise, expired])'), 'CODE RED art loading must decode with a 1.5 second fallback timeout');
+assert(codeRedMode.includes('request.artGeneration !== session.artGeneration') && codeRedMode.includes('request.sessionGeneration !== session.generation'), 'CODE RED art loading must discard stale async decodes with generation tokens');
+assert(codeRedMode.includes("const ART_SLOTS = ['background', 'midground', 'subject', 'foreground', 'ui']") && codeRedMode.includes('function renderLayeredArt('), 'CODE RED engine must render the five fixed motion-comic layers');
+assert(codeRedMode.includes('warmStoryWindow(0)') && codeRedMode.includes('preloadCriticalArt()'), 'CODE RED must preload critical plates and warm only the current/next story window');
+assert(codeRedMode.includes('resolved.registry?.shotAliases') && codeRedMode.includes('resolved.registry?.cameraAliases') && codeRedMode.includes('resolved.registry?.effectAliases'), 'CODE RED engine must resolve every cue axis through the visual registry');
+assert(index.includes('<script src="js/code_red_visuals.js"></script>') && index.indexOf('js/code_red_visuals.js') < index.indexOf('js/code_red_mode.js'), 'CODE RED visual registry must load before its runtime engine');
+assert((index.match(/data-code-red-art-slot=/g) || []).length === 5, 'CODE RED stage must expose exactly five raster layer slots');
+assert(codeRedCss.includes('height: min(174px, 26%);') && codeRedCss.includes('height: min(190px, 34%);') && codeRedCss.includes('height: min(162px, 42%);'), 'CODE RED dialogue bar must preserve the 26/34/42 percent desktop/mobile/compact ratios');
+assert(codeRedCss.includes('@keyframes cr-art-pan-right') && codeRedCss.includes('@keyframes cr-art-shake') && codeRedCss.includes('@keyframes cr-art-effect-recovery'), 'CODE RED art stage must implement stepped camera and effect motion');
+
+const codeRedData = loadCodeRedData();
+const codeRedCampaign = codeRedData.CODE_RED_CAMPAIGN;
+const codeRedBeginner = codeRedCampaign.difficulty?.beginner;
+assert(codeRedBeginner?.fallSpeedMultiplier === 0 && codeRedBeginner?.hintPenalty === 0 && codeRedBeginner?.wrongScorePenalty === 0 && codeRedBeginner?.wrongImpactPenalty === 0 && codeRedBeginner?.competitive === false, 'CODE RED BEGINNER must be a zero-pressure, zero-penalty, non-competitive practice mode');
+const codeRedPlayable = codeRedCampaign.chapters.filter(chapter => chapter.playable !== false);
+assert(codeRedCampaign.totalChapters === 8 && codeRedCampaign.chapters.length === 8, 'CODE RED campaign should expose all eight chapter signals');
+assert(codeRedPlayable.length === 1 && codeRedPlayable[0].id === 'cr-01', 'CODE RED MVP should ship Chapter 1 as the complete vertical slice');
+const codeRedChapterOne = codeRedPlayable[0];
+assert(codeRedChapterOne.steps.length === 6, 'CODE RED Chapter 1 should contain the six-step operating chain');
+assert(codeRedChapterOne.steps.at(-1).phase === 'verify', 'CODE RED Chapter 1 must end with verification');
+assert(codeRedChapterOne.preStory.length > 0 && codeRedChapterOne.successStory.length > 0 && codeRedChapterOne.failureStory.length > 0, 'CODE RED Chapter 1 needs distinct pre/success/failure cutscenes');
+assert((codeRedCampaign.prologue?.dialogue?.length || 0) + codeRedChapterOne.preStory.length === 6, 'CODE RED Chapter 1 intro must be exactly six motion-comic beats');
+assert(codeRedChapterOne.successStory.length === 3, 'CODE RED Chapter 1 success cutscene must be exactly three beats');
+assert(codeRedChapterOne.teaserStory.length === 2, 'CODE RED Chapter 1 next-signal teaser must be exactly two beats');
+const codeRedFailurePhases = ['observe', 'diagnose', 'remediate', 'verify'];
+assert(codeRedFailurePhases.every(phase => Array.isArray(codeRedChapterOne.failureStories?.[phase]) && codeRedChapterOne.failureStories[phase].length > 0), 'CODE RED Chapter 1 must provide observe/diagnose/remediate/verify failure stories');
+assert(codeRedChapterOne.missionBrief?.directive?.ko && codeRedChapterOne.missionBrief?.directive?.en, 'CODE RED Mission Brief must preserve bilingual gameplay clues');
+for (const step of codeRedChapterOne.steps) {
+    assert(step.directive?.ko && step.directive?.en && step.hint?.ko && step.hint?.en, `CODE RED step ${step.id} must be bilingual`);
+    assert(step.evidence?.ko && step.evidence?.en, `CODE RED step ${step.id} must provide bilingual pinned evidence`);
+    assert(step.rationale?.ko && step.rationale?.en, `CODE RED step ${step.id} must provide bilingual operating rationale`);
+    for (const category of ['dangerous', 'namespace', 'resource', 'flags', 'generic']) {
+        assert(step.rejectionFeedback?.[category]?.ko && step.rejectionFeedback?.[category]?.en, `CODE RED step ${step.id} must provide bilingual ${category} rejection feedback`);
+    }
+    assert(Array.isArray(step.answers) && step.answers.some(pattern => new RegExp(`^${pattern}$`).test(step.canonical)), `CODE RED canonical command should match an answer pattern: ${step.id}`);
+    assert(!step.answers.some(pattern => new RegExp(`^${pattern}$`).test('oc delete pod payment-api-7fd8b5c9b7-k2n6m -n payments')), `CODE RED must reject destructive shortcut answers: ${step.id}`);
+}
+
+const codeRedVisualData = loadCodeRedVisualData();
+const codeRedVisualRegistry = codeRedVisualData.registry;
+const codeRedCutsceneRegistry = codeRedVisualData.campaign.cutscene;
+assert(codeRedVisualRegistry.assets === codeRedCutsceneRegistry.assets && codeRedVisualRegistry.compositions === codeRedCutsceneRegistry.compositions, 'CODE RED art registry must be embedded under campaign.cutscene at runtime');
+assert(codeRedVisualRegistry?.logicalSize?.width === 320 && codeRedVisualRegistry?.logicalSize?.height === 180, 'CODE RED visual registry must use the 320x180 logical canvas');
+assert(codeRedVisualRegistry?.palette?.length >= 18 && codeRedVisualRegistry?.palette?.length <= 24, 'CODE RED art pack must declare a fixed 18-24 color palette');
+assert(new Set(codeRedVisualRegistry.palette).size === codeRedVisualRegistry.palette.length && codeRedVisualRegistry.palette.every(color => /^#[0-9a-f]{6}$/i.test(color)), 'CODE RED art palette entries must be unique six-digit hex colors');
+assert(codeRedVisualRegistry?.textRendering === 'dom-overlay', 'CODE RED raster assets must keep dialogue, commands, metrics, and timestamps in DOM overlays');
+assert(JSON.stringify(codeRedVisualRegistry?.slots) === JSON.stringify(['background', 'midground', 'subject', 'foreground', 'ui']), 'CODE RED visual registry must preserve the five-layer order');
+
+const codeRedCues = collectCodeRedCues(codeRedVisualData.campaign);
+assert(codeRedCues.length === 22, `CODE RED Chapter 1 should resolve exactly 22 authored beats, got ${codeRedCues.length}`);
+const cueAxes = [
+    ['action', 'compositions', 19],
+    ['shot', 'shotAliases', 14],
+    ['camera', 'cameraAliases', 18],
+    ['effect', 'effectAliases', 15]
+];
+for (const [cueKey, registryKey, expectedCount] of cueAxes) {
+    const values = [...new Set(codeRedCues.map(cue => cue[cueKey]).filter(Boolean))];
+    assert(values.length === expectedCount, `CODE RED should author ${expectedCount} unique ${cueKey} values, got ${values.length}`);
+    const mapping = codeRedVisualRegistry?.[registryKey] || {};
+    const missing = values.filter(value => !Object.prototype.hasOwnProperty.call(mapping, value));
+    assert(missing.length === 0, `CODE RED visual registry is missing ${cueKey} mappings: ${missing.join(', ')}`);
+}
+
+const visualAssets = codeRedVisualRegistry.assets || {};
+assert(Object.keys(visualAssets).length === 10, 'CODE RED Chapter 1 art pack must contain exactly 10 registered assets');
+let artPackBytes = 0;
+let criticalBytes = 0;
+for (const [id, descriptor] of Object.entries(visualAssets)) {
+    assert(descriptor.type === 'image/png', `CODE RED asset ${id} must declare image/png`);
+    assert(Array.isArray(descriptor.slots) && descriptor.slots.length > 0, `CODE RED asset ${id} must declare at least one layer slot`);
+    assert(descriptor.slots.every(slot => codeRedVisualRegistry.slots.includes(slot)), `CODE RED asset ${id} references an unsupported layer slot`);
+    const relative = descriptor.src.replace(/^assets\//, 'assets/');
+    const assetPath = path.join(root, relative);
+    assert(fs.existsSync(assetPath), `CODE RED art asset is missing: ${relative}`);
+    const stat = fs.statSync(assetPath);
+    const dimensions = pngDimensions(assetPath);
+    assert(dimensions.width === 640 && dimensions.height === 360, `CODE RED asset ${id} must be 640x360, got ${dimensions.width}x${dimensions.height}`);
+    assert(stat.size <= 250 * 1024, `CODE RED asset ${id} exceeds the 250KB per-file ceiling`);
+    assert(stat.size <= descriptor.bytesMax, `CODE RED asset ${id} exceeds its registered byte budget`);
+    artPackBytes += stat.size;
+    if (descriptor.critical) criticalBytes += stat.size;
+}
+assert(criticalBytes <= 700 * 1024, `CODE RED critical preload exceeds 700KB: ${criticalBytes}`);
+assert(artPackBytes <= 2.5 * 1024 * 1024, `CODE RED Chapter 1 art pack exceeds 2.5MB: ${artPackBytes}`);
+
+for (const [action, composition] of Object.entries(codeRedVisualRegistry.compositions || {})) {
+    assert(composition.fallback === 'css', `CODE RED composition ${action} must retain the CSS fallback`);
+    assert(['desktop', 'portrait', 'compact'].every(key => composition.crop?.[key]), `CODE RED composition ${action} must define desktop/mobile/compact crops`);
+    for (const [slot, assetId] of Object.entries(composition.layers || {})) {
+        if (!assetId) continue;
+        assert(codeRedVisualRegistry.slots.includes(slot), `CODE RED composition ${action} uses an unsupported slot: ${slot}`);
+        assert(visualAssets[assetId], `CODE RED composition ${action} references a missing asset: ${assetId}`);
+    }
+}
 
 assert(index.includes('class="difficulty-native-select"'), 'difficulty native select must be hidden behind a custom picker');
 assert(index.includes('class="difficulty-picker" data-difficulty-for="difficulty-select"'), 'standard difficulty custom picker is missing');
